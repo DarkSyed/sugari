@@ -5,389 +5,497 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   FlatList, 
-  RefreshControl, 
-  ActivityIndicator, 
-  TextInput
+  RefreshControl,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, ROUTES } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
-import { BloodGlucoseReading } from '../../types';
-import { getBloodGlucoseReadings } from '../../services/supabase';
+import { COLORS, SIZES } from '../../constants';
+import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
-import GlucoseCard from '../../components/GlucoseCard';
-import Button from '../../components/Button';
-
-type FilterOption = 'all' | 'high' | 'normal' | 'low' | 'before_meal' | 'after_meal' | 'fasting' | 'bedtime';
+import Card from '../../components/Card';
+import {
+  getBloodSugarReadings,
+  getBloodSugarStats,
+  deleteBloodSugarReading
+} from '../../services/database';
+import { formatDate, formatTime } from '../../utils/dateUtils';
+import { BloodSugarReading } from '../../types';
 
 const GlucoseLogScreen: React.FC = () => {
-  const { authState } = useAuth();
   const navigation = useNavigation<StackNavigationProp<any>>();
-  const [readings, setReadings] = useState<BloodGlucoseReading[]>([]);
-  const [filteredReadings, setFilteredReadings] = useState<BloodGlucoseReading[]>([]);
+  const { settings } = useApp();
+  const [readings, setReadings] = useState<BloodSugarReading[]>([]);
+  const [stats, setStats] = useState({
+    avgReading: 0,
+    maxReading: 0,
+    minReading: 0,
+    inRangePercentage: 0,
+    totalCount: 0
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterOption>('all');
-  const [searchText, setSearchText] = useState('');
+  const [activeTab, setActiveTab] = useState<'sugar' | 'glucose'>('sugar');
 
-  const fetchGlucoseReadings = useCallback(async () => {
-    if (!authState.user) return;
-
+  const fetchReadings = useCallback(async () => {
     try {
-      const { data, error } = await getBloodGlucoseReadings(authState.user.id);
+      const data = await getBloodSugarReadings(activeTab);
+      setReadings(data);
       
-      if (error) {
-        console.error('Error fetching glucose readings:', error);
-      } else if (data) {
-        // Sort readings by timestamp (newest first)
-        const sortedData = [...data].sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        setReadings(sortedData);
-        setFilteredReadings(sortedData);
-      }
+      const statsData = await getBloodSugarStats(activeTab);
+      setStats(statsData);
     } catch (error) {
-      console.error('Error fetching glucose readings:', error);
+      console.error('Error fetching readings:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [authState.user]);
+  }, [activeTab]);
 
-  useEffect(() => {
-    fetchGlucoseReadings();
-  }, [fetchGlucoseReadings]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchReadings();
+    }, [fetchReadings])
+  );
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await fetchGlucoseReadings();
-    setRefreshing(false);
+    fetchReadings();
+  }, [fetchReadings]);
+
+  const handleAddReading = () => {
+    if (activeTab === 'sugar') {
+      navigation.navigate('AddSugar');
+    } else {
+      navigation.navigate('AddGlucose');
+    }
   };
 
-  const applyFilter = (filter: FilterOption) => {
-    setActiveFilter(filter);
-    
-    if (filter === 'all') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.notes?.toLowerCase().includes(searchText.toLowerCase()) || searchText === ''
-        )
-      );
-      return;
+  const handleEditReading = (reading: BloodSugarReading) => {
+    if (activeTab === 'sugar') {
+      navigation.navigate('AddSugar', { readingId: reading.id, initialData: reading });
+    } else {
+      navigation.navigate('AddGlucose', { readingId: reading.id, initialData: reading });
     }
+  };
 
-    // Apply glucose range filters
-    if (filter === 'high') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value > 180 && 
-          (reading.notes?.toLowerCase().includes(searchText.toLowerCase()) || searchText === '')
-        )
-      );
-      return;
-    }
-
-    if (filter === 'normal') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value >= 70 && reading.value <= 180 && 
-          (reading.notes?.toLowerCase().includes(searchText.toLowerCase()) || searchText === '')
-        )
-      );
-      return;
-    }
-
-    if (filter === 'low') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value < 70 && 
-          (reading.notes?.toLowerCase().includes(searchText.toLowerCase()) || searchText === '')
-        )
-      );
-      return;
-    }
-
-    // Apply meal context filters
-    setFilteredReadings(
-      readings.filter(reading => 
-        reading.mealContext === filter && 
-        (reading.notes?.toLowerCase().includes(searchText.toLowerCase()) || searchText === '')
-      )
+  const handleDeleteReading = (id: number) => {
+    Alert.alert(
+      'Delete Reading',
+      'Are you sure you want to delete this reading?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteBloodSugarReading(id, activeTab);
+              fetchReadings();
+            } catch (error) {
+              console.error('Error deleting reading:', error);
+              Alert.alert('Error', 'Failed to delete reading.');
+            }
+          }
+        }
+      ]
     );
   };
 
-  const handleSearch = (text: string) => {
-    setSearchText(text);
+  const getReadingColor = (value: number) => {
+    const unit = settings?.units || 'mg/dL';
     
-    // Apply current filter with new search text
-    if (activeFilter === 'all') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.notes?.toLowerCase().includes(text.toLowerCase()) || text === ''
-        )
-      );
-      return;
+    // Values for mg/dL
+    let low = 70;
+    let high = 180;
+    
+    // Convert thresholds if using mmol/L
+    if (unit === 'mmol/L') {
+      low = 3.9;
+      high = 10.0;
     }
-
-    // Apply glucose range filters with search
-    if (activeFilter === 'high') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value > 180 && 
-          (reading.notes?.toLowerCase().includes(text.toLowerCase()) || text === '')
-        )
-      );
-      return;
+    
+    if (value < low) {
+      return COLORS.danger;
+    } else if (value > high) {
+      return COLORS.warning;
     }
+    return COLORS.success;
+  };
 
-    if (activeFilter === 'normal') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value >= 70 && reading.value <= 180 && 
-          (reading.notes?.toLowerCase().includes(text.toLowerCase()) || text === '')
-        )
-      );
-      return;
+  const convertReadingValue = (value: number) => {
+    const unit = settings?.units || 'mg/dL';
+    
+    if (unit === 'mmol/L' && activeTab === 'sugar') {
+      // Convert from mg/dL to mmol/L (divide by 18)
+      return (value / 18).toFixed(1);
     }
+    return value.toString();
+  };
 
-    if (activeFilter === 'low') {
-      setFilteredReadings(
-        readings.filter(reading => 
-          reading.value < 70 && 
-          (reading.notes?.toLowerCase().includes(text.toLowerCase()) || text === '')
-        )
-      );
-      return;
-    }
-
-    // Apply meal context filters with search
-    setFilteredReadings(
-      readings.filter(reading => 
-        reading.mealContext === activeFilter && 
-        (reading.notes?.toLowerCase().includes(text.toLowerCase()) || text === '')
-      )
+  const renderReadingItem = ({ item }: { item: BloodSugarReading }) => {
+    const readingValue = Number(item.value);
+    const context = item.context || 'Not specified';
+    
+    return (
+      <Card variant="flat" style={styles.readingCard}>
+        <View style={styles.readingHeader}>
+          <View style={styles.readingDateContainer}>
+            <Text style={styles.readingDate}>{formatDate(new Date(item.timestamp))}</Text>
+            <Text style={styles.readingTime}>{formatTime(new Date(item.timestamp))}</Text>
+          </View>
+          <View style={styles.readingActions}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => handleEditReading(item)}
+            >
+              <Ionicons name="pencil" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => handleDeleteReading(item.id)}
+            >
+              <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={styles.readingContent}>
+          <View style={styles.readingValueContainer}>
+            <Text style={[styles.readingValue, { color: getReadingColor(readingValue) }]}>
+              {convertReadingValue(readingValue)}
+            </Text>
+            <Text style={styles.readingUnit}>{settings?.units || 'mg/dL'}</Text>
+          </View>
+          
+          <View style={styles.readingContextContainer}>
+            <Text style={styles.readingContextLabel}>Context:</Text>
+            <Text style={styles.readingContext}>{context}</Text>
+          </View>
+          
+          {item.notes && (
+            <View style={styles.readingNotesContainer}>
+              <Text style={styles.readingNotesLabel}>Notes:</Text>
+              <Text style={styles.readingNotes}>{item.notes}</Text>
+            </View>
+          )}
+        </View>
+      </Card>
     );
   };
 
-  const renderFilterChip = (label: string, filter: FilterOption) => (
+  const renderTabButton = (tab: 'sugar' | 'glucose', label: string) => (
     <TouchableOpacity
       style={[
-        styles.filterChip,
-        activeFilter === filter && styles.filterChipActive,
+        styles.tabButton,
+        activeTab === tab && styles.activeTabButton
       ]}
-      onPress={() => applyFilter(filter)}
+      onPress={() => setActiveTab(tab)}
     >
-      <Text
-        style={[
-          styles.filterChipText,
-          activeFilter === filter && styles.filterChipTextActive,
-        ]}
-      >
+      <Text style={[
+        styles.tabButtonText,
+        activeTab === tab && styles.activeTabButtonText
+      ]}>
         {label}
       </Text>
     </TouchableOpacity>
   );
 
-  const renderEmptyList = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>No glucose readings found</Text>
-      <Text style={styles.emptySubText}>
-        {readings.length === 0
-          ? "You haven't logged any readings yet."
-          : "No readings match your current filters."}
-      </Text>
-      {readings.length === 0 && (
-        <Button
-          title="Add First Reading"
-          onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
-          style={styles.addButton}
-        />
-      )}
-    </View>
+  const renderStats = () => (
+    <Card variant="elevated" style={styles.statsCard}>
+      <Text style={styles.statsTitle}>Statistics</Text>
+      
+      <View style={styles.statsGrid}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {stats.avgReading ? 
+              convertReadingValue(Math.round(stats.avgReading)) : 
+              '—'
+            }
+          </Text>
+          <Text style={styles.statLabel}>Average</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {stats.maxReading ? 
+              convertReadingValue(stats.maxReading) : 
+              '—'
+            }
+          </Text>
+          <Text style={styles.statLabel}>Highest</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {stats.minReading ? 
+              convertReadingValue(stats.minReading) : 
+              '—'
+            }
+          </Text>
+          <Text style={styles.statLabel}>Lowest</Text>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {stats.totalCount ? `${Math.round(stats.inRangePercentage)}%` : '—'}
+          </Text>
+          <Text style={styles.statLabel}>In Range</Text>
+        </View>
+      </View>
+    </Card>
   );
 
   return (
-    <Container scrollable={false}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Glucose Log</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
-          >
-            <Ionicons name="add-circle" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={COLORS.lightText} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search notes..."
-            value={searchText}
-            onChangeText={handleSearch}
-            placeholderTextColor={COLORS.lightText}
-          />
-          {searchText !== '' && (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchText('');
-                applyFilter(activeFilter);
-              }}
-            >
-              <Ionicons name="close-circle" size={20} color={COLORS.lightText} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.filtersContainer}>
-          <ScrollableFilterSection>
-            {renderFilterChip('All', 'all')}
-            {renderFilterChip('High', 'high')}
-            {renderFilterChip('Normal', 'normal')}
-            {renderFilterChip('Low', 'low')}
-            {renderFilterChip('Before Meal', 'before_meal')}
-            {renderFilterChip('After Meal', 'after_meal')}
-            {renderFilterChip('Fasting', 'fasting')}
-            {renderFilterChip('Bedtime', 'bedtime')}
-          </ScrollableFilterSection>
-        </View>
-
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : (
-          <FlatList
-            data={filteredReadings}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <GlucoseCard
-                reading={item}
-                onPress={() => {
-                  // Navigate to detailed view or edit screen
-                  // To be implemented later
-                }}
-              />
-            )}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            ListEmptyComponent={renderEmptyList}
-          />
-        )}
+    <Container>
+      <View style={styles.header}>
+        <Text style={styles.screenTitle}>Blood Sugar Log</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddReading}
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </TouchableOpacity>
       </View>
+      
+      <View style={styles.tabContainer}>
+        {renderTabButton('sugar', 'Blood Sugar')}
+        {renderTabButton('glucose', 'Glucose')}
+      </View>
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <>
+          {renderStats()}
+          
+          {readings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="analytics-outline" size={64} color={COLORS.lightText} />
+              <Text style={styles.emptyText}>No readings yet</Text>
+              <Text style={styles.emptySubText}>
+                Start tracking your {activeTab === 'sugar' ? 'blood sugar' : 'glucose'} levels by adding your first reading
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyAddButton}
+                onPress={handleAddReading}
+              >
+                <Text style={styles.emptyAddButtonText}>
+                  Add {activeTab === 'sugar' ? 'Blood Sugar' : 'Glucose'} Reading
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={readings}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderReadingItem}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[COLORS.primary]}
+                />
+              }
+            />
+          )}
+        </>
+      )}
     </Container>
   );
 };
 
-// Helper component for horizontal scrollable filter chips
-const ScrollableFilterSection: React.FC<{children: React.ReactNode}> = ({ children }) => (
-  <View style={styles.scrollableFilterContainer}>
-    <FlatList
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      data={[{ id: 'filters', content: children }]}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <React.Fragment>{item.content}</React.Fragment>}
-    />
-  </View>
-);
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: SIZES.md,
   },
-  title: {
+  screenTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.text,
   },
   addButton: {
-    padding: SIZES.xs,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.sm,
-    paddingHorizontal: SIZES.sm,
-    marginBottom: SIZES.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  searchIcon: {
-    marginRight: SIZES.xs,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  filtersContainer: {
-    marginBottom: SIZES.md,
-  },
-  scrollableFilterContainer: {
-    width: '100%',
-  },
-  filterChip: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.lg,
-    paddingHorizontal: SIZES.md,
-    paddingVertical: SIZES.xs,
-    marginRight: SIZES.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  filterChipActive: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  filterChipText: {
-    fontSize: 14,
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: SIZES.md,
+    borderRadius: SIZES.sm,
+    backgroundColor: COLORS.inputBackground,
+    overflow: 'hidden',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: SIZES.sm,
+    alignItems: 'center',
+  },
+  activeTabButton: {
+    backgroundColor: COLORS.primary,
+  },
+  tabButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
     color: COLORS.text,
   },
-  filterChipTextActive: {
+  activeTabButtonText: {
     color: 'white',
-  },
-  listContainer: {
-    paddingBottom: SIZES.lg,
-    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  statsCard: {
+    marginBottom: SIZES.md,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SIZES.sm,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    width: '50%',
+    paddingVertical: SIZES.sm,
+    paddingRight: SIZES.sm,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: COLORS.lightText,
+  },
+  list: {
+    paddingBottom: SIZES.xl,
+  },
+  readingCard: {
+    marginBottom: SIZES.md,
+  },
+  readingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingBottom: SIZES.xs,
+    marginBottom: SIZES.xs,
+  },
+  readingDateContainer: {
+    flexDirection: 'column',
+  },
+  readingDate: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  readingTime: {
+    fontSize: 14,
+    color: COLORS.lightText,
+  },
+  readingActions: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    padding: SIZES.xs,
+    marginLeft: SIZES.xs,
+  },
+  readingContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  readingValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginRight: SIZES.md,
+  },
+  readingValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  readingUnit: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginLeft: 4,
+  },
+  readingContextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: SIZES.md,
+  },
+  readingContextLabel: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginRight: 4,
+  },
+  readingContext: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  readingNotesContainer: {
+    width: '100%',
+    marginTop: SIZES.xs,
+  },
+  readingNotesLabel: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginBottom: 2,
+  },
+  readingNotes: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SIZES.xl,
+    padding: SIZES.lg,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: SIZES.xs,
+    marginTop: SIZES.md,
   },
   emptySubText: {
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.lightText,
     textAlign: 'center',
+    marginTop: SIZES.xs,
     marginBottom: SIZES.md,
   },
-  addFirstButton: {
-    marginTop: SIZES.md,
+  emptyAddButton: {
+    paddingVertical: SIZES.sm,
+    paddingHorizontal: SIZES.md,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.sm,
+  },
+  emptyAddButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'white',
   },
 });
 

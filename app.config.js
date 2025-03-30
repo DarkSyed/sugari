@@ -36,7 +36,8 @@ export default {
         {
           "faceIDPermission": "Allow Sugari to access your Face ID for secure authentication."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,

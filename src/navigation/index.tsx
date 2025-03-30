@@ -4,13 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { ROUTES, COLORS } from '../constants';
-import { useAuth } from '../contexts/AuthContext';
+import { useApp } from '../contexts/AppContext';
 
-// Auth Screens
-import SplashScreen from '../screens/auth/SplashScreen';
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
-import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+// Splash Screen
+import SplashScreen from '../screens/SplashScreen';
 
 // Main Screens
 import DashboardScreen from '../screens/main/DashboardScreen';
@@ -27,23 +24,6 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 // Create navigators
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
-// Auth navigator
-const AuthNavigator = () => {
-  return (
-    <Stack.Navigator
-      initialRouteName={ROUTES.LOGIN}
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: 'white' },
-      }}
-    >
-      <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
-      <Stack.Screen name={ROUTES.REGISTER} component={RegisterScreen} />
-      <Stack.Screen name={ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
-    </Stack.Navigator>
-  );
-};
 
 // Dashboard navigator
 const DashboardStack = () => {
@@ -144,14 +124,9 @@ const TabNavigator = () => {
   );
 };
 
-// Temporary component for screens not yet implemented
-const DummyScreen = () => {
-  return null;
-};
-
-// Root Navigator - switches between Auth and Main based on auth state
+// Root Navigator
 const AppNavigator = () => {
-  const { authState, isLoading } = useAuth();
+  const { isLoading } = useApp();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -169,11 +144,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      {authState.session ? (
-        <TabNavigator />
-      ) : (
-        <AuthNavigator />
-      )}
+      <TabNavigator />
     </NavigationContainer>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,20 +7,27 @@ import {
   Switch, 
   Alert, 
   ScrollView, 
-  Linking 
+  Linking, 
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, APP_NAME } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
+import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UserSettings } from '../../types';
 
 const SettingsScreen: React.FC = () => {
-  const { authState, logout } = useAuth();
+  const { settings, updateSettings, isLoading, theme } = useApp();
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const insets = useSafeAreaInsets();
   
   // State for various settings
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -30,6 +37,42 @@ const SettingsScreen: React.FC = () => {
   const [glucoseUnit, setGlucoseUnit] = useState('mg/dL'); // or 'mmol/L'
   const [targetRangeMin, setTargetRangeMin] = useState(70);
   const [targetRangeMax, setTargetRangeMax] = useState(180);
+  const [email, setEmail] = useState(settings?.email || '');
+  const [firstName, setFirstName] = useState(settings?.first_name || '');
+  const [lastName, setLastName] = useState(settings?.last_name || '');
+  const [diabetesType, setDiabetesType] = useState(settings?.diabetes_type || 'type1');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [notifications, setNotifications] = useState(settings?.notifications === 1);
+  const [localSettings, setLocalSettings] = useState<Partial<UserSettings> | null>(null);
+
+  // Update local state when settings change
+  useEffect(() => {
+    if (settings) {
+      setEmail(settings.email || '');
+      setFirstName(settings.first_name || '');
+      setLastName(settings.last_name || '');
+      setDiabetesType(settings.diabetes_type || 'type1');
+      setNotifications(settings.notifications === 1);
+      setDarkMode(settings.dark_mode === 1);
+      setGlucoseUnit(settings.units || 'mg/dL');
+    }
+  }, [settings]);
+
+  // Initialize local settings when userSettings changes or edit mode is entered
+  useEffect(() => {
+    if (settings && (isEditingProfile || !localSettings)) {
+      setLocalSettings({
+        firstName: settings.first_name,
+        lastName: settings.last_name,
+        email: settings.email,
+        diabetesType: settings.diabetes_type,
+        notifications: settings.notifications === 1,
+        darkMode: settings.dark_mode === 1,
+        units: settings.units || 'mg/dL'
+      });
+    }
+  }, [settings, isEditingProfile]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -44,7 +87,11 @@ const SettingsScreen: React.FC = () => {
           text: 'Logout',
           onPress: async () => {
             try {
-              const { error } = await logout();
+              const { error } = await updateSettings({
+                notifications: 0,
+                dark_mode: 0,
+                units: 'mg/dL'
+              });
               if (error) {
                 Alert.alert('Logout Failed', error.message);
               }
@@ -84,6 +131,77 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        diabetes_type: diabetesType as 'type1' | 'type2' | 'gestational' | 'other'
+      });
+      setIsEditingProfile(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleNotificationsChange = async (value: boolean) => {
+    setNotifications(value);
+    try {
+      await updateSettings({ notifications: value ? 1 : 0 });
+    } catch (error) {
+      console.error('Error updating notifications setting:', error);
+      setNotifications(!value); // Revert on error
+    }
+  };
+
+  const handleDarkModeChange = async (value: boolean) => {
+    setDarkMode(value);
+    try {
+      await updateSettings({ dark_mode: value ? 1 : 0 });
+    } catch (error) {
+      console.error('Error updating dark mode setting:', error);
+      setDarkMode(!value); // Revert on error
+    }
+  };
+
+  const handleUnitsChange = async (value: 'mg/dL' | 'mmol/L') => {
+    setGlucoseUnit(value);
+    try {
+      await updateSettings({ units: value });
+    } catch (error) {
+      console.error('Error updating units setting:', error);
+      setGlucoseUnit(glucoseUnit); // Revert on error
+    }
+  };
+
+  const handleToggle = async (setting: 'notifications' | 'darkMode') => {
+    if (!settings) return;
+    
+    try {
+      const newValue = setting === 'notifications' 
+        ? !settings.notifications 
+        : !settings.dark_mode;
+      
+      // Update local state immediately for responsive UI
+      setLocalSettings(prev => prev ? { ...prev, [setting]: newValue } : null);
+      
+      // Update in database
+      await updateSettings({ [setting]: newValue });
+    } catch (error) {
+      console.error(`Error toggling ${setting}:`, error);
+      Alert.alert('Error', `Could not update ${setting}. Please try again.`);
+      
+      // Revert local state if there was an error
+      setLocalSettings(prev => prev ? { ...prev, [setting]: settings[setting] } : null);
+    }
+  };
+
   const renderSettingSwitch = (
     title: string,
     description: string,
@@ -118,6 +236,24 @@ const SettingsScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+  
+  if (!settings || !localSettings) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.errorText, { color: theme.colors.error }]}>
+          Error loading settings. Please try again later.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <Container>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -129,16 +265,16 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
               <Text style={styles.avatarText}>
-                {authState.user?.firstName?.[0] || authState.user?.email?.[0] || 'U'}
+                {settings.first_name?.[0] || settings.email?.[0] || 'U'}
               </Text>
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                {authState.user?.firstName
-                  ? `${authState.user.firstName} ${authState.user.lastName || ''}`
-                  : authState.user?.email || 'User'}
+                {settings.first_name
+                  ? `${settings.first_name} ${settings.last_name || ''}`
+                  : settings.email || 'User'}
               </Text>
-              <Text style={styles.userEmail}>{authState.user?.email}</Text>
+              <Text style={styles.userEmail}>{settings.email}</Text>
             </View>
           </View>
 
@@ -385,6 +521,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.lightText,
     marginBottom: SIZES.xl,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 

@@ -1,13 +1,10 @@
 // User related types
 export interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  birthdate?: string;
-  diabetesType?: 'type1' | 'type2' | 'gestational' | 'other';
-  createdAt: string;
-  updatedAt: string;
+  id: number;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  diabetesType: string | null;
 }
 
 // Authentication related types
@@ -20,39 +17,29 @@ export interface AuthState {
 
 // Blood sugar related types
 export interface BloodSugarReading {
-  id: string;
-  userId: string;
-  value: number; // in mg/dL
-  timestamp: string;
-  mealContext?: 'before_meal' | 'after_meal' | 'fasting' | 'bedtime' | 'other';
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  id: number;
+  value: number;
+  timestamp: number;
+  context?: string | null;
+  notes?: string | null;
 }
 
 // Food and carb related types
 export interface FoodEntry {
-  id: string;
-  userId: string;
+  id: number;
   name: string;
-  carbs: number; // in grams
-  timestamp: string;
-  meal: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  carbs?: number | null;
+  timestamp: number;
+  notes?: string | null;
 }
 
 // Insulin related types
 export interface InsulinDose {
-  id: string;
-  userId: string;
+  id: number;
   units: number;
-  insulinType: 'rapid' | 'long' | 'mixed' | 'other';
-  timestamp: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  type: string;
+  timestamp: number;
+  notes?: string | null;
 }
 
 // Health data types for analytics
@@ -64,14 +51,114 @@ export interface HealthData {
 
 // Settings and preferences
 export interface UserSettings {
-  userId: string;
-  targetRangeMin: number; // in mg/dL
-  targetRangeMax: number; // in mg/dL
-  insulinSensitivityFactor: number; // how much 1 unit of insulin lowers blood sugar
-  carbRatio: number; // how many grams of carbs are covered by 1 unit of insulin
+  id: number;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  diabetesType: string | null;
   notifications: boolean;
   darkMode: boolean;
-  units: 'mg/dL' | 'mmol/L';
-  createdAt: string;
-  updatedAt: string;
+  units: string;
+}
+
+// AI Insight Type
+export interface AIInsight {
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success';
+  timestamp: string;
+}
+
+// Chart Data Types
+export interface ChartDataPoint {
+  value: number;
+  timestamp: string;
+  context?: string;
+}
+
+export interface GlucoseTrendData {
+  label: string;
+  data: ChartDataPoint[];
+  timeRange: string;
+}
+
+// Navigation Types
+export type RootStackParamList = {
+  SplashScreen: undefined;
+  Main: undefined;
+};
+
+export type BottomTabParamList = {
+  Home: undefined;
+  GlucoseLog: undefined;
+  Analytics: undefined;
+  Settings: undefined;
+};
+
+export type MainStackParamList = {
+  Dashboard: undefined;
+  Profile: undefined;
+  AddGlucose: { readingId?: number; initialData?: BloodSugarReading } | undefined;
+  AddSugar: { readingId?: number; initialData?: BloodSugarReading } | undefined;
+  AddFood: { entryId?: number; initialData?: FoodEntry } | undefined;
+  AddInsulin: { doseId?: number; initialData?: InsulinDose } | undefined;
+  GlucoseDetails: { readingId: number };
+  FoodDetails: { entryId: number };
+  InsulinDetails: { doseId: number };
+  Settings: undefined;
+};
+
+// Component Props
+export interface CardProps {
+  children: React.ReactNode;
+  variant?: 'default' | 'elevated' | 'outline';
+  style?: any;
+  onPress?: () => void;
+}
+
+export interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'outline' | 'text';
+  loading?: boolean;
+  disabled?: boolean;
+  style?: any;
+  textStyle?: any;
+  icon?: string;
+  iconPosition?: 'left' | 'right';
+}
+
+export interface ContainerProps {
+  children: React.ReactNode;
+  style?: any;
+  scrollable?: boolean;
+  refreshable?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+}
+
+// AI-generated insights
+export interface Insight {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: number;
+  type: 'info' | 'warning' | 'success';
+}
+
+// Theme
+export interface Theme {
+  isDark: boolean;
+  colors: {
+    primary: string;
+    background: string;
+    card: string;
+    text: string;
+    border: string;
+    notification: string;
+    success: string;
+    warning: string;
+    error: string;
+    info: string;
+  };
 } 

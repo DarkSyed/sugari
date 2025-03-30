@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, ROUTES } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
+import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
-import { getBloodSugarReadings, getFoodEntries, getInsulinDoses } from '../../services/supabase';
+import { getBloodSugarReadings, getFoodEntries, getInsulinDoses } from '../../services/database';
 import { getAIPoweredInsights } from '../../services/aiService';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
@@ -18,7 +18,7 @@ import SugarCard from '../../components/SugarCard';
 type BloodGlucoseReading = BloodSugarReading;
 
 const DashboardScreen: React.FC = () => {
-  const { authState } = useAuth();
+  const { userSettings, theme } = useApp();
   const navigation = useNavigation<StackNavigationProp<any>>();
   const [glucoseReadings, setGlucoseReadings] = useState<BloodGlucoseReading[]>([]);
   const [sugarReadings, setSugarReadings] = useState<BloodSugarReading[]>([]);
@@ -30,62 +30,30 @@ const DashboardScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeReadingType, setActiveReadingType] = useState<'glucose' | 'sugar'>('sugar');
 
-  const fetchUserData = async () => {
-    if (!authState.user) return;
-
+  const fetchUserData = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch glucose readings
-      const { data: glucoseData, error: glucoseError } = await getBloodSugarReadings(
-        authState.user.id
-      );
       
-      if (glucoseError) {
-        console.error('Error fetching glucose readings:', glucoseError);
-      } else if (glucoseData) {
-        setGlucoseReadings(glucoseData);
-      }
-
-      // Fetch sugar readings
-      const { data: sugarData, error: sugarError } = await getBloodSugarReadings(
-        authState.user.id
-      );
-      
-      if (sugarError) {
-        console.error('Error fetching sugar readings:', sugarError);
-      } else if (sugarData) {
-        setSugarReadings(sugarData);
-      }
+      // Fetch readings
+      const sugarData = await getBloodSugarReadings();
+      setSugarReadings(sugarData);
+      setGlucoseReadings(sugarData); // For now, both are the same
 
       // Fetch food entries
-      const { data: foodData, error: foodError } = await getFoodEntries(
-        authState.user.id
-      );
-      
-      if (foodError) {
-        console.error('Error fetching food entries:', foodError);
-      } else if (foodData) {
-        setFoodEntries(foodData);
-      }
+      const foodData = await getFoodEntries();
+      setFoodEntries(foodData);
 
       // Fetch insulin doses
-      const { data: insulinData, error: insulinError } = await getInsulinDoses(
-        authState.user.id
-      );
-      
-      if (insulinError) {
-        console.error('Error fetching insulin doses:', insulinError);
-      } else if (insulinData) {
-        setInsulinDoses(insulinData);
-      }
+      const insulinData = await getInsulinDoses();
+      setInsulinDoses(insulinData);
 
       // Get AI insights
-      if ((glucoseData && glucoseData.length > 0) || (sugarData && sugarData.length > 0)) {
+      if (sugarData.length > 0) {
         const aiInsights = await getAIPoweredInsights(
-          glucoseData || [],
-          sugarData || [],
-          foodData || [],
-          insulinData || []
+          [], // glucoseReadings
+          sugarData,
+          foodData,
+          insulinData
         );
         setInsights(aiInsights);
       }
@@ -93,17 +61,17 @@ const DashboardScreen: React.FC = () => {
       console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUserData();
-  }, [authState.user]);
+  }, [fetchUserData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchUserData();
-    setRefreshing(false);
   };
 
   const getLatestGlucoseReading = (): BloodGlucoseReading | null => {
@@ -129,20 +97,21 @@ const DashboardScreen: React.FC = () => {
   const latestGlucoseReading = getLatestGlucoseReading();
   const latestSugarReading = getLatestSugarReading();
 
-  const formatTimeSince = (timestamp: string): string => {
+  const formatTimeSince = (timestamp: number): string => {
+    const date = new Date(timestamp);
     const now = new Date();
-    const readingTime = new Date(timestamp);
-    const diffMs = now.getTime() - readingTime.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
     
-    if (diffMins < 60) {
-      return `${diffMins} min ago`;
-    } else if (diffMins < 1440) {
-      const hours = Math.floor(diffMins / 60);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      const hours = Math.floor(diffInHours);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
     } else {
-      const days = Math.floor(diffMins / 1440);
-      return `${days} day${days > 1 ? 's' : ''} ago`;
+      const days = Math.floor(diffInHours / 24);
+      if (days === 1) return 'Yesterday';
+      return `${days} days ago`;
     }
   };
 
@@ -155,7 +124,7 @@ const DashboardScreen: React.FC = () => {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hello, {authState.user?.firstName || 'there'}!</Text>
+            <Text style={styles.greeting}>Hello, {userSettings?.firstName || 'there'}!</Text>
             <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
           </View>
           <TouchableOpacity
@@ -164,7 +133,7 @@ const DashboardScreen: React.FC = () => {
           >
             <View style={styles.profileIcon}>
               <Text style={styles.profileInitial}>
-                {authState.user?.firstName?.[0] || authState.user?.email?.[0] || 'U'}
+                {userSettings?.firstName?.[0] || userSettings?.email?.[0] || 'U'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -172,111 +141,34 @@ const DashboardScreen: React.FC = () => {
 
         {/* Latest Reading */}
         <Card variant="elevated">
-          <View style={styles.latestReadingContainer}>
-            <View style={styles.latestReadingHeader}>
-              <Text style={styles.sectionTitle}>Latest Reading</Text>
-              <View style={styles.readingTypeSwitcher}>
+          <Text style={styles.sectionTitle}>Latest Reading</Text>
+          
+          {latestSugarReading ? (
+            <>
+              <View style={styles.readingContent}>
+                <View style={styles.readingValueContainer}>
+                  <Text style={styles.readingValue}>{latestSugarReading.value}</Text>
+                  <Text style={styles.readingUnit}>mg/dL</Text>
+                </View>
                 <TouchableOpacity
-                  style={[
-                    styles.readingTypeButton,
-                    activeReadingType === 'glucose' && styles.readingTypeButtonActive,
-                  ]}
-                  onPress={() => setActiveReadingType('glucose')}
+                  style={styles.addButton}
+                  onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
                 >
-                  <Text
-                    style={[
-                      styles.readingTypeText,
-                      activeReadingType === 'glucose' && styles.readingTypeTextActive,
-                    ]}
-                  >
-                    Glucose
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.readingTypeButton,
-                    activeReadingType === 'sugar' && styles.readingTypeButtonActive,
-                  ]}
-                  onPress={() => setActiveReadingType('sugar')}
-                >
-                  <Text
-                    style={[
-                      styles.readingTypeText,
-                      activeReadingType === 'sugar' && styles.readingTypeTextActive,
-                    ]}
-                  >
-                    Sugar
-                  </Text>
+                  <Text style={styles.addButtonText}>Add Reading</Text>
                 </TouchableOpacity>
               </View>
+            </>
+          ) : (
+            <View style={styles.noReadingContainer}>
+              <Text style={styles.noReadingText}>No readings yet</Text>
+              <TouchableOpacity
+                style={styles.addFirstButton}
+                onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
+              >
+                <Text style={styles.addFirstButtonText}>Add First Reading</Text>
+              </TouchableOpacity>
             </View>
-
-            {activeReadingType === 'glucose' ? (
-              <>
-                <View style={styles.latestReadingSubHeader}>
-                  <Text style={styles.readingLabel}>Blood Glucose</Text>
-                  {latestGlucoseReading && (
-                    <Text style={styles.timeAgo}>{formatTimeSince(latestGlucoseReading.timestamp)}</Text>
-                  )}
-                </View>
-
-                {latestGlucoseReading ? (
-                  <View style={styles.readingContent}>
-                    <View style={styles.readingValueContainer}>
-                      <Text style={styles.readingValue}>{latestGlucoseReading.value}</Text>
-                      <Text style={styles.readingUnit}>mg/dL</Text>
-                    </View>
-                    <Button
-                      title="Add New Reading"
-                      onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
-                      size="small"
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.noReadingContainer}>
-                    <Text style={styles.noReadingText}>No glucose readings yet</Text>
-                    <Button
-                      title="Add First Reading"
-                      onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
-                      style={styles.addFirstButton}
-                    />
-                  </View>
-                )}
-              </>
-            ) : (
-              <>
-                <View style={styles.latestReadingSubHeader}>
-                  <Text style={styles.readingLabel}>Blood Sugar</Text>
-                  {latestSugarReading && (
-                    <Text style={styles.timeAgo}>{formatTimeSince(latestSugarReading.timestamp)}</Text>
-                  )}
-                </View>
-
-                {latestSugarReading ? (
-                  <View style={styles.readingContent}>
-                    <View style={styles.readingValueContainer}>
-                      <Text style={styles.readingValue}>{latestSugarReading.value}</Text>
-                      <Text style={styles.readingUnit}>mg/dL</Text>
-                    </View>
-                    <Button
-                      title="Add New Reading"
-                      onPress={() => navigation.navigate(ROUTES.ADD_SUGAR)}
-                      size="small"
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.noReadingContainer}>
-                    <Text style={styles.noReadingText}>No sugar readings yet</Text>
-                    <Button
-                      title="Add First Reading"
-                      onPress={() => navigation.navigate(ROUTES.ADD_SUGAR)}
-                      style={styles.addFirstButton}
-                    />
-                  </View>
-                )}
-              </>
-            )}
-          </View>
+          )}
         </Card>
 
         {/* Glucose Chart */}
@@ -367,7 +259,7 @@ const DashboardScreen: React.FC = () => {
               style={styles.quickActionButton}
               onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
             >
-              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.primary }]}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#4B89DC' }]}>
                 <Text style={styles.quickActionIconText}>📊</Text>
               </View>
               <Text style={styles.quickActionText}>Log Glucose</Text>
@@ -375,19 +267,9 @@ const DashboardScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_SUGAR)}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#9C27B0' }]}>
-                <Text style={styles.quickActionIconText}>🩸</Text>
-              </View>
-              <Text style={styles.quickActionText}>Log Sugar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickActionButton}
               onPress={() => navigation.navigate(ROUTES.ADD_FOOD)}
             >
-              <View style={[styles.quickActionIcon, { backgroundColor: COLORS.secondary }]}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#2ECC71' }]}>
                 <Text style={styles.quickActionIconText}>🍽️</Text>
               </View>
               <Text style={styles.quickActionText}>Log Food</Text>
@@ -397,10 +279,20 @@ const DashboardScreen: React.FC = () => {
               style={styles.quickActionButton}
               onPress={() => navigation.navigate(ROUTES.ADD_INSULIN)}
             >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#FF9500' }]}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#F39C12' }]}>
                 <Text style={styles.quickActionIconText}>💉</Text>
               </View>
               <Text style={styles.quickActionText}>Log Insulin</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate(ROUTES.ANALYTICS)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#9B59B6' }]}>
+                <Text style={styles.quickActionIconText}>📈</Text>
+              </View>
+              <Text style={styles.quickActionText}>Analytics</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -573,6 +465,21 @@ const styles = StyleSheet.create({
   },
   addFirstButton: {
     marginTop: SIZES.sm,
+  },
+  addFirstButtonText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  addButton: {
+    padding: SIZES.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.xs,
+  },
+  addButtonText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: 'bold',
   },
   chartContainer: {
     marginVertical: SIZES.md,
