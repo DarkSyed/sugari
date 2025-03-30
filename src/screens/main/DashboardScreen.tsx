@@ -157,6 +157,14 @@ const DashboardScreen: React.FC = () => {
                   <Text style={styles.addButtonText}>Add Reading</Text>
                 </TouchableOpacity>
               </View>
+              
+              {/* Insulin Button */}
+              <TouchableOpacity
+                style={styles.insulinButton}
+                onPress={() => navigation.navigate(ROUTES.ADD_INSULIN)}
+              >
+                <Text style={styles.insulinButtonText}>Log Insulin</Text>
+              </TouchableOpacity>
             </>
           ) : (
             <View style={styles.noReadingContainer}>
@@ -293,6 +301,36 @@ const DashboardScreen: React.FC = () => {
                 <Text style={styles.quickActionIconText}>📈</Text>
               </View>
               <Text style={styles.quickActionText}>Analytics</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate(ROUTES.ADD_A1C)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E74C3C' }]}>
+                <Text style={styles.quickActionIconText}>🔬</Text>
+              </View>
+              <Text style={styles.quickActionText}>A1C</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate(ROUTES.ADD_WEIGHT)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#3498DB' }]}>
+                <Text style={styles.quickActionIconText}>⚖️</Text>
+              </View>
+              <Text style={styles.quickActionText}>Weight</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate(ROUTES.ADD_BP)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#16A085' }]}>
+                <Text style={styles.quickActionIconText}>❤️</Text>
+              </View>
+              <Text style={styles.quickActionText}>BP</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -548,6 +586,7 @@ const styles = StyleSheet.create({
   quickActionButton: {
     alignItems: 'center',
     width: '22%',
+    marginBottom: SIZES.md,
   },
   quickActionIcon: {
     width: 50,
@@ -585,6 +624,21 @@ const styles = StyleSheet.create({
     color: COLORS.lightText,
     textAlign: 'center',
     padding: SIZES.lg,
+  },
+  insulinButton: {
+    backgroundColor: COLORS.secondary + '20',
+    paddingVertical: SIZES.xs,
+    paddingHorizontal: SIZES.md,
+    borderRadius: SIZES.sm,
+    alignSelf: 'center',
+    marginTop: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  insulinButtonText: {
+    color: COLORS.secondary,
+    fontWeight: '500',
+    fontSize: 14,
   },
 });
 

@@ -1,154 +1,93 @@
-import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
+// This file is commented out as we're no longer using Supabase
+// and using SQLite for local storage instead
 
-// Initialize the Supabase client with AsyncStorage for persistent sessions
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// Mock functions to replace Supabase functionality
+export const supabase = {};
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase URL or anon key is missing. Please check your environment variables.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage as any,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
-
-// Authentication methods
+// Authentication methods (using local SQLite instead)
 export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  return { data, error };
+  console.log('Mock signUp called - using local storage instead of Supabase');
+  return { data: {}, error: null };
 };
 
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  return { data, error };
+  console.log('Mock signIn called - using local storage instead of Supabase');
+  return { data: {}, error: null };
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  console.log('Mock signOut called - using local storage instead of Supabase');
+  return { error: null };
 };
 
 export const resetPassword = async (email: string) => {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'sugari://reset-password',
-  });
-  return { data, error };
+  console.log('Mock resetPassword called - using local storage instead of Supabase');
+  return { data: {}, error: null };
 };
 
 export const updatePassword = async (password: string) => {
-  const { data, error } = await supabase.auth.updateUser({
-    password,
-  });
-  return { data, error };
+  console.log('Mock updatePassword called - using local storage instead of Supabase');
+  return { data: {}, error: null };
 };
 
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  return { user, error };
+  console.log('Mock getCurrentUser called - using local storage instead of Supabase');
+  return { user: null, error: null };
 };
 
 export const getCurrentSession = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  return { session, error };
+  console.log('Mock getCurrentSession called - using local storage instead of Supabase');
+  return { session: null, error: null };
 };
 
-// User profile methods
+// User profile methods (using SQLite instead)
 export const getUserProfile = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  return { data, error };
+  console.log('Mock getUserProfile called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
 export const updateUserProfile = async (userId: string, updates: any) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', userId);
-  return { data, error };
+  console.log('Mock updateUserProfile called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
-// Blood sugar methods
+// All other methods with mock implementations
 export const getBloodSugarReadings = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('blood_sugar')
-    .select('*')
-    .eq('user_id', userId)
-    .order('timestamp', { ascending: false });
-  return { data, error };
+  console.log('Mock getBloodSugarReadings called - using local storage instead of Supabase');
+  return { data: [], error: null };
 };
 
 export const addBloodSugarReading = async (reading: any) => {
-  const { data, error } = await supabase
-    .from('blood_sugar')
-    .insert([reading]);
-  return { data, error };
+  console.log('Mock addBloodSugarReading called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
-// Food entry methods
 export const getFoodEntries = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('food_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('timestamp', { ascending: false });
-  return { data, error };
+  console.log('Mock getFoodEntries called - using local storage instead of Supabase');
+  return { data: [], error: null };
 };
 
 export const addFoodEntry = async (entry: any) => {
-  const { data, error } = await supabase
-    .from('food_entries')
-    .insert([entry]);
-  return { data, error };
+  console.log('Mock addFoodEntry called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
-// Insulin dose methods
 export const getInsulinDoses = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('insulin_doses')
-    .select('*')
-    .eq('user_id', userId)
-    .order('timestamp', { ascending: false });
-  return { data, error };
+  console.log('Mock getInsulinDoses called - using local storage instead of Supabase');
+  return { data: [], error: null };
 };
 
 export const addInsulinDose = async (dose: any) => {
-  const { data, error } = await supabase
-    .from('insulin_doses')
-    .insert([dose]);
-  return { data, error };
+  console.log('Mock addInsulinDose called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
-// User settings methods
 export const getUserSettings = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('user_settings')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-  return { data, error };
+  console.log('Mock getUserSettings called - using local storage instead of Supabase');
+  return { data: null, error: null };
 };
 
 export const updateUserSettings = async (userId: string, settings: any) => {
-  const { data, error } = await supabase
-    .from('user_settings')
-    .update(settings)
-    .eq('user_id', userId);
-  return { data, error };
+  console.log('Mock updateUserSettings called - using local storage instead of Supabase');
+  return { data: null, error: null };
 }; 

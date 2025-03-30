@@ -1,18 +1,9 @@
-import { SQLiteDatabase } from 'expo-sqlite';
 import * as SQLite from 'expo-sqlite';
 import { BloodSugarReading, FoodEntry, InsulinDose, UserSettings } from '../types';
 import { getStartOfWeek, getEndOfWeek } from '../utils/dateUtils';
 
-// Open database - use the version that matches your Expo version
-let db: SQLiteDatabase;
-
-try {
-  db = SQLite.openDatabaseSync('sugari.db');
-  console.log('Successfully opened the database');
-} catch (error) {
-  console.error('Failed to open database:', error);
-  throw error;
-}
+// Open database
+const db = SQLite.openDatabaseSync('sugari.db');
 
 // Initialize the database by creating all necessary tables
 export const initDatabase = async (): Promise<void> => {
@@ -33,7 +24,7 @@ export const initDatabase = async (): Promise<void> => {
     
     // Check if we have at least one user_settings record
     const result = await db.execAsync('SELECT COUNT(*) as count FROM user_settings');
-    const count = result[0].rows[0]?.count || 0;
+    const count = result?.[0]?.rows?._array?.[0]?.count || 0;
     
     if (count === 0) {
       // Create a default settings record if none exists
@@ -83,42 +74,45 @@ export const initDatabase = async (): Promise<void> => {
   }
 };
 
+// Execute SQL query and return results
+const executeQuery = async (sql: string, params: any[] = []): Promise<any[]> => {
+  try {
+    const result = await db.execAsync(sql, params);
+    return result?.[0]?.rows?._array || [];
+  } catch (error) {
+    console.error(`Error executing query: ${sql}`, error);
+    throw error;
+  }
+};
+
 // User Settings functions
 export const getUserSettings = async (): Promise<UserSettings> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM user_settings LIMIT 1',
-        [],
-        (_, { rows }) => {
-          if (rows.length > 0) {
-            const row = rows._array[0];
-            resolve({
-              id: row.id,
-              email: row.email,
-              firstName: row.first_name,
-              lastName: row.last_name,
-              diabetesType: row.diabetes_type,
-              notifications: Boolean(row.notifications),
-              darkMode: Boolean(row.dark_mode),
-              units: row.units
-            });
-          } else {
-            reject(new Error('No user settings found'));
-          }
-        },
-        (_, error) => {
-          console.error('Error getting user settings:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    const rows = await executeQuery('SELECT * FROM user_settings LIMIT 1');
+    
+    if (rows.length === 0) {
+      throw new Error('No user settings found');
+    }
+    
+    const row = rows[0];
+    return {
+      id: row.id,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      diabetesType: row.diabetes_type,
+      notifications: Boolean(row.notifications),
+      darkMode: Boolean(row.dark_mode),
+      units: row.units
+    };
+  } catch (error) {
+    console.error('Error getting user settings:', error);
+    throw error;
+  }
 };
 
 export const updateUserSettings = async (settings: Partial<UserSettings>): Promise<void> => {
-  return new Promise((resolve, reject) => {
+  try {
     const updates: string[] = [];
     const args: any[] = [];
 
@@ -151,52 +145,30 @@ export const updateUserSettings = async (settings: Partial<UserSettings>): Promi
       args.push(settings.units);
     }
 
-    if (updates.length === 0) {
-      resolve();
-      return;
-    }
+    if (updates.length === 0) return;
 
     const sql = `UPDATE user_settings SET ${updates.join(', ')} WHERE id = (SELECT id FROM user_settings LIMIT 1)`;
-    
-    db.transaction(tx => {
-      tx.executeSql(
-        sql,
-        args,
-        () => {
-          resolve();
-        },
-        (_, error) => {
-          console.error('Error updating user settings:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+    await executeQuery(sql, args);
+  } catch (error) {
+    console.error('Error updating user settings:', error);
+    throw error;
+  }
 };
 
 // Blood Sugar Reading functions
 export const addBloodSugarReading = async (reading: Omit<BloodSugarReading, 'id'>): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO blood_sugar_readings (value, timestamp, context, notes) VALUES (?, ?, ?, ?)',
-        [reading.value, reading.timestamp, reading.context || null, reading.notes || null],
-        (_, { insertId }) => {
-          resolve(insertId);
-        },
-        (_, error) => {
-          console.error('Error adding blood sugar reading:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    const sql = 'INSERT INTO blood_sugar_readings (value, timestamp, context, notes) VALUES (?, ?, ?, ?)';
+    const result = await db.execAsync(sql, [reading.value, reading.timestamp, reading.context || null, reading.notes || null]);
+    return result?.insertId || 0;
+  } catch (error) {
+    console.error('Error adding blood sugar reading:', error);
+    throw error;
+  }
 };
 
 export const updateBloodSugarReading = async (id: number, reading: Partial<BloodSugarReading>): Promise<void> => {
-  return new Promise((resolve, reject) => {
+  try {
     const updates: string[] = [];
     const args: any[] = [];
 
@@ -217,105 +189,66 @@ export const updateBloodSugarReading = async (id: number, reading: Partial<Blood
       args.push(reading.notes);
     }
 
-    if (updates.length === 0) {
-      resolve();
-      return;
-    }
+    if (updates.length === 0) return;
 
     const sql = `UPDATE blood_sugar_readings SET ${updates.join(', ')} WHERE id = ?`;
     args.push(id);
     
-    db.transaction(tx => {
-      tx.executeSql(
-        sql,
-        args,
-        () => {
-          resolve();
-        },
-        (_, error) => {
-          console.error('Error updating blood sugar reading:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+    await executeQuery(sql, args);
+  } catch (error) {
+    console.error('Error updating blood sugar reading:', error);
+    throw error;
+  }
 };
 
 export const deleteBloodSugarReading = async (id: number): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM blood_sugar_readings WHERE id = ?',
-        [id],
-        () => {
-          resolve();
-        },
-        (_, error) => {
-          console.error('Error deleting blood sugar reading:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    await executeQuery('DELETE FROM blood_sugar_readings WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting blood sugar reading:', error);
+    throw error;
+  }
 };
 
 export const getBloodSugarReadings = async (limit?: number): Promise<BloodSugarReading[]> => {
-  return new Promise((resolve, reject) => {
+  try {
     let sql = 'SELECT * FROM blood_sugar_readings ORDER BY timestamp DESC';
     if (limit) {
       sql += ` LIMIT ${limit}`;
     }
     
-    db.transaction(tx => {
-      tx.executeSql(
-        sql,
-        [],
-        (_, { rows }) => {
-          const readings = rows._array.map(row => ({
-            id: row.id,
-            value: row.value,
-            timestamp: row.timestamp,
-            context: row.context,
-            notes: row.notes
-          }));
-          resolve(readings);
-        },
-        (_, error) => {
-          console.error('Error getting blood sugar readings:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+    const rows = await executeQuery(sql);
+    return rows.map(row => ({
+      id: row.id,
+      value: row.value,
+      timestamp: row.timestamp,
+      context: row.context,
+      notes: row.notes
+    }));
+  } catch (error) {
+    console.error('Error getting blood sugar readings:', error);
+    return [];
+  }
 };
 
 export const getBloodSugarReadingsForTimeRange = async (startTime: number, endTime: number): Promise<BloodSugarReading[]> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM blood_sugar_readings WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
-        [startTime, endTime],
-        (_, { rows }) => {
-          const readings = rows._array.map(row => ({
-            id: row.id,
-            value: row.value,
-            timestamp: row.timestamp,
-            context: row.context,
-            notes: row.notes
-          }));
-          resolve(readings);
-        },
-        (_, error) => {
-          console.error('Error getting blood sugar readings for time range:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    const rows = await executeQuery(
+      'SELECT * FROM blood_sugar_readings WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
+      [startTime, endTime]
+    );
+    
+    return rows.map(row => ({
+      id: row.id,
+      value: row.value,
+      timestamp: row.timestamp,
+      context: row.context,
+      notes: row.notes
+    }));
+  } catch (error) {
+    console.error('Error getting blood sugar readings for time range:', error);
+    return [];
+  }
 };
 
 export const getBloodSugarReadingsForCurrentWeek = async (): Promise<BloodSugarReading[]> => {
@@ -326,102 +259,66 @@ export const getBloodSugarReadingsForCurrentWeek = async (): Promise<BloodSugarR
 
 // Food Entry functions
 export const addFoodEntry = async (entry: Omit<FoodEntry, 'id'>): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO food_entries (name, carbs, timestamp, notes) VALUES (?, ?, ?, ?)',
-        [entry.name, entry.carbs || null, entry.timestamp, entry.notes || null],
-        (_, { insertId }) => {
-          resolve(insertId);
-        },
-        (_, error) => {
-          console.error('Error adding food entry:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    const sql = 'INSERT INTO food_entries (name, carbs, timestamp, notes) VALUES (?, ?, ?, ?)';
+    const result = await db.execAsync(sql, [entry.name, entry.carbs || null, entry.timestamp, entry.notes || null]);
+    return result?.insertId || 0;
+  } catch (error) {
+    console.error('Error adding food entry:', error);
+    throw error;
+  }
 };
 
 export const getFoodEntries = async (limit?: number): Promise<FoodEntry[]> => {
-  return new Promise((resolve, reject) => {
+  try {
     let sql = 'SELECT * FROM food_entries ORDER BY timestamp DESC';
     if (limit) {
       sql += ` LIMIT ${limit}`;
     }
     
-    db.transaction(tx => {
-      tx.executeSql(
-        sql,
-        [],
-        (_, { rows }) => {
-          const entries = rows._array.map(row => ({
-            id: row.id,
-            name: row.name,
-            carbs: row.carbs,
-            timestamp: row.timestamp,
-            notes: row.notes
-          }));
-          resolve(entries);
-        },
-        (_, error) => {
-          console.error('Error getting food entries:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+    const rows = await executeQuery(sql);
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      carbs: row.carbs,
+      timestamp: row.timestamp,
+      notes: row.notes
+    }));
+  } catch (error) {
+    console.error('Error getting food entries:', error);
+    return [];
+  }
 };
 
 // Insulin Dose functions
 export const addInsulinDose = async (dose: Omit<InsulinDose, 'id'>): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO insulin_doses (units, type, timestamp, notes) VALUES (?, ?, ?, ?)',
-        [dose.units, dose.type, dose.timestamp, dose.notes || null],
-        (_, { insertId }) => {
-          resolve(insertId);
-        },
-        (_, error) => {
-          console.error('Error adding insulin dose:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+  try {
+    const sql = 'INSERT INTO insulin_doses (units, type, timestamp, notes) VALUES (?, ?, ?, ?)';
+    const result = await db.execAsync(sql, [dose.units, dose.type, dose.timestamp, dose.notes || null]);
+    return result?.insertId || 0;
+  } catch (error) {
+    console.error('Error adding insulin dose:', error);
+    throw error;
+  }
 };
 
 export const getInsulinDoses = async (limit?: number): Promise<InsulinDose[]> => {
-  return new Promise((resolve, reject) => {
+  try {
     let sql = 'SELECT * FROM insulin_doses ORDER BY timestamp DESC';
     if (limit) {
       sql += ` LIMIT ${limit}`;
     }
     
-    db.transaction(tx => {
-      tx.executeSql(
-        sql,
-        [],
-        (_, { rows }) => {
-          const doses = rows._array.map(row => ({
-            id: row.id,
-            units: row.units,
-            type: row.type,
-            timestamp: row.timestamp,
-            notes: row.notes
-          }));
-          resolve(doses);
-        },
-        (_, error) => {
-          console.error('Error getting insulin doses:', error);
-          reject(error);
-          return false;
-        }
-      );
-    });
-  });
+    const rows = await executeQuery(sql);
+    return rows.map(row => ({
+      id: row.id,
+      units: row.units,
+      type: row.type,
+      timestamp: row.timestamp,
+      notes: row.notes
+    }));
+  } catch (error) {
+    console.error('Error getting insulin doses:', error);
+    return [];
+  }
 }; 

@@ -11,64 +11,69 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, NORMAL_GLUCOSE_MIN, NORMAL_GLUCOSE_MAX } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
-import { BloodGlucoseReading } from '../../types';
-import { getBloodGlucoseReadings } from '../../services/supabase';
+import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
+import { useApp } from '../../contexts/AppContext';
+import { BloodSugarReading } from '../../types';
+import { getBloodSugarReadings } from '../../services/database';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import GlucoseChart from '../../components/GlucoseChart';
 
 const AnalyticsScreen: React.FC = () => {
-  const { authState } = useAuth();
-  const [readings, setReadings] = useState<BloodGlucoseReading[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { theme } = useApp();
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const [readings, setReadings] = useState<BloodSugarReading[]>([]);
+  const [filteredReadings, setFilteredReadings] = useState<BloodSugarReading[]>([]);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
   const [selectedStatistic, setSelectedStatistic] = useState<'overview' | 'time-of-day' | 'meal-impact'>('overview');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchGlucoseReadings = useCallback(async () => {
-    if (!authState.user) return;
-
+  const fetchReadings = useCallback(async () => {
     try {
-      const { data, error } = await getBloodGlucoseReadings(authState.user.id);
-      
-      if (error) {
-        console.error('Error fetching glucose readings:', error);
-      } else if (data) {
-        setReadings(data);
-      }
+      setIsLoading(true);
+      const data = await getBloodSugarReadings();
+      setReadings(data);
     } catch (error) {
-      console.error('Error fetching glucose readings:', error);
+      console.error('Error fetching readings:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [authState.user]);
+  }, []);
 
   useEffect(() => {
-    fetchGlucoseReadings();
-  }, [fetchGlucoseReadings]);
+    fetchReadings();
+  }, [fetchReadings]);
 
   // Filter readings based on time range
-  const getFilteredReadings = () => {
-    const now = new Date();
-    return readings.filter(reading => {
-      const readingDate = new Date(reading.timestamp);
+  useEffect(() => {
+    const getFilteredReadings = () => {
+      // If no readings, return empty array
+      if (!readings.length) return [];
+      
+      const now = new Date().getTime();
+      let filtered;
+      
       switch (timeRange) {
         case '24h':
-          return now.getTime() - readingDate.getTime() <= 24 * 60 * 60 * 1000;
+          filtered = readings.filter(r => (now - r.timestamp) <= 24 * 60 * 60 * 1000);
+          break;
         case '7d':
-          return now.getTime() - readingDate.getTime() <= 7 * 24 * 60 * 60 * 1000;
+          filtered = readings.filter(r => (now - r.timestamp) <= 7 * 24 * 60 * 60 * 1000);
+          break;
         case '30d':
-          return now.getTime() - readingDate.getTime() <= 30 * 24 * 60 * 60 * 1000;
+          filtered = readings.filter(r => (now - r.timestamp) <= 30 * 24 * 60 * 60 * 1000);
+          break;
         case 'all':
-          return true;
         default:
-          return true;
+          filtered = [...readings];
+          break;
       }
-    });
-  };
-
-  const filteredReadings = getFilteredReadings();
+      
+      return filtered;
+    };
+    
+    setFilteredReadings(getFilteredReadings());
+  }, [readings, timeRange]);
 
   // Calculate statistics
   const calculateStats = () => {
@@ -92,9 +97,9 @@ const AnalyticsScreen: React.FC = () => {
     const min = Math.min(...values);
     const max = Math.max(...values);
     
-    const inRangeCount = values.filter(v => v >= NORMAL_GLUCOSE_MIN && v <= NORMAL_GLUCOSE_MAX).length;
-    const belowCount = values.filter(v => v < NORMAL_GLUCOSE_MIN).length;
-    const aboveCount = values.filter(v => v > NORMAL_GLUCOSE_MAX).length;
+    const inRangeCount = values.filter(v => v >= NORMAL_SUGAR_MIN && v <= NORMAL_SUGAR_MAX).length;
+    const belowCount = values.filter(v => v < NORMAL_SUGAR_MIN).length;
+    const aboveCount = values.filter(v => v > NORMAL_SUGAR_MAX).length;
     
     const timeInRange = Math.round((inRangeCount / values.length) * 100);
     
@@ -120,23 +125,27 @@ const AnalyticsScreen: React.FC = () => {
   // Group readings by time of day
   const getTimeOfDayData = () => {
     const morning = filteredReadings.filter(r => {
-      const hour = new Date(r.timestamp).getHours();
-      return hour >= 5 && hour < 12;
+      const date = new Date(r.timestamp);
+      const hour = date.getHours();
+      return hour >= 6 && hour < 12;
     });
     
     const afternoon = filteredReadings.filter(r => {
-      const hour = new Date(r.timestamp).getHours();
+      const date = new Date(r.timestamp);
+      const hour = date.getHours();
       return hour >= 12 && hour < 18;
     });
     
     const evening = filteredReadings.filter(r => {
-      const hour = new Date(r.timestamp).getHours();
+      const date = new Date(r.timestamp);
+      const hour = date.getHours();
       return hour >= 18 && hour < 22;
     });
     
     const night = filteredReadings.filter(r => {
-      const hour = new Date(r.timestamp).getHours();
-      return hour >= 22 || hour < 5;
+      const date = new Date(r.timestamp);
+      const hour = date.getHours();
+      return hour >= 22 || hour < 6;
     });
 
     return {
@@ -163,11 +172,11 @@ const AnalyticsScreen: React.FC = () => {
 
   // Group readings by meal context
   const getMealContextData = () => {
-    const beforeMeal = filteredReadings.filter(r => r.mealContext === 'before_meal');
-    const afterMeal = filteredReadings.filter(r => r.mealContext === 'after_meal');
-    const fasting = filteredReadings.filter(r => r.mealContext === 'fasting');
-    const bedtime = filteredReadings.filter(r => r.mealContext === 'bedtime');
-    const other = filteredReadings.filter(r => r.mealContext === 'other' || !r.mealContext);
+    const beforeMeal = filteredReadings.filter(r => r.context === 'before_meal');
+    const afterMeal = filteredReadings.filter(r => r.context === 'after_meal');
+    const fasting = filteredReadings.filter(r => r.context === 'fasting');
+    const bedtime = filteredReadings.filter(r => r.context === 'bedtime');
+    const other = filteredReadings.filter(r => r.context === 'other' || !r.context);
 
     return {
       beforeMeal: {
@@ -259,62 +268,61 @@ const AnalyticsScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={styles.rangeStats}>
-        <View style={styles.rangeStatBar}>
-          <View 
-            style={[
-              styles.rangeStatSegment, 
-              { 
-                backgroundColor: COLORS.warning,
-                flex: stats.below / stats.readingsCount || 0 
-              }
-            ]} 
-          />
-          <View 
-            style={[
-              styles.rangeStatSegment, 
-              { 
-                backgroundColor: COLORS.success,
-                flex: stats.inRange / stats.readingsCount || 0 
-              }
-            ]} 
-          />
-          <View 
-            style={[
-              styles.rangeStatSegment, 
-              { 
-                backgroundColor: COLORS.error,
-                flex: stats.above / stats.readingsCount || 0 
-              }
-            ]} 
-          />
+      <View style={styles.rangeStatBar}>
+        <View 
+          style={[
+            styles.rangeStatSegment, 
+            { 
+              backgroundColor: COLORS.warning,
+              flex: stats.below / stats.readingsCount || 0 
+            }
+          ]} 
+        />
+        <View 
+          style={[
+            styles.rangeStatSegment, 
+            { 
+              backgroundColor: COLORS.success,
+              flex: stats.inRange / stats.readingsCount || 0 
+            }
+          ]} 
+        />
+        <View 
+          style={[
+            styles.rangeStatSegment, 
+            { 
+              backgroundColor: COLORS.error,
+              flex: stats.above / stats.readingsCount || 0 
+            }
+          ]} 
+        />
+      </View>
+      
+      <View style={styles.rangeStatLabels}>
+        <View style={styles.rangeStatLabel}>
+          <View style={[styles.rangeDot, { backgroundColor: COLORS.warning }]} />
+          <Text style={styles.rangeText}>Low</Text>
+          <Text style={styles.rangeCount}>{stats.below}</Text>
         </View>
         
-        <View style={styles.rangeStatLabels}>
-          <View style={styles.rangeStatLabel}>
-            <View style={[styles.rangeDot, { backgroundColor: COLORS.warning }]} />
-            <Text style={styles.rangeText}>Low</Text>
-            <Text style={styles.rangeCount}>{stats.below}</Text>
-          </View>
-          
-          <View style={styles.rangeStatLabel}>
-            <View style={[styles.rangeDot, { backgroundColor: COLORS.success }]} />
-            <Text style={styles.rangeText}>In Range</Text>
-            <Text style={styles.rangeCount}>{stats.inRange}</Text>
-          </View>
-          
-          <View style={styles.rangeStatLabel}>
-            <View style={[styles.rangeDot, { backgroundColor: COLORS.error }]} />
-            <Text style={styles.rangeText}>High</Text>
-            <Text style={styles.rangeCount}>{stats.above}</Text>
-          </View>
+        <View style={styles.rangeStatLabel}>
+          <View style={[styles.rangeDot, { backgroundColor: COLORS.success }]} />
+          <Text style={styles.rangeText}>In Range</Text>
+          <Text style={styles.rangeCount}>{stats.inRange}</Text>
+        </View>
+        
+        <View style={styles.rangeStatLabel}>
+          <View style={[styles.rangeDot, { backgroundColor: COLORS.error }]} />
+          <Text style={styles.rangeText}>High</Text>
+          <Text style={styles.rangeCount}>{stats.above}</Text>
         </View>
       </View>
 
       <Text style={styles.sectionSubtitle}>Glucose Range</Text>
+      
       <View style={styles.minMaxContainer}>
         <View style={styles.minMaxItem}>
-          <Text style={styles.minMaxLabel}>Lowest</Text>
+          <Text style={styles.minMaxLabel}>Min</Text>
           <Text style={styles.minMaxValue}>{stats.min}</Text>
           <Text style={styles.minMaxUnit}>mg/dL</Text>
         </View>
@@ -322,7 +330,7 @@ const AnalyticsScreen: React.FC = () => {
         <View style={styles.verticalDivider} />
         
         <View style={styles.minMaxItem}>
-          <Text style={styles.minMaxLabel}>Highest</Text>
+          <Text style={styles.minMaxLabel}>Max</Text>
           <Text style={styles.minMaxValue}>{stats.max}</Text>
           <Text style={styles.minMaxUnit}>mg/dL</Text>
         </View>
@@ -332,7 +340,7 @@ const AnalyticsScreen: React.FC = () => {
 
   const renderTimeOfDayTab = () => (
     <View style={styles.tabContent}>
-      <Text style={styles.sectionSubtitle}>Average by Time of Day</Text>
+      <Text style={styles.sectionSubtitle}>Time of Day Analysis</Text>
       
       <View style={styles.timeOfDayContainer}>
         <View style={styles.timeOfDayItem}>
@@ -380,7 +388,7 @@ const AnalyticsScreen: React.FC = () => {
 
   const renderMealImpactTab = () => (
     <View style={styles.tabContent}>
-      <Text style={styles.sectionSubtitle}>Average by Meal Context</Text>
+      <Text style={styles.sectionSubtitle}>Meal Impact Analysis</Text>
       
       <View style={styles.mealContextContainer}>
         <View style={styles.mealContextItem}>
@@ -394,7 +402,7 @@ const AnalyticsScreen: React.FC = () => {
         
         <View style={styles.mealContextItem}>
           <View style={styles.mealContextIconContainer}>
-            <Text style={styles.mealContextIcon}>🍴</Text>
+            <Text style={styles.mealContextIcon}>🍲</Text>
           </View>
           <Text style={styles.mealContextName}>After Meal</Text>
           <Text style={styles.mealContextValue}>{mealContextData.afterMeal.avg}</Text>
@@ -412,7 +420,7 @@ const AnalyticsScreen: React.FC = () => {
         
         <View style={styles.mealContextItem}>
           <View style={styles.mealContextIconContainer}>
-            <Text style={styles.mealContextIcon}>🛌</Text>
+            <Text style={styles.mealContextIcon}>🛏️</Text>
           </View>
           <Text style={styles.mealContextName}>Bedtime</Text>
           <Text style={styles.mealContextValue}>{mealContextData.bedtime.avg}</Text>
@@ -426,118 +434,150 @@ const AnalyticsScreen: React.FC = () => {
     </View>
   );
 
-  // Generate insights based on the data
   const getTimeOfDayInsight = () => {
-    if (stats.readingsCount < 5) {
-      return "Add more readings to get insights about your glucose levels throughout the day.";
+    // No readings or not enough data
+    if (filteredReadings.length < 3) {
+      return "Add more readings at different times of day to get personalized insights.";
     }
-
-    const periods = [
-      { name: "morning", avg: timeOfDayData.morning.avg, count: timeOfDayData.morning.count },
-      { name: "afternoon", avg: timeOfDayData.afternoon.avg, count: timeOfDayData.afternoon.count },
-      { name: "evening", avg: timeOfDayData.evening.avg, count: timeOfDayData.evening.count },
-      { name: "night", avg: timeOfDayData.night.avg, count: timeOfDayData.night.count }
-    ].filter(period => period.count > 0);
-
-    if (periods.length < 2) {
-      return "Try to log your glucose at different times of day to get more insights.";
-    }
-
-    // Find highest and lowest periods
-    periods.sort((a, b) => b.avg - a.avg);
-    const highest = periods[0];
-    const lowest = periods[periods.length - 1];
-
-    if (highest.avg - lowest.avg > 30) {
-      return `Your glucose tends to be highest during the ${highest.name} (${highest.avg} mg/dL) and lowest during the ${lowest.name} (${lowest.avg} mg/dL). A difference of ${highest.avg - lowest.avg} mg/dL suggests you may want to adjust your routine during the ${highest.name}.`;
-    }
-
-    return `Your glucose levels are relatively stable throughout the day, with a difference of just ${highest.avg - lowest.avg} mg/dL between your highest (${highest.name}) and lowest (${lowest.name}) periods.`;
+    
+    const highestAvg = Math.max(
+      timeOfDayData.morning.avg,
+      timeOfDayData.afternoon.avg,
+      timeOfDayData.evening.avg,
+      timeOfDayData.night.avg
+    );
+    
+    const lowestAvg = Math.min(
+      ...[
+        timeOfDayData.morning.avg, 
+        timeOfDayData.afternoon.avg,
+        timeOfDayData.evening.avg,
+        timeOfDayData.night.avg
+      ].filter(avg => avg > 0)
+    );
+    
+    let highTime = "";
+    let lowTime = "";
+    
+    if (timeOfDayData.morning.avg === highestAvg) highTime = "mornings";
+    else if (timeOfDayData.afternoon.avg === highestAvg) highTime = "afternoons";
+    else if (timeOfDayData.evening.avg === highestAvg) highTime = "evenings";
+    else if (timeOfDayData.night.avg === highestAvg) highTime = "nights";
+    
+    if (timeOfDayData.morning.avg === lowestAvg) lowTime = "mornings";
+    else if (timeOfDayData.afternoon.avg === lowestAvg) lowTime = "afternoons";
+    else if (timeOfDayData.evening.avg === lowestAvg) lowTime = "evenings";
+    else if (timeOfDayData.night.avg === lowestAvg) lowTime = "nights";
+    
+    return `Your glucose tends to be highest during ${highTime} (${highestAvg} mg/dL) and lowest during ${lowTime} (${lowestAvg} mg/dL). Consider adjusting your medication or meal timing to improve control during ${highTime}.`;
   };
 
   const getMealContextInsight = () => {
-    if (stats.readingsCount < 5) {
-      return "Add more readings with meal context to get insights about how food affects your glucose.";
+    // No readings or not enough data
+    if (filteredReadings.length < 3) {
+      return "Add more readings with meal context to get personalized insights.";
     }
-
-    const contexts = [
-      { name: "before meals", avg: mealContextData.beforeMeal.avg, count: mealContextData.beforeMeal.count },
-      { name: "after meals", avg: mealContextData.afterMeal.avg, count: mealContextData.afterMeal.count },
-      { name: "fasting", avg: mealContextData.fasting.avg, count: mealContextData.fasting.count },
-      { name: "bedtime", avg: mealContextData.bedtime.avg, count: mealContextData.bedtime.count }
-    ].filter(context => context.count > 0);
-
-    if (contexts.length < 2) {
-      return "Try to log your glucose in different meal contexts to get more insights.";
-    }
-
-    // Check before/after meal difference if both exist
-    const beforeMeal = mealContextData.beforeMeal;
-    const afterMeal = mealContextData.afterMeal;
-
-    if (beforeMeal.count > 0 && afterMeal.count > 0) {
-      const difference = afterMeal.avg - beforeMeal.avg;
+    
+    if (mealContextData.afterMeal.count > 0 && mealContextData.beforeMeal.count > 0) {
+      const mealImpact = mealContextData.afterMeal.avg - mealContextData.beforeMeal.avg;
       
-      if (difference > 50) {
-        return `Your glucose rises significantly after meals (${difference} mg/dL on average). Consider adjusting your meal composition to include more protein and fiber, which can help reduce post-meal spikes.`;
-      } else if (difference > 30) {
-        return `Your glucose rises moderately after meals (${difference} mg/dL on average), which is typical for many people with diabetes.`;
+      if (mealImpact > 50) {
+        return `Your blood sugar increases by approximately ${mealImpact} mg/dL after meals. Consider discussing carb counting strategies with your healthcare provider to better manage post-meal spikes.`;
+      } else if (mealImpact > 30) {
+        return `Your blood sugar increases by approximately ${mealImpact} mg/dL after meals, which is within typical ranges. Continue your current meal management approach.`;
       } else {
-        return `Your glucose shows minimal change after meals (${difference} mg/dL on average), which is excellent metabolic control.`;
+        return `Your blood sugar shows minimal increase (${mealImpact} mg/dL) after meals, indicating good meal management.`;
       }
     }
-
-    // Default insight
-    contexts.sort((a, b) => b.avg - a.avg);
-    const highest = contexts[0];
-    const lowest = contexts[contexts.length - 1];
-
-    return `Your ${highest.name} readings (${highest.avg} mg/dL) tend to be higher than your ${lowest.name} readings (${lowest.avg} mg/dL).`;
+    
+    return "Add more before and after meal readings to get insights on how food affects your glucose levels.";
   };
 
-  return (
-    <Container scrollable={false}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Analytics</Text>
-
-        <View style={styles.timeRangeSelector}>
-          {renderTimeRangeButton('24h', '24h')}
-          {renderTimeRangeButton('Week', '7d')}
-          {renderTimeRangeButton('Month', '30d')}
-          {renderTimeRangeButton('All', 'all')}
+  if (isLoading) {
+    return (
+      <Container>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={{ marginTop: 16, color: COLORS.lightText }}>Loading data...</Text>
         </View>
-        
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : readings.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No Data Available</Text>
-            <Text style={styles.emptySubText}>
-              Start logging your glucose readings to see statistics and trends
-            </Text>
-          </View>
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Card variant="elevated">
-              <GlucoseChart data={filteredReadings} timeRange={timeRange} />
-            </Card>
+      </Container>
+    );
+  }
 
-            <Card variant="elevated" style={styles.statsCard}>
-              <View style={styles.tabsContainer}>
-                {renderTabButton('Overview', 'overview')}
-                {renderTabButton('Time of Day', 'time-of-day')}
-                {renderTabButton('Meal Impact', 'meal-impact')}
-              </View>
-              
-              {selectedStatistic === 'overview' && renderOverviewTab()}
-              {selectedStatistic === 'time-of-day' && renderTimeOfDayTab()}
-              {selectedStatistic === 'meal-impact' && renderMealImpactTab()}
-            </Card>
-          </ScrollView>
-        )}
+  // Quick stats for the top of the page
+  const renderQuickStats = () => (
+    <View style={styles.quickStatsContainer}>
+      <Card variant="elevated" style={styles.quickStatsCard}>
+        <Text style={styles.statsCardTitle}>Statistics</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats.average}</Text>
+            <Text style={styles.statLabel}>Average</Text>
+          </View>
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats.max}</Text>
+            <Text style={styles.statLabel}>Highest</Text>
+          </View>
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats.min}</Text>
+            <Text style={styles.statLabel}>Lowest</Text>
+          </View>
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats.timeInRange}%</Text>
+            <Text style={styles.statLabel}>In Range</Text>
+          </View>
+        </View>
+      </Card>
+    </View>
+  );
+
+  return (
+    <Container>
+      <Text style={styles.title}>Analytics</Text>
+
+      {/* Quick stats at the top */}
+      {renderQuickStats()}
+      
+      {/* Time Range Selector */}
+      <View style={styles.timeRangeSelector}>
+        {renderTimeRangeButton('24h', '24h')}
+        {renderTimeRangeButton('Week', '7d')}
+        {renderTimeRangeButton('Month', '30d')}
+        {renderTimeRangeButton('All', 'all')}
       </View>
+      
+      {filteredReadings.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No Data Available</Text>
+          <Text style={styles.emptySubText}>
+            Add blood sugar readings to see your analytics here.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Glucose Chart */}
+          <Card variant="elevated" style={styles.chartCard}>
+            <Text style={styles.chartTitle}>Blood Sugar Trends</Text>
+            <GlucoseChart data={filteredReadings} timeRange={timeRange} />
+          </Card>
+          
+          {/* Tabs for different statistics */}
+          <Card variant="elevated" style={styles.statsCard}>
+            <View style={styles.tabsContainer}>
+              {renderTabButton('Overview', 'overview')}
+              {renderTabButton('Time of Day', 'time-of-day')}
+              {renderTabButton('Meal Impact', 'meal-impact')}
+            </View>
+            
+            {selectedStatistic === 'overview' && renderOverviewTab()}
+            {selectedStatistic === 'time-of-day' && renderTimeOfDayTab()}
+            {selectedStatistic === 'meal-impact' && renderMealImpactTab()}
+          </Card>
+        </ScrollView>
+      )}
     </Container>
   );
 };
@@ -551,6 +591,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: SIZES.md,
+  },
+  quickStatsContainer: {
+    marginBottom: SIZES.md,
+  },
+  quickStatsCard: {
+    padding: SIZES.md,
+  },
+  statsCardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SIZES.md,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    width: '48%',
+    marginBottom: SIZES.md,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 16,
+    color: COLORS.lightText,
+  },
+  chartCard: {
+    padding: SIZES.md,
+    marginBottom: SIZES.md,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SIZES.sm,
   },
   timeRangeSelector: {
     flexDirection: 'row',
@@ -633,32 +715,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: SIZES.md,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: SIZES.lg,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: SIZES.sm,
-    padding: SIZES.md,
-    marginBottom: SIZES.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: SIZES.xs,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
   rangeStats: {
     marginBottom: SIZES.lg,
   },
@@ -730,10 +786,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
   timeOfDayContainer: {
-    flexDirection: 'row',
     flexWrap: 'wrap',
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: SIZES.md,
+    marginBottom: SIZES.lg,
   },
   timeOfDayItem: {
     width: '48%',
@@ -746,37 +802,32 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   timeOfDayIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: SIZES.xs,
   },
   timeOfDayIcon: {
-    fontSize: 20,
+    fontSize: 24,
   },
   timeOfDayName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   timeOfDayValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.primary,
+    marginBottom: 2,
   },
   timeOfDayReadings: {
     fontSize: 12,
     color: COLORS.lightText,
   },
   mealContextContainer: {
-    flexDirection: 'row',
     flexWrap: 'wrap',
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: SIZES.md,
+    marginBottom: SIZES.lg,
   },
   mealContextItem: {
     width: '48%',
@@ -789,27 +840,22 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   mealContextIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.secondary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: SIZES.xs,
   },
   mealContextIcon: {
-    fontSize: 20,
+    fontSize: 24,
   },
   mealContextName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   mealContextValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.secondary,
+    color: COLORS.primary,
+    marginBottom: 2,
   },
   mealContextReadings: {
     fontSize: 12,
@@ -823,6 +869,16 @@ const styles = StyleSheet.create({
     borderLeftColor: COLORS.primary,
     padding: SIZES.sm,
     borderRadius: SIZES.xs,
+  },
+  statCard: {
+    width: '48%',
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: SIZES.sm,
+    padding: SIZES.md,
+    marginBottom: SIZES.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
 });
 

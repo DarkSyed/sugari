@@ -17,7 +17,7 @@ import AddFoodScreen from '../screens/main/AddFoodScreen';
 import AddInsulinScreen from '../screens/main/AddInsulinScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import SugarLogScreen from '../screens/main/SugarLogScreen';
-import GlucoseLogScreen from '../screens/main/GlucoseLogScreen';
+import MedicationScreen from '../screens/main/MedicationScreen';
 import AnalyticsScreen from '../screens/main/AnalyticsScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 
@@ -41,7 +41,7 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_FOOD} component={AddFoodScreen} />
       <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />
       <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
-      <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={GlucoseLogScreen} />
+      <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
     </Stack.Navigator>
   );
 };
@@ -60,8 +60,8 @@ const TabNavigator = () => {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === ROUTES.SUGAR_LOG) {
             iconName = focused ? 'analytics' : 'analytics-outline';
-          } else if (route.name === ROUTES.GLUCOSE_LOG) {
-            iconName = focused ? 'pulse' : 'pulse-outline';
+          } else if (route.name === ROUTES.MEDICATION) {
+            iconName = focused ? 'medkit' : 'medkit-outline';
           } else if (route.name === ROUTES.ANALYTICS) {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === ROUTES.SETTINGS) {
@@ -100,10 +100,10 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name={ROUTES.GLUCOSE_LOG}
-        component={GlucoseLogScreen}
+        name={ROUTES.MEDICATION}
+        component={MedicationScreen}
         options={{
-          tabBarLabel: 'Glucose',
+          tabBarLabel: 'Medication',
         }}
       />
       <Tab.Screen

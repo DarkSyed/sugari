@@ -1,6 +1,6 @@
-// API and service constants
-export const SUPABASE_URL = "https://ingyfuisxutwztmapzho.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluZ3lmdWlzeHV0d3p0bWFwemhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4ODgwMjQsImV4cCI6MjA1ODQ2NDAyNH0.y78-rlbRTGwAqHWGZ_fP7EmgCkWzexPyWTpdCyPUBpM";
+// API and service constants - commented out as we're not using Supabase anymore
+// export const SUPABASE_URL = "https://ingyfuisxutwztmapzho.supabase.co";
+// export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluZ3lmdWlzeHV0d3p0bWFwemhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4ODgwMjQsImV4cCI6MjA1ODQ2NDAyNH0.y78-rlbRTGwAqHWGZ_fP7EmgCkWzexPyWTpdCyPUBpM";
 
 // Use a placeholder key for OpenAI API
 export const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
@@ -59,6 +59,7 @@ export const ROUTES = {
   HOME: "Home",
   DASHBOARD: "Dashboard",
   GLUCOSE_LOG: "GlucoseLog",
+  MEDICATION: "Medication",
   ADD_GLUCOSE: "AddGlucose",
   SUGAR_LOG: "SugarLog",
   ADD_SUGAR: "AddSugar",
@@ -66,6 +67,9 @@ export const ROUTES = {
   ADD_FOOD: "AddFood",
   INSULIN_LOG: "InsulinLog",
   ADD_INSULIN: "AddInsulin",
+  ADD_A1C: "AddA1C",
+  ADD_WEIGHT: "AddWeight",
+  ADD_BP: "AddBloodPressure",
   ANALYTICS: "Analytics",
   SETTINGS: "Settings",
   PROFILE: "Profile",

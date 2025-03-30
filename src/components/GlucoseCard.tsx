@@ -1,17 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { BloodGlucoseReading } from '../types';
-import { COLORS, SIZES, NORMAL_GLUCOSE_MIN, NORMAL_GLUCOSE_MAX, CRITICAL_GLUCOSE_LOW, CRITICAL_GLUCOSE_HIGH } from '../constants';
+import { BloodSugarReading } from '../types';
+import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX, CRITICAL_SUGAR_LOW, CRITICAL_SUGAR_HIGH } from '../constants';
 import Card from './Card';
 
 interface GlucoseCardProps {
-  reading: BloodGlucoseReading;
+  reading: BloodSugarReading;
   onPress?: () => void;
 }
 
 const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -22,26 +22,26 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
   };
 
   const getStatusColor = (value: number) => {
-    if (value <= CRITICAL_GLUCOSE_LOW) {
+    if (value <= CRITICAL_SUGAR_LOW) {
       return COLORS.error;
-    } else if (value < NORMAL_GLUCOSE_MIN) {
+    } else if (value < NORMAL_SUGAR_MIN) {
       return COLORS.warning;
-    } else if (value > CRITICAL_GLUCOSE_HIGH) {
+    } else if (value > CRITICAL_SUGAR_HIGH) {
       return COLORS.error;
-    } else if (value > NORMAL_GLUCOSE_MAX) {
+    } else if (value > NORMAL_SUGAR_MAX) {
       return COLORS.warning;
     }
     return COLORS.success;
   };
 
   const getStatusText = (value: number) => {
-    if (value <= CRITICAL_GLUCOSE_LOW) {
+    if (value <= CRITICAL_SUGAR_LOW) {
       return 'Critical Low';
-    } else if (value < NORMAL_GLUCOSE_MIN) {
+    } else if (value < NORMAL_SUGAR_MIN) {
       return 'Low';
-    } else if (value > CRITICAL_GLUCOSE_HIGH) {
+    } else if (value > CRITICAL_SUGAR_HIGH) {
       return 'Critical High';
-    } else if (value > NORMAL_GLUCOSE_MAX) {
+    } else if (value > NORMAL_SUGAR_MAX) {
       return 'High';
     }
     return 'In Range';
@@ -75,10 +75,10 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
 
             <Text style={styles.timeText}>{formatDate(reading.timestamp)}</Text>
 
-            {reading.mealContext && (
+            {reading.context && (
               <View style={styles.tagContainer}>
                 <Text style={styles.tagText}>
-                  {reading.mealContext.replace('_', ' ')}
+                  {reading.context.replace('_', ' ')}
                 </Text>
               </View>
             )}

@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserSettings } from '../../types';
 
 const SettingsScreen: React.FC = () => {
-  const { settings, updateSettings, isLoading, theme } = useApp();
+  const { userSettings, updateSettings, isLoading, theme } = useApp();
   const navigation = useNavigation<StackNavigationProp<any>>();
   const insets = useSafeAreaInsets();
   
@@ -37,42 +37,42 @@ const SettingsScreen: React.FC = () => {
   const [glucoseUnit, setGlucoseUnit] = useState('mg/dL'); // or 'mmol/L'
   const [targetRangeMin, setTargetRangeMin] = useState(70);
   const [targetRangeMax, setTargetRangeMax] = useState(180);
-  const [email, setEmail] = useState(settings?.email || '');
-  const [firstName, setFirstName] = useState(settings?.first_name || '');
-  const [lastName, setLastName] = useState(settings?.last_name || '');
-  const [diabetesType, setDiabetesType] = useState(settings?.diabetes_type || 'type1');
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [diabetesType, setDiabetesType] = useState('type1');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [notifications, setNotifications] = useState(settings?.notifications === 1);
+  const [notifications, setNotifications] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<UserSettings> | null>(null);
 
   // Update local state when settings change
   useEffect(() => {
-    if (settings) {
-      setEmail(settings.email || '');
-      setFirstName(settings.first_name || '');
-      setLastName(settings.last_name || '');
-      setDiabetesType(settings.diabetes_type || 'type1');
-      setNotifications(settings.notifications === 1);
-      setDarkMode(settings.dark_mode === 1);
-      setGlucoseUnit(settings.units || 'mg/dL');
+    if (userSettings) {
+      setEmail(userSettings.email || '');
+      setFirstName(userSettings.firstName || '');
+      setLastName(userSettings.lastName || '');
+      setDiabetesType(userSettings.diabetesType || 'type1');
+      setNotifications(userSettings.notifications);
+      setDarkMode(userSettings.darkMode);
+      setGlucoseUnit(userSettings.units || 'mg/dL');
     }
-  }, [settings]);
+  }, [userSettings]);
 
   // Initialize local settings when userSettings changes or edit mode is entered
   useEffect(() => {
-    if (settings && (isEditingProfile || !localSettings)) {
+    if (userSettings && (isEditingProfile || !localSettings)) {
       setLocalSettings({
-        firstName: settings.first_name,
-        lastName: settings.last_name,
-        email: settings.email,
-        diabetesType: settings.diabetes_type,
-        notifications: settings.notifications === 1,
-        darkMode: settings.dark_mode === 1,
-        units: settings.units || 'mg/dL'
+        firstName: userSettings.firstName,
+        lastName: userSettings.lastName,
+        email: userSettings.email,
+        diabetesType: userSettings.diabetesType,
+        notifications: userSettings.notifications,
+        darkMode: userSettings.darkMode,
+        units: userSettings.units || 'mg/dL'
       });
     }
-  }, [settings, isEditingProfile]);
+  }, [userSettings, isEditingProfile]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -87,14 +87,12 @@ const SettingsScreen: React.FC = () => {
           text: 'Logout',
           onPress: async () => {
             try {
-              const { error } = await updateSettings({
-                notifications: 0,
-                dark_mode: 0,
+              await updateSettings({
+                notifications: false,
+                darkMode: false,
                 units: 'mg/dL'
               });
-              if (error) {
-                Alert.alert('Logout Failed', error.message);
-              }
+              // Navigate to login or perform logout action
             } catch (error: any) {
               Alert.alert('Logout Failed', error.message);
             }
@@ -136,9 +134,9 @@ const SettingsScreen: React.FC = () => {
     try {
       await updateSettings({
         email,
-        first_name: firstName,
-        last_name: lastName,
-        diabetes_type: diabetesType as 'type1' | 'type2' | 'gestational' | 'other'
+        firstName,
+        lastName,
+        diabetesType
       });
       setIsEditingProfile(false);
       Alert.alert('Success', 'Profile updated successfully');
@@ -153,7 +151,7 @@ const SettingsScreen: React.FC = () => {
   const handleNotificationsChange = async (value: boolean) => {
     setNotifications(value);
     try {
-      await updateSettings({ notifications: value ? 1 : 0 });
+      await updateSettings({ notifications: value });
     } catch (error) {
       console.error('Error updating notifications setting:', error);
       setNotifications(!value); // Revert on error
@@ -163,7 +161,7 @@ const SettingsScreen: React.FC = () => {
   const handleDarkModeChange = async (value: boolean) => {
     setDarkMode(value);
     try {
-      await updateSettings({ dark_mode: value ? 1 : 0 });
+      await updateSettings({ darkMode: value });
     } catch (error) {
       console.error('Error updating dark mode setting:', error);
       setDarkMode(!value); // Revert on error
@@ -181,12 +179,12 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleToggle = async (setting: 'notifications' | 'darkMode') => {
-    if (!settings) return;
+    if (!userSettings) return;
     
     try {
       const newValue = setting === 'notifications' 
-        ? !settings.notifications 
-        : !settings.dark_mode;
+        ? !userSettings.notifications 
+        : !userSettings.darkMode;
       
       // Update local state immediately for responsive UI
       setLocalSettings(prev => prev ? { ...prev, [setting]: newValue } : null);
@@ -198,7 +196,7 @@ const SettingsScreen: React.FC = () => {
       Alert.alert('Error', `Could not update ${setting}. Please try again.`);
       
       // Revert local state if there was an error
-      setLocalSettings(prev => prev ? { ...prev, [setting]: settings[setting] } : null);
+      setLocalSettings(prev => prev ? { ...prev, [setting]: userSettings[setting] } : null);
     }
   };
 
@@ -244,7 +242,7 @@ const SettingsScreen: React.FC = () => {
     );
   }
   
-  if (!settings || !localSettings) {
+  if (!userSettings || !localSettings) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
         <Text style={[styles.errorText, { color: theme.colors.error }]}>
@@ -265,16 +263,16 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
               <Text style={styles.avatarText}>
-                {settings.first_name?.[0] || settings.email?.[0] || 'U'}
+                {userSettings.firstName?.[0] || userSettings.email?.[0] || 'U'}
               </Text>
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                {settings.first_name
-                  ? `${settings.first_name} ${settings.last_name || ''}`
-                  : settings.email || 'User'}
+                {userSettings.firstName
+                  ? `${userSettings.firstName} ${userSettings.lastName || ''}`
+                  : userSettings.email || 'User'}
               </Text>
-              <Text style={styles.userEmail}>{settings.email}</Text>
+              <Text style={styles.userEmail}>{userSettings.email}</Text>
             </View>
           </View>
 
@@ -297,8 +295,8 @@ const SettingsScreen: React.FC = () => {
           {renderSettingSwitch(
             'Push Notifications',
             'Receive alerts and reminders on your device',
-            pushNotifications,
-            setPushNotifications
+            notifications,
+            handleNotificationsChange
           )}
           
           {renderSettingSwitch(
@@ -323,10 +321,7 @@ const SettingsScreen: React.FC = () => {
             'Dark Mode',
             'Use dark theme throughout the app',
             darkMode,
-            (value) => {
-              setDarkMode(value);
-              Alert.alert('Coming Soon', 'This feature will be available in a future update');
-            }
+            handleDarkModeChange
           )}
           
           {renderNavigationItem(
@@ -338,11 +333,11 @@ const SettingsScreen: React.FC = () => {
               [
                 {
                   text: 'mg/dL',
-                  onPress: () => setGlucoseUnit('mg/dL'),
+                  onPress: () => handleUnitsChange('mg/dL'),
                 },
                 {
                   text: 'mmol/L',
-                  onPress: () => setGlucoseUnit('mmol/L'),
+                  onPress: () => handleUnitsChange('mmol/L'),
                 },
                 {
                   text: 'Cancel',

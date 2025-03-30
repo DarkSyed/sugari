@@ -5,18 +5,21 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS, SIZES, VALIDATION, NORMAL_GLUCOSE_MIN, NORMAL_GLUCOSE_MAX } from '../../constants';
+import { COLORS, SIZES, VALIDATION, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addBloodGlucoseReading } from '../../services/supabase';
+import { addBloodSugarReading, addInsulinDose } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
+import { Ionicons } from '@expo/vector-icons';
 
 type FormData = {
   value: string;
   mealContext: 'before_meal' | 'after_meal' | 'fasting' | 'bedtime' | 'other';
   notes: string;
+  insulinUnits?: string;
+  insulinType?: string;
 };
 
 const AddGlucoseScreen: React.FC = () => {
@@ -37,6 +40,7 @@ const AddGlucoseScreen: React.FC = () => {
       value: '',
       mealContext: 'before_meal',
       notes: '',
+      insulinUnits: '',
     },
   });
 
@@ -51,21 +55,27 @@ const AddGlucoseScreen: React.FC = () => {
       const glucoseValue = parseFloat(data.value);
 
       const reading = {
-        user_id: authState.user.id,
         value: glucoseValue,
-        timestamp: timestamp.toISOString(),
-        meal_context: data.mealContext,
+        timestamp: timestamp.getTime(),
+        context: data.mealContext,
         notes: data.notes.trim() || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await addBloodGlucoseReading(reading);
+      const insertId = await addBloodSugarReading(reading);
 
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Success', 'Blood glucose reading added successfully', [
+      // Log insulin if units provided
+      if (data.insulinUnits && parseFloat(data.insulinUnits) > 0) {
+        await addInsulinDose({
+          units: parseFloat(data.insulinUnits),
+          type: 'rapid', // Default to rapid since we removed the type selector
+          timestamp: timestamp.getTime(),
+          notes: data.notes.trim() || null,
+        });
+      }
+
+      if (insertId) {
+        const hasInsulin = data.insulinUnits && parseFloat(data.insulinUnits) > 0;
+        Alert.alert('Success', hasInsulin ? 'Blood glucose and insulin logged successfully' : 'Blood glucose reading added successfully', [
           {
             text: 'OK',
             onPress: () => {
@@ -74,6 +84,8 @@ const AddGlucoseScreen: React.FC = () => {
             },
           },
         ]);
+      } else {
+        Alert.alert('Error', 'Failed to add reading');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -83,25 +95,30 @@ const AddGlucoseScreen: React.FC = () => {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    setShowTimePicker(Platform.OS === 'ios');
-
-    if (selectedDate) {
+    // Only close the picker when a date is selected
+    if (event.type === 'set' && selectedDate) {
+      setShowDatePicker(false);
+      
       const currentTime = new Date(timestamp);
       selectedDate.setHours(currentTime.getHours());
       selectedDate.setMinutes(currentTime.getMinutes());
       setTimestamp(selectedDate);
+    } else if (event.type === 'dismissed') {
+      setShowDatePicker(false);
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-
-    if (selectedTime) {
+    // Only close the picker when a time is selected
+    if (event.type === 'set' && selectedTime) {
+      setShowTimePicker(false);
+      
       const newDate = new Date(timestamp);
       newDate.setHours(selectedTime.getHours());
       newDate.setMinutes(selectedTime.getMinutes());
       setTimestamp(newDate);
+    } else if (event.type === 'dismissed') {
+      setShowTimePicker(false);
     }
   };
 
@@ -134,9 +151,9 @@ const AddGlucoseScreen: React.FC = () => {
       return COLORS.text;
     }
 
-    if (numValue < NORMAL_GLUCOSE_MIN) {
+    if (numValue < NORMAL_SUGAR_MIN) {
       return COLORS.warning;
-    } else if (numValue > NORMAL_GLUCOSE_MAX) {
+    } else if (numValue > NORMAL_SUGAR_MAX) {
       return COLORS.warning;
     }
     return COLORS.success;
@@ -145,8 +162,18 @@ const AddGlucoseScreen: React.FC = () => {
   return (
     <Container>
       <View style={styles.container}>
-        <Text style={styles.title}>Log Blood Glucose</Text>
-        <Text style={styles.subtitle}>Record your blood glucose reading</Text>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.title}>Log Blood Glucose</Text>
+            <Text style={styles.subtitle}>Record your blood glucose reading</Text>
+          </View>
+        </View>
 
         <Card variant="elevated" style={styles.inputCard}>
           <Controller
@@ -158,8 +185,8 @@ const AddGlucoseScreen: React.FC = () => {
                 message: 'Please enter a valid number',
               },
               validate: {
-                min: value => parseFloat(value) >= 40 || VALIDATION.GLUCOSE_MIN,
-                max: value => parseFloat(value) <= 400 || VALIDATION.GLUCOSE_MAX,
+                min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
+                max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
               },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
@@ -213,9 +240,10 @@ const AddGlucoseScreen: React.FC = () => {
 
           {showDatePicker && (
             <DateTimePicker
+              testID="dateTimePicker"
               value={timestamp}
               mode="date"
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onDateChange}
               maximumDate={new Date()}
             />
@@ -223,10 +251,12 @@ const AddGlucoseScreen: React.FC = () => {
 
           {showTimePicker && (
             <DateTimePicker
+              testID="timeTimePicker"
               value={timestamp}
               mode="time"
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onTimeChange}
+              is24Hour={false}
             />
           )}
 
@@ -267,6 +297,40 @@ const AddGlucoseScreen: React.FC = () => {
             )}
             name="notes"
           />
+
+          {/* Simplified Insulin input */}
+          <View style={styles.insulinInputRow}>
+            <Controller
+              control={control}
+              rules={{
+                pattern: {
+                  value: /^\d*\.?\d*$/,
+                  message: 'Please enter a valid number',
+                },
+                validate: {
+                  min: value => !value || parseFloat(value) > 0 || 'Insulin must be greater than 0 units',
+                  max: value => !value || parseFloat(value) <= 100 || 'Insulin must be less than 100 units',
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <View style={styles.insulinInputContainer}>
+                  <Input
+                    label="Insulin Units (optional)"
+                    placeholder="Enter units"
+                    keyboardType="numeric"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.insulinUnits?.message}
+                    touched={value !== ''}
+                    containerStyle={styles.insulinInput}
+                  />
+                  <Text style={styles.insulinUnitText}>units</Text>
+                </View>
+              )}
+              name="insulinUnits"
+            />
+          </View>
         </Card>
 
         <View style={styles.buttonContainer}>
@@ -291,6 +355,18 @@ const AddGlucoseScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.md,
+  },
+  backButton: {
+    padding: SIZES.xs,
+    marginRight: SIZES.sm,
+  },
+  headerTitleContainer: {
     flex: 1,
   },
   title: {
@@ -381,6 +457,30 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
     marginLeft: SIZES.sm,
+  },
+  insulinSection: {
+    marginBottom: SIZES.md,
+    paddingTop: SIZES.xs,
+  },
+  insulinInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.md,
+    marginBottom: SIZES.xs,
+  },
+  insulinInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  insulinInput: {
+    flex: 1,
+  },
+  insulinUnitText: {
+    fontSize: 14,
+    color: COLORS.text,
+    marginLeft: SIZES.xs,
+    marginBottom: SIZES.lg,
   },
 });
 

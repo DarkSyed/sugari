@@ -10,8 +10,8 @@ interface SugarCardProps {
 }
 
 const SugarCard: React.FC<SugarCardProps> = ({ reading, onPress }) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -75,10 +75,10 @@ const SugarCard: React.FC<SugarCardProps> = ({ reading, onPress }) => {
 
             <Text style={styles.timeText}>{formatDate(reading.timestamp)}</Text>
 
-            {reading.mealContext && (
+            {reading.context && (
               <View style={styles.tagContainer}>
                 <Text style={styles.tagText}>
-                  {reading.mealContext.replace('_', ' ')}
+                  {reading.context.replace('_', ' ')}
                 </Text>
               </View>
             )}
