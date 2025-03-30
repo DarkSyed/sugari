@@ -70,6 +70,7 @@ export const ROUTES = {
   ADD_A1C: "AddA1C",
   ADD_WEIGHT: "AddWeight",
   ADD_BP: "AddBloodPressure",
+  BP_LOG: "BloodPressureLog",
   ANALYTICS: "Analytics",
   SETTINGS: "Settings",
   PROFILE: "Profile",

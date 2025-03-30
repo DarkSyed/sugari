@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SIZES, VALIDATION } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addFoodEntry } from '../../services/supabase';
+import { addFoodEntry } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -43,43 +43,31 @@ const AddFoodScreen: React.FC = () => {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!authState.user) {
-      Alert.alert('Error', 'You must be logged in to add food entries');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const carbsValue = parseFloat(data.carbs);
-
-      const foodEntry = {
-        user_id: authState.user.id,
+      await addFoodEntry({
         name: data.name,
-        carbs: carbsValue,
-        timestamp: timestamp.toISOString(),
-        meal: data.meal,
-        notes: data.notes.trim() || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+        carbs: parseFloat(data.carbs),
+        timestamp: timestamp.getTime(),
+        notes: data.notes || null,
+      });
 
-      const { error } = await addFoodEntry(foodEntry);
-
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Success', 'Food entry added successfully', [
+      Alert.alert(
+        'Success',
+        'Food entry saved successfully',
+        [
           {
             text: 'OK',
             onPress: () => {
               reset();
               navigation.goBack();
-            },
-          },
-        ]);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving food entry:', error);
+      Alert.alert('Error', 'Failed to save food entry. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -217,9 +205,10 @@ const AddFoodScreen: React.FC = () => {
             <DateTimePicker
               value={timestamp}
               mode="date"
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onDateChange}
               maximumDate={new Date()}
+              textColor={COLORS.text}
             />
           )}
 
@@ -227,8 +216,9 @@ const AddFoodScreen: React.FC = () => {
             <DateTimePicker
               value={timestamp}
               mode="time"
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onTimeChange}
+              textColor={COLORS.text}
             />
           )}
 

@@ -105,26 +105,69 @@ const AddSugarScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const dateTimePickerStyle = Platform.OS === 'ios' ? {
+    alignSelf: 'center',
+    marginBottom: SIZES.md,
+    width: '100%'
+  } : {};
+
+  // Modified to toggle the date picker on/off
+  const toggleDatePicker = () => {
+    if (showDatePicker) {
+      setShowDatePicker(false);
+    } else {
+      setShowTimePicker(false);
+      setShowContextPicker(false);
+      setShowDatePicker(true);
+    }
+  };
+
+  // Modified to toggle the time picker on/off
+  const toggleTimePicker = () => {
+    if (showTimePicker) {
+      setShowTimePicker(false);
+    } else {
+      setShowDatePicker(false);
+      setShowContextPicker(false);
+      setShowTimePicker(true);
+    }
+  };
+
+  // Modified to toggle the context picker on/off
+  const toggleContextPicker = () => {
+    if (showContextPicker) {
+      setShowContextPicker(false);
+    } else {
+      setShowDatePicker(false);
+      setShowTimePicker(false);
+      setShowContextPicker(true);
+    }
+  };
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    
-    if (selectedDate) {
+    // Only update date when user explicitly selects (not while scrolling)
+    if (event.type === 'set' && selectedDate) {
       const newDate = new Date(timestamp);
       newDate.setFullYear(selectedDate.getFullYear());
       newDate.setMonth(selectedDate.getMonth());
       newDate.setDate(selectedDate.getDate());
       setTimestamp(newDate);
+      setShowDatePicker(false);
+    } else if (event.type === 'dismissed') {
+      setShowDatePicker(false);
     }
   };
 
   const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    
-    if (selectedTime) {
+    // Only update time when user explicitly selects (not while scrolling)
+    if (event.type === 'set' && selectedTime) {
       const newDate = new Date(timestamp);
       newDate.setHours(selectedTime.getHours());
       newDate.setMinutes(selectedTime.getMinutes());
       setTimestamp(newDate);
+      setShowTimePicker(false);
+    } else if (event.type === 'dismissed') {
+      setShowTimePicker(false);
     }
   };
 
@@ -182,7 +225,7 @@ const AddSugarScreen: React.FC = () => {
                 <Text style={styles.label}>Date</Text>
                 <TouchableOpacity
                   style={styles.dateTimePicker}
-                  onPress={() => setShowDatePicker(true)}
+                  onPress={toggleDatePicker}
                 >
                   <Text style={styles.dateTimeText}>{formattedDate}</Text>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
@@ -193,7 +236,7 @@ const AddSugarScreen: React.FC = () => {
                 <Text style={styles.label}>Time</Text>
                 <TouchableOpacity
                   style={styles.dateTimePicker}
-                  onPress={() => setShowTimePicker(true)}
+                  onPress={toggleTimePicker}
                 >
                   <Text style={styles.dateTimeText}>{formattedTime}</Text>
                   <Ionicons name="time-outline" size={20} color={COLORS.primary} />
@@ -205,7 +248,7 @@ const AddSugarScreen: React.FC = () => {
               <Text style={styles.label}>Context</Text>
               <TouchableOpacity
                 style={styles.contextPicker}
-                onPress={() => setShowContextPicker(true)}
+                onPress={toggleContextPicker}
               >
                 <Text style={styles.contextText}>
                   {selectedContext ? getContextLabel(selectedContext) : 'Select Context'}
@@ -255,22 +298,30 @@ const AddSugarScreen: React.FC = () => {
       
       {/* Date Picker Modal */}
       {showDatePicker && (
-        <DateTimePicker
-          value={timestamp}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
+        <View style={dateTimePickerStyle}>
+          <DateTimePicker
+            value={timestamp}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            style={{width: '100%'}}
+          />
+        </View>
       )}
       
       {/* Time Picker Modal */}
       {showTimePicker && (
-        <DateTimePicker
-          value={timestamp}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
+        <View style={dateTimePickerStyle}>
+          <DateTimePicker
+            value={timestamp}
+            mode="time"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleTimeChange}
+            is24Hour={false}
+            style={{width: '100%'}}
+          />
+        </View>
       )}
       
       {/* Context Picker Modal */}

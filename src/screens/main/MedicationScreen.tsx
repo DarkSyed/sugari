@@ -20,7 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SIZES, ROUTES } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { InsulinDose } from '../../types';
-import { getInsulinDoses, addInsulinDose } from '../../services/database';
+import { getInsulinDoses, addInsulinDose } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -57,6 +57,7 @@ const MedicationScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchMedications = useCallback(async () => {
     try {
@@ -95,31 +96,41 @@ const MedicationScreen: React.FC = () => {
   };
 
   const handleSaveMedication = async () => {
-    if (!newMedication.name.trim()) {
-      Alert.alert('Error', 'Please enter a medication name');
+    if (!newMedication.name.trim() || !newMedication.dosage.trim()) {
+      Alert.alert('Error', 'Please enter a name and dosage');
       return;
     }
 
-    if (!newMedication.dosage.trim()) {
-      Alert.alert('Error', 'Please enter a dosage amount');
-      return;
-    }
+    setIsSaving(true);
 
     try {
-      // For now, we'll adapt this to save to our insulin database
-      // In a real implementation, we'd have a proper medication table
-      await addInsulinDose({
-        units: parseFloat(newMedication.dosage),
-        type: newMedication.name,
-        timestamp: newMedication.timestamp,
-        notes: `${newMedication.type} - ${newMedication.unit} ${newMedication.notes ? '- ' + newMedication.notes : ''}`
+      // For now, we'll store insulin medications in the insulin_doses table
+      // In a production app, we'd have a separate medications table
+      if (newMedication.type === 'insulin') {
+        await addInsulinDose({
+          units: parseFloat(newMedication.dosage),
+          type: 'rapid', // Default to rapid
+          timestamp: newMedication.timestamp,
+          notes: newMedication.notes || null,
+        });
+      }
+
+      // Reset form and refresh data
+      setNewMedication({
+        name: '',
+        type: 'pill',
+        dosage: '',
+        unit: 'mg',
+        timestamp: Date.now(),
+        notes: '',
       });
-      
       setShowAddModal(false);
       fetchMedications();
     } catch (error) {
       console.error('Error saving medication:', error);
-      Alert.alert('Error', 'Failed to save medication');
+      Alert.alert('Error', 'Failed to save medication. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -135,40 +146,62 @@ const MedicationScreen: React.FC = () => {
     setNewMedication(prev => ({ ...prev, unit }));
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    // Only close the picker when a date is selected
-    if (event.type === 'set' && selectedDate) {
+  const dateTimePickerStyle = Platform.OS === 'ios' ? {
+    alignSelf: 'center' as const,
+    marginBottom: SIZES.md,
+    width: '100%' as unknown as number
+  } : {};
+
+  const toggleDatePicker = () => {
+    if (showDatePicker) {
       setShowDatePicker(false);
-      
-      const currentDateTime = new Date(newMedication.timestamp);
-      selectedDate.setHours(currentDateTime.getHours());
-      selectedDate.setMinutes(currentDateTime.getMinutes());
-      
-      setNewMedication(prev => ({
-        ...prev,
-        timestamp: selectedDate.getTime()
-      }));
+    } else {
+      setShowTimePicker(false);
+      setShowDatePicker(true);
+    }
+  };
+
+  const toggleTimePicker = () => {
+    if (showTimePicker) {
+      setShowTimePicker(false);
+    } else {
+      setShowDatePicker(false);
+      setShowTimePicker(true);
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (event.type === 'set' && selectedDate) {
+      const updatedMedication = { ...newMedication };
+      const currentDate = new Date(updatedMedication.timestamp);
+      selectedDate.setHours(currentDate.getHours());
+      selectedDate.setMinutes(currentDate.getMinutes());
+      updatedMedication.timestamp = selectedDate.getTime();
+      setNewMedication(updatedMedication);
+      setShowDatePicker(false);
     } else if (event.type === 'dismissed') {
       setShowDatePicker(false);
     }
   };
 
   const handleTimeChange = (event: any, selectedTime?: Date) => {
-    // Only close the picker when a time is selected
+    // Only close the picker and update the time when the user explicitly selects a time
+    // For iOS, event.type will be 'set' when the user taps "Done" button
+    // For Android, event.type will be 'set' when an option is tapped
     if (event.type === 'set' && selectedTime) {
+      const updatedMedication = { ...newMedication };
+      const currentDate = new Date(updatedMedication.timestamp);
+      currentDate.setHours(selectedTime.getHours());
+      currentDate.setMinutes(selectedTime.getMinutes());
+      updatedMedication.timestamp = currentDate.getTime();
+      setNewMedication(updatedMedication);
       setShowTimePicker(false);
-      
-      const currentDateTime = new Date(newMedication.timestamp);
-      currentDateTime.setHours(selectedTime.getHours());
-      currentDateTime.setMinutes(selectedTime.getMinutes());
-      
-      setNewMedication(prev => ({
-        ...prev,
-        timestamp: currentDateTime.getTime()
-      }));
     } else if (event.type === 'dismissed') {
+      // Just close the picker without updating the time when dismissed
       setShowTimePicker(false);
     }
+    // Important: Do nothing if the event.type is undefined,
+    // which happens during scrolling on iOS pickers
   };
 
   const pickImage = async () => {
@@ -380,7 +413,7 @@ const MedicationScreen: React.FC = () => {
             <View style={styles.dateTimeContainer}>
               <TouchableOpacity 
                 style={styles.dateTimeButton} 
-                onPress={() => setShowDatePicker(true)}
+                onPress={toggleDatePicker}
               >
                 <Text style={styles.dateTimeText}>
                   {formatDate(new Date(newMedication.timestamp))}
@@ -390,7 +423,7 @@ const MedicationScreen: React.FC = () => {
               
               <TouchableOpacity 
                 style={styles.dateTimeButton} 
-                onPress={() => setShowTimePicker(true)}
+                onPress={toggleTimePicker}
               >
                 <Text style={styles.dateTimeText}>
                   {formatTime(new Date(newMedication.timestamp))}
@@ -400,21 +433,29 @@ const MedicationScreen: React.FC = () => {
             </View>
             
             {showDatePicker && (
-              <DateTimePicker
-                value={new Date(newMedication.timestamp)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-              />
+              <View style={dateTimePickerStyle}>
+                <DateTimePicker
+                  value={new Date(newMedication.timestamp)}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  textColor={COLORS.text}
+                />
+              </View>
             )}
             
             {showTimePicker && (
-              <DateTimePicker
-                value={new Date(newMedication.timestamp)}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleTimeChange}
-              />
+              <View style={dateTimePickerStyle}>
+                <DateTimePicker
+                  value={new Date(newMedication.timestamp)}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleTimeChange}
+                  is24Hour={false}
+                  textColor={COLORS.text}
+                />
+              </View>
             )}
           </View>
 

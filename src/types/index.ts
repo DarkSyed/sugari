@@ -161,4 +161,26 @@ export interface Theme {
     error: string;
     info: string;
   };
+}
+
+export interface A1CReading {
+  id: number;
+  value: number;
+  timestamp: number;
+  notes?: string | null;
+}
+
+export interface WeightMeasurement {
+  id: number;
+  value: number;
+  timestamp: number;
+  notes?: string | null;
+}
+
+export interface BloodPressureReading {
+  id: number;
+  systolic: number;
+  diastolic: number;
+  timestamp: number;
+  notes?: string | null;
 } 

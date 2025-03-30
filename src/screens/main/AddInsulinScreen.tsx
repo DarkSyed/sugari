@@ -5,9 +5,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS, SIZES, VALIDATION } from '../../constants';
+import { COLORS, SIZES, VALIDATION, INSULIN_TYPES } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addInsulinDose } from '../../services/supabase';
+import { addInsulinDose } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -41,76 +41,82 @@ const AddInsulinScreen: React.FC = () => {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!authState.user) {
-      Alert.alert('Error', 'You must be logged in to add insulin doses');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const unitsValue = parseFloat(data.units);
+      await addInsulinDose({
+        units: parseFloat(data.units),
+        type: data.insulinType,
+        timestamp: timestamp.getTime(),
+        notes: data.notes || null,
+      });
 
-      const insulinDose = {
-        user_id: authState.user.id,
-        units: unitsValue,
-        insulin_type: data.insulinType,
-        timestamp: timestamp.toISOString(),
-        notes: data.notes.trim() || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await addInsulinDose(insulinDose);
-
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Success', 'Insulin dose added successfully', [
+      Alert.alert(
+        'Success',
+        'Insulin dose saved successfully',
+        [
           {
             text: 'OK',
             onPress: () => {
               reset();
               navigation.goBack();
-            },
-          },
-        ]);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving insulin dose:', error);
+      Alert.alert('Error', 'Failed to save insulin dose. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    setShowTimePicker(Platform.OS === 'ios');
+  const dateTimePickerStyle = Platform.OS === 'ios' ? {
+    alignSelf: 'center' as const,
+    marginBottom: SIZES.md,
+    width: '100%' as unknown as number
+  } : {};
 
-    if (selectedDate) {
+  const showDatepicker = () => {
+    if (showDatePicker) {
+      setShowDatePicker(false);
+    } else {
+      setShowTimePicker(false);
+      setShowDatePicker(true);
+    }
+  };
+
+  const showTimepicker = () => {
+    if (showTimePicker) {
+      setShowTimePicker(false);
+    } else {
+      setShowDatePicker(false);
+      setShowTimePicker(true);
+    }
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (event.type === 'set' && selectedDate) {
       const currentTime = new Date(timestamp);
       selectedDate.setHours(currentTime.getHours());
       selectedDate.setMinutes(currentTime.getMinutes());
       setTimestamp(selectedDate);
+      setShowDatePicker(false);
+    } else if (event.type === 'dismissed') {
+      setShowDatePicker(false);
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-
-    if (selectedTime) {
+    if (event.type === 'set' && selectedTime) {
       const newDate = new Date(timestamp);
       newDate.setHours(selectedTime.getHours());
       newDate.setMinutes(selectedTime.getMinutes());
       setTimestamp(newDate);
+      setShowTimePicker(false);
+    } else if (event.type === 'dismissed') {
+      setShowTimePicker(false);
     }
-  };
-
-  const showDatepicker = () => {
-    setShowDatePicker(true);
-  };
-
-  const showTimepicker = () => {
-    setShowTimePicker(true);
   };
 
   const formatDate = (date: Date) => {
@@ -192,22 +198,29 @@ const AddInsulinScreen: React.FC = () => {
           </View>
 
           {showDatePicker && (
-            <DateTimePicker
-              value={timestamp}
-              mode="date"
-              display="default"
-              onChange={onDateChange}
-              maximumDate={new Date()}
-            />
+            <View style={dateTimePickerStyle}>
+              <DateTimePicker
+                value={timestamp}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                maximumDate={new Date()}
+                textColor={COLORS.text}
+              />
+            </View>
           )}
 
           {showTimePicker && (
-            <DateTimePicker
-              value={timestamp}
-              mode="time"
-              display="default"
-              onChange={onTimeChange}
-            />
+            <View style={dateTimePickerStyle}>
+              <DateTimePicker
+                value={timestamp}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onTimeChange}
+                is24Hour={false}
+                textColor={COLORS.text}
+              />
+            </View>
           )}
 
           <Text style={styles.label}>Insulin Type</Text>

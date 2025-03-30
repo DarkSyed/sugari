@@ -265,7 +265,7 @@ const DashboardScreen: React.FC = () => {
           <View style={styles.quickActionsContainer}>
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_GLUCOSE })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#4B89DC' }]}>
                 <Text style={styles.quickActionIconText}>📊</Text>
@@ -275,7 +275,7 @@ const DashboardScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_FOOD)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_FOOD })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#2ECC71' }]}>
                 <Text style={styles.quickActionIconText}>🍽️</Text>
@@ -285,7 +285,7 @@ const DashboardScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_INSULIN)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_INSULIN })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#F39C12' }]}>
                 <Text style={styles.quickActionIconText}>💉</Text>
@@ -305,7 +305,7 @@ const DashboardScreen: React.FC = () => {
             
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_A1C)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_A1C })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#E74C3C' }]}>
                 <Text style={styles.quickActionIconText}>🔬</Text>
@@ -315,7 +315,7 @@ const DashboardScreen: React.FC = () => {
             
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_WEIGHT)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_WEIGHT })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#3498DB' }]}>
                 <Text style={styles.quickActionIconText}>⚖️</Text>
@@ -325,7 +325,7 @@ const DashboardScreen: React.FC = () => {
             
             <TouchableOpacity
               style={styles.quickActionButton}
-              onPress={() => navigation.navigate(ROUTES.ADD_BP)}
+              onPress={() => navigation.navigate('Home', { screen: ROUTES.BP_LOG })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: '#16A085' }]}>
                 <Text style={styles.quickActionIconText}>❤️</Text>
@@ -338,8 +338,8 @@ const DashboardScreen: React.FC = () => {
         {/* Recent Readings */}
         <View style={styles.recentReadingsContainer}>
           <View style={styles.recentReadingsHeader}>
-            <Text style={styles.sectionTitle}>Recent {activeReadingType === 'glucose' ? 'Glucose' : 'Sugar'} Readings</Text>
-            <TouchableOpacity onPress={() => navigation.navigate(activeReadingType === 'glucose' ? ROUTES.GLUCOSE_LOG : ROUTES.SUGAR_LOG)}>
+            <Text style={styles.sectionTitle}>Recent Blood Glucose Readings</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Home', { screen: ROUTES.GLUCOSE_LOG })}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -367,7 +367,7 @@ const DashboardScreen: React.FC = () => {
                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                 .slice(0, 3)
                 .map((reading) => (
-                  <SugarCard
+                  <GlucoseCard
                     key={reading.id}
                     reading={reading}
                     onPress={() => {
@@ -376,7 +376,7 @@ const DashboardScreen: React.FC = () => {
                   />
                 ))
             ) : (
-              <Text style={styles.noReadingsText}>No sugar readings to display</Text>
+              <Text style={styles.noReadingsText}>No blood glucose readings to display</Text>
             )
           )}
         </View>

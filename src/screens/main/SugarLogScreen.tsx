@@ -19,10 +19,14 @@ import { COLORS, SIZES, ROUTES } from '../../constants';
 import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
 import { 
   getBloodSugarReadings, 
-  getInsulinDoses, 
-  getFoodEntries 
-} from '../../services/database';
-import { formatDate, formatTime } from '../../utils/dateUtils';
+  getFoodEntries, 
+  getInsulinDoses,
+  deleteBloodSugarReading,
+  getA1CReadings,
+  getWeightMeasurements,
+  getBloodPressureReadings
+} from '../../services/databaseFix';
+import { formatDate, formatTime, getStartOfDay, dateToTimestamp } from '../../utils/dateUtils';
 import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
@@ -30,6 +34,7 @@ import Button from '../../components/Button';
 
 // Health log entry types
 type LogEntryType = 'blood_sugar' | 'insulin' | 'food' | 'a1c' | 'weight' | 'bp' | 'all';
+type TimeRange = '3d' | '7d' | '14d' | '30d' | '90d';
 
 // Combined log entry type for the unified log
 interface HealthLogEntry {
@@ -44,6 +49,13 @@ interface HealthLogEntry {
   icon: string;
 }
 
+interface StatsData {
+  avg: number | null;
+  priorAvg: number | null;
+  low: number | null;
+  high: number | null;
+}
+
 const SugarLogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
   const { userSettings, theme } = useApp();
@@ -54,6 +66,13 @@ const SugarLogScreen: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<LogEntryType>('all');
   const [searchText, setSearchText] = useState('');
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('14d');
+  const [stats, setStats] = useState<StatsData>({
+    avg: null,
+    priorAvg: null,
+    low: null,
+    high: null
+  });
 
   // Fetch all health data
   const fetchHealthData = useCallback(async () => {
@@ -104,14 +123,16 @@ const SugarLogScreen: React.FC = () => {
         .sort((a, b) => b.timestamp - a.timestamp);
       
       setAllEntries(combined);
-      setFilteredEntries(combined);
+      
+      // Apply time range and filter
+      filterEntriesByTimeAndType(combined, selectedTimeRange, selectedFilter);
     } catch (error) {
       console.error('Error fetching health data:', error);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedTimeRange, selectedFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -120,26 +141,98 @@ const SugarLogScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    applyFilter(selectedFilter);
-  }, [allEntries, selectedFilter, searchText]);
+    if (allEntries.length > 0) {
+      filterEntriesByTimeAndType(allEntries, selectedTimeRange, selectedFilter);
+    }
+  }, [allEntries, selectedTimeRange, selectedFilter, searchText]);
+  
+  // Calculate stats based on filtered entries
+  useEffect(() => {
+    if (selectedFilter === 'blood_sugar' || selectedFilter === 'all') {
+      calculateStats();
+    } else {
+      setStats({
+        avg: null,
+        priorAvg: null,
+        low: null,
+        high: null
+      });
+    }
+  }, [filteredEntries, selectedFilter]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchHealthData();
   };
 
-  const applyFilter = (filter: LogEntryType) => {
-    setSelectedFilter(filter);
+  const calculateStats = () => {
+    // Only calculate stats for blood sugar entries
+    const bloodSugarEntries = filteredEntries.filter(entry => entry.type === 'blood_sugar');
     
-    // First apply type filter
-    let filtered = allEntries;
-    if (filter !== 'all') {
-      filtered = allEntries.filter(entry => entry.type === filter);
+    if (bloodSugarEntries.length === 0) {
+      setStats({
+        avg: null,
+        priorAvg: null,
+        low: null,
+        high: null
+      });
+      return;
+    }
+    
+    // Calculate current average, min, max for the selected period
+    const values = bloodSugarEntries.map(entry => Number(entry.primaryValue));
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    
+    // Calculate prior average (same length of time before the current period)
+    // For simplicity, we'll just use a placeholder value here
+    // In a real app, you would fetch data from the prior period
+    const priorAvg = null;
+    
+    setStats({
+      avg: Math.round(avg),
+      priorAvg,
+      low,
+      high
+    });
+  };
+
+  const filterEntriesByTimeAndType = (entries: HealthLogEntry[], timeRange: TimeRange, type: LogEntryType) => {
+    // First filter by time range
+    const now = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    let daysToLookBack: number;
+    
+    switch (timeRange) {
+      case '3d':
+        daysToLookBack = 3;
+        break;
+      case '7d':
+        daysToLookBack = 7;
+        break;
+      case '14d':
+        daysToLookBack = 14;
+        break;
+      case '30d':
+        daysToLookBack = 30;
+        break;
+      case '90d':
+        daysToLookBack = 90;
+        break;
+    }
+    
+    const cutoffDate = now.getTime() - (daysToLookBack * msPerDay);
+    let timeFiltered = entries.filter(entry => entry.timestamp >= cutoffDate);
+    
+    // Then filter by type if not "all"
+    if (type !== 'all') {
+      timeFiltered = timeFiltered.filter(entry => entry.type === type);
     }
     
     // Then apply search filter if there's search text
     if (searchText) {
-      filtered = filtered.filter(entry => {
+      timeFiltered = timeFiltered.filter(entry => {
         const searchLower = searchText.toLowerCase();
         const primaryValueString = String(entry.primaryValue).toLowerCase();
         const secondaryValueString = entry.secondaryValue ? String(entry.secondaryValue).toLowerCase() : '';
@@ -153,7 +246,11 @@ const SugarLogScreen: React.FC = () => {
       });
     }
     
-    setFilteredEntries(filtered);
+    setFilteredEntries(timeFiltered);
+  };
+
+  const handleTimeRangeSelect = (timeRange: TimeRange) => {
+    setSelectedTimeRange(timeRange);
   };
 
   const handleSearch = (text: string) => {
@@ -169,7 +266,7 @@ const SugarLogScreen: React.FC = () => {
   const handleEdit = (entry: HealthLogEntry) => {
     switch (entry.type) {
       case 'blood_sugar':
-        navigation.navigate(ROUTES.ADD_SUGAR, { 
+        navigation.navigate(ROUTES.ADD_GLUCOSE, { 
           readingId: entry.id, 
           initialData: {
             id: entry.id,
@@ -205,6 +302,32 @@ const SugarLogScreen: React.FC = () => {
         });
         break;
       // Add other cases as needed
+    }
+  };
+
+  const handleAddReading = () => {
+    // Navigate to the appropriate screen based on the selected filter
+    switch (selectedFilter) {
+      case 'blood_sugar':
+        navigation.navigate('Home', { screen: ROUTES.ADD_GLUCOSE });
+        break;
+      case 'insulin':
+        navigation.navigate('Home', { screen: ROUTES.ADD_INSULIN });
+        break;
+      case 'food':
+        navigation.navigate('Home', { screen: ROUTES.ADD_FOOD });
+        break;
+      case 'a1c':
+        navigation.navigate('Home', { screen: ROUTES.ADD_A1C });
+        break;
+      case 'weight':
+        navigation.navigate('Home', { screen: ROUTES.ADD_WEIGHT });
+        break;
+      case 'bp':
+        navigation.navigate('Home', { screen: ROUTES.ADD_BP });
+        break;
+      default:
+        navigation.navigate('Home', { screen: ROUTES.ADD_GLUCOSE });
     }
   };
 
@@ -246,102 +369,125 @@ const SugarLogScreen: React.FC = () => {
         
         <View style={styles.entryContent}>
           {item.type === 'blood_sugar' && (
-            <View style={styles.entryValueContainer}>
-              <Text style={[styles.entryValue, { color: item.color }]}>
-                {item.primaryValue}
-              </Text>
-              <Text style={styles.entryUnit}>{userSettings?.units || 'mg/dL'}</Text>
-              {item.context && (
-                <View style={styles.entryContextContainer}>
-                  <Text style={styles.entryContextLabel}>Context:</Text>
-                  <Text style={styles.entryContext}>{item.context}</Text>
-                </View>
-              )}
-            </View>
+            <Text style={[styles.entryValue, { color: Number(item.primaryValue) > 180 || Number(item.primaryValue) < 70 ? COLORS.warning : COLORS.success }]}>
+              {item.primaryValue} {userSettings?.units || 'mg/dL'}
+              {item.context && <Text style={styles.entryContext}> • {item.context.replace('_', ' ')}</Text>}
+            </Text>
           )}
           
           {item.type === 'insulin' && (
-            <View style={styles.entryValueContainer}>
-              <Text style={[styles.entryValue, { color: item.color }]}>
-                {item.primaryValue}
-              </Text>
-              <Text style={styles.entryUnit}>units</Text>
-              <Text style={styles.entryType}>{item.secondaryValue}</Text>
-            </View>
+            <Text style={styles.entryValue}>
+              {item.primaryValue} units {item.secondaryValue && `(${item.secondaryValue})`}
+            </Text>
           )}
           
           {item.type === 'food' && (
-            <View style={styles.entryValueContainer}>
-              <Text style={[styles.entryValue, { color: item.color }]}>
-                {item.primaryValue}
-              </Text>
-              {item.secondaryValue && (
-                <View style={styles.entryCarbsContainer}>
-                  <Text style={styles.entryCarbsLabel}>Carbs:</Text>
-                  <Text style={styles.entryCarbs}>{item.secondaryValue}g</Text>
-                </View>
-              )}
-            </View>
+            <Text style={styles.entryValue}>
+              {item.primaryValue}
+              {item.secondaryValue && <Text style={styles.entrySecondary}> • {item.secondaryValue}g carbs</Text>}
+            </Text>
           )}
           
           {item.notes && (
-            <View style={styles.entryNotesContainer}>
-              <Text style={styles.entryNotesLabel}>Notes:</Text>
-              <Text style={styles.entryNotes}>{item.notes}</Text>
-            </View>
+            <Text style={styles.entryNotes}>{item.notes}</Text>
           )}
         </View>
       </Card>
     );
   };
   
+  const renderTimeRangeSelector = () => {
+    return (
+      <View style={styles.timeRangeContainer}>
+        {(['3d', '7d', '14d', '30d', '90d'] as TimeRange[]).map((range) => (
+          <TouchableOpacity
+            key={range}
+            style={[
+              styles.timeRangeButton,
+              selectedTimeRange === range && styles.timeRangeButtonActive
+            ]}
+            onPress={() => handleTimeRangeSelect(range)}
+          >
+            <Text style={[
+              styles.timeRangeButtonText,
+              selectedTimeRange === range && styles.timeRangeButtonTextActive
+            ]}>
+              {range.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  const renderStatCard = () => {
+    return (
+      <Card variant="elevated" style={styles.statsCard}>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Avg</Text>
+            <Text style={styles.statValue}>{stats.avg !== null ? stats.avg : '---'}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Prior Avg</Text>
+            <Text style={styles.statValue}>{stats.priorAvg !== null ? stats.priorAvg : '---'}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Low</Text>
+            <Text style={styles.statValue}>{stats.low !== null ? stats.low : '---'}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>High</Text>
+            <Text style={styles.statValue}>{stats.high !== null ? stats.high : '---'}</Text>
+          </View>
+        </View>
+      </Card>
+    );
+  };
+
   const renderFilterChip = (label: string, filter: LogEntryType) => {
-    const isSelected = selectedFilter === filter;
     return (
       <TouchableOpacity
-        style={styles.filterChip}
+        style={[
+          styles.filterChip,
+          selectedFilter === filter && styles.filterChipSelected
+        ]}
         onPress={() => applyFilter(filter)}
       >
         <Text
           style={[
             styles.filterChipText,
-            isSelected && styles.filterChipTextSelected,
+            selectedFilter === filter && styles.filterChipTextSelected
           ]}
         >
           {label}
         </Text>
-        {isSelected && <View style={styles.filterChipIndicator} />}
       </TouchableOpacity>
     );
   };
-  
+
+  const applyFilter = (filter: LogEntryType) => {
+    setSelectedFilter(filter);
+  };
+
   const renderEmptyList = () => {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="analytics-outline" size={64} color={COLORS.lightText} />
-        <Text style={styles.emptyTitle}>No Health Logs</Text>
+        <Ionicons
+          name="analytics-outline"
+          size={80}
+          color={COLORS.lightText}
+        />
+        <Text style={styles.emptyTitle}>No data available</Text>
         <Text style={styles.emptyText}>
-          {searchText || selectedFilter !== 'all'
-            ? "No entries match your current filters. Try adjusting your search or filters."
-            : "Start tracking your health metrics by adding your first entry."}
+          Start tracking your blood glucose readings by adding your first entry.
         </Text>
-        
-        {searchText || selectedFilter !== 'all' ? (
-          <Button
-            title="Clear Filters"
-            onPress={() => {
-              setSearchText('');
-              setSelectedFilter('all');
-            }}
-            style={styles.emptyButton}
-          />
-        ) : (
-          <Button
-            title="Add Health Entry"
-            onPress={() => setShowQuickActions(true)}
-            style={styles.emptyButton}
-          />
-        )}
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => setShowQuickActions(true)}
+        >
+          <Text style={styles.emptyButtonText}>Add Blood Glucose</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -367,12 +513,12 @@ const SugarLogScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.quickActionItem}
                 onPress={() => {
-                  navigation.navigate(ROUTES.ADD_SUGAR);
+                  navigation.navigate(ROUTES.ADD_GLUCOSE);
                   setShowQuickActions(false);
                 }}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: '#4B89DC' }]}>
-                  <Text style={styles.quickActionIconText}>🩸</Text>
+                  <Text style={styles.quickActionIconText}>📊</Text>
                 </View>
                 <Text style={styles.quickActionText}>Blood Glucose</Text>
               </TouchableOpacity>
@@ -451,13 +597,35 @@ const SugarLogScreen: React.FC = () => {
   return (
     <Container scrollable={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Health Log</Text>
+        <Text style={styles.title}>Blood Glucose Log</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => setShowQuickActions(true)}
+          onPress={handleAddReading}
         >
-          <Ionicons name="add" size={24} color="white" />
+          <Ionicons name="add-circle" size={24} color="white" />
+          <Text style={styles.addButtonText}>Add Reading</Text>
         </TouchableOpacity>
+      </View>
+
+      {renderTimeRangeSelector()}
+      
+      {!isLoading && selectedFilter === 'blood_sugar' && renderStatCard()}
+
+      <View style={styles.filtersContainer}>
+        <View style={styles.tagsContainer}>
+          <Text style={styles.sectionTitle}>Tags</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScrollContent}
+          >
+            {renderFilterChip('All', 'all')}
+            {renderFilterChip('Blood Glucose', 'blood_sugar')}
+            {renderFilterChip('Insulin', 'insulin')}
+            {renderFilterChip('Food', 'food')}
+            {renderFilterChip('A1C', 'a1c')}
+          </ScrollView>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
@@ -475,20 +643,6 @@ const SugarLogScreen: React.FC = () => {
           </TouchableOpacity>
         ) : null}
       </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScrollContent}
-      >
-        {renderFilterChip('All', 'all')}
-        {renderFilterChip('Blood Glucose', 'blood_sugar')}
-        {renderFilterChip('Insulin', 'insulin')}
-        {renderFilterChip('Food', 'food')}
-        {renderFilterChip('A1C', 'a1c')}
-        {renderFilterChip('Weight', 'weight')}
-        {renderFilterChip('BP', 'bp')}
-      </ScrollView>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -534,6 +688,97 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  timeRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SIZES.md,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.sm,
+    padding: 4,
+  },
+  timeRangeButton: {
+    flex: 1,
+    paddingVertical: SIZES.xs,
+    alignItems: 'center',
+    borderRadius: SIZES.xs,
+  },
+  timeRangeButtonActive: {
+    backgroundColor: COLORS.primary,
+  },
+  timeRangeButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  timeRangeButtonTextActive: {
+    color: 'white',
+  },
+  statsCard: {
+    marginBottom: SIZES.md,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  filtersContainer: {
+    marginBottom: SIZES.sm,
+    width: '100%',
+  },
+  tagsContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  filterScrollContent: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChip: {
+    paddingHorizontal: SIZES.md,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: SIZES.xs/2,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  filterChipSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  filterChipTextSelected: {
+    color: 'white',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,44 +792,16 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    fontSize: 16,
+    paddingVertical: SIZES.sm,
     color: COLORS.text,
-  },
-  filterScrollContent: {
-    paddingRight: SIZES.md,
-    marginBottom: SIZES.md,
-  },
-  filterChip: {
-    marginRight: SIZES.md,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: SIZES.sm,
-  },
-  filterChipText: {
-    fontSize: 16,
-    color: COLORS.lightText,
-  },
-  filterChipTextSelected: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-  },
-  filterChipIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: COLORS.primary,
-    borderRadius: 1,
-  },
-  listContainer: {
-    paddingBottom: SIZES.lg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  listContainer: {
+    paddingBottom: SIZES.xl,
   },
   emptyContainer: {
     flex: 1,
@@ -597,152 +814,111 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     marginTop: SIZES.md,
-    marginBottom: SIZES.xs,
   },
   emptyText: {
     fontSize: 14,
     color: COLORS.lightText,
     textAlign: 'center',
-    marginBottom: SIZES.lg,
+    marginTop: SIZES.xs,
+    marginBottom: SIZES.md,
   },
   emptyButton: {
-    minWidth: 150,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.lg,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.sm,
+    marginTop: SIZES.sm,
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SIZES.md,
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 4,
+  emptyButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   entryCard: {
-    marginBottom: SIZES.md,
-    borderRadius: SIZES.sm,
-    overflow: 'hidden',
+    marginBottom: SIZES.sm,
   },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingBottom: SIZES.xs,
     marginBottom: SIZES.xs,
   },
   entryDateContainer: {
-    flexDirection: 'column',
+    flex: 1,
   },
   entryDate: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: COLORS.text,
   },
   entryTime: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.lightText,
   },
   entryTypeContainer: {
-    flexDirection: 'row',
+    flex: 1,
+    alignItems: 'center',
   },
   entryTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SIZES.xs,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingVertical: 3,
+    borderRadius: SIZES.xs,
   },
   entryTypeBadgeText: {
-    fontSize: 12,
+    fontSize: 10,
     color: 'white',
+    fontWeight: '500',
     marginLeft: 2,
   },
   entryActions: {
     flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  actionButton: {
+    padding: 4,
+    marginLeft: SIZES.xs,
   },
   entryContent: {
     flexDirection: 'column',
   },
-  entryValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-  },
   entryValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginRight: SIZES.xs,
-  },
-  entryUnit: {
-    fontSize: 14,
-    color: COLORS.lightText,
-    marginRight: SIZES.md,
-  },
-  entryType: {
     fontSize: 16,
+    fontWeight: '600',
     color: COLORS.text,
+    marginBottom: 2,
   },
-  entryContextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SIZES.xs,
-  },
-  entryContextLabel: {
+  entrySecondary: {
     fontSize: 14,
     color: COLORS.lightText,
-    marginRight: 4,
   },
   entryContext: {
     fontSize: 14,
-    color: COLORS.text,
-  },
-  entryCarbsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: SIZES.md,
-  },
-  entryCarbsLabel: {
-    fontSize: 14,
     color: COLORS.lightText,
-    marginRight: 4,
-  },
-  entryCarbs: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  entryNotesContainer: {
-    marginTop: SIZES.xs,
-  },
-  entryNotesLabel: {
-    fontSize: 14,
-    color: COLORS.lightText,
-    marginBottom: 2,
   },
   entryNotes: {
-    fontSize: 14,
-    color: COLORS.text,
+    fontSize: 12,
+    color: COLORS.lightText,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: 'white',
     borderTopLeftRadius: SIZES.md,
     borderTopRightRadius: SIZES.md,
-    padding: SIZES.md,
-    maxHeight: '70%',
+    padding: SIZES.lg,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SIZES.md,
-    paddingBottom: SIZES.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginBottom: SIZES.lg,
   },
   modalTitle: {
     fontSize: 18,
@@ -771,9 +947,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   quickActionText: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.text,
     textAlign: 'center',
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
 

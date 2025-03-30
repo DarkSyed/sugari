@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSettings, Theme } from '../types';
-import { getUserSettings, updateUserSettings } from '../services/database';
+import { getUserSettings, updateUserSettings } from '../services/databaseFix';
 import { lightTheme, darkTheme } from '../constants/theme';
 
 interface AppContextType {

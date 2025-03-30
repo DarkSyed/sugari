@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppProvider } from './src/contexts/AppContext';
 import AppNavigator from './src/navigation';
-import { initDatabase } from './src/services/database';
+import { initDatabase } from './src/services/databaseFix';
 
 export default function App() {
   // Initialize the database when the app starts

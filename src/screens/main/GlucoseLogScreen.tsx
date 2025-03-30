@@ -13,12 +13,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants';
-import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import {
   getBloodSugarReadings,
-  getBloodSugarStats,
   deleteBloodSugarReading
 } from '../../services/database';
 import { formatDate, formatTime } from '../../utils/dateUtils';
@@ -26,7 +24,6 @@ import { BloodSugarReading } from '../../types';
 
 const GlucoseLogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
-  const { settings } = useApp();
   const [readings, setReadings] = useState<BloodSugarReading[]>([]);
   const [stats, setStats] = useState({
     avgReading: 0,
@@ -41,11 +38,28 @@ const GlucoseLogScreen: React.FC = () => {
 
   const fetchReadings = useCallback(async () => {
     try {
-      const data = await getBloodSugarReadings(activeTab);
+      const data = await getBloodSugarReadings();
       setReadings(data);
       
-      const statsData = await getBloodSugarStats(activeTab);
-      setStats(statsData);
+      // Calculate simple statistics locally since getBloodSugarStats is not available
+      if (data.length > 0) {
+        const values = data.map(r => r.value);
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        
+        // Calculate percentage in range (70-180 mg/dL)
+        const inRange = values.filter(v => v >= 70 && v <= 180).length;
+        const percentage = (inRange / values.length) * 100;
+        
+        setStats({
+          avgReading: avg,
+          maxReading: max,
+          minReading: min,
+          inRangePercentage: percentage,
+          totalCount: data.length
+        });
+      }
     } catch (error) {
       console.error('Error fetching readings:', error);
     } finally {
@@ -66,11 +80,7 @@ const GlucoseLogScreen: React.FC = () => {
   }, [fetchReadings]);
 
   const handleAddReading = () => {
-    if (activeTab === 'sugar') {
-      navigation.navigate('AddSugar');
-    } else {
-      navigation.navigate('AddGlucose');
-    }
+    navigation.navigate('AddGlucose');
   };
 
   const handleEditReading = (reading: BloodSugarReading) => {
@@ -92,7 +102,7 @@ const GlucoseLogScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteBloodSugarReading(id, activeTab);
+              await deleteBloodSugarReading(id);
               fetchReadings();
             } catch (error) {
               console.error('Error deleting reading:', error);
@@ -105,17 +115,9 @@ const GlucoseLogScreen: React.FC = () => {
   };
 
   const getReadingColor = (value: number) => {
-    const unit = settings?.units || 'mg/dL';
-    
     // Values for mg/dL
     let low = 70;
     let high = 180;
-    
-    // Convert thresholds if using mmol/L
-    if (unit === 'mmol/L') {
-      low = 3.9;
-      high = 10.0;
-    }
     
     if (value < low) {
       return COLORS.danger;
@@ -126,12 +128,6 @@ const GlucoseLogScreen: React.FC = () => {
   };
 
   const convertReadingValue = (value: number) => {
-    const unit = settings?.units || 'mg/dL';
-    
-    if (unit === 'mmol/L' && activeTab === 'sugar') {
-      // Convert from mg/dL to mmol/L (divide by 18)
-      return (value / 18).toFixed(1);
-    }
     return value.toString();
   };
 
@@ -167,7 +163,7 @@ const GlucoseLogScreen: React.FC = () => {
             <Text style={[styles.readingValue, { color: getReadingColor(readingValue) }]}>
               {convertReadingValue(readingValue)}
             </Text>
-            <Text style={styles.readingUnit}>{settings?.units || 'mg/dL'}</Text>
+            <Text style={styles.readingUnit}>mg/dL</Text>
           </View>
           
           <View style={styles.readingContextContainer}>
@@ -251,7 +247,7 @@ const GlucoseLogScreen: React.FC = () => {
   return (
     <Container>
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>Blood Sugar Log</Text>
+        <Text style={styles.screenTitle}>Sugar</Text>
         <TouchableOpacity 
           style={styles.addButton}
           onPress={handleAddReading}
@@ -277,15 +273,12 @@ const GlucoseLogScreen: React.FC = () => {
             <View style={styles.emptyContainer}>
               <Ionicons name="analytics-outline" size={64} color={COLORS.lightText} />
               <Text style={styles.emptyText}>No readings yet</Text>
-              <Text style={styles.emptySubText}>
-                Start tracking your {activeTab === 'sugar' ? 'blood sugar' : 'glucose'} levels by adding your first reading
-              </Text>
               <TouchableOpacity
                 style={styles.emptyAddButton}
                 onPress={handleAddReading}
               >
                 <Text style={styles.emptyAddButtonText}>
-                  Add {activeTab === 'sugar' ? 'Blood Sugar' : 'Glucose'} Reading
+                  Add Reading
                 </Text>
               </TouchableOpacity>
             </View>
@@ -478,13 +471,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     marginTop: SIZES.md,
-  },
-  emptySubText: {
-    fontSize: 16,
-    color: COLORS.lightText,
-    textAlign: 'center',
-    marginTop: SIZES.xs,
-    marginBottom: SIZES.md,
   },
   emptyAddButton: {
     paddingVertical: SIZES.sm,

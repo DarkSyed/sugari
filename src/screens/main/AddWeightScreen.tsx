@@ -1,51 +1,94 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS, SIZES } from '../../constants';
+import { addWeightMeasurement } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import Card from '../../components/Card';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 const AddWeightScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const [weight, setWeight] = useState('');
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const [weightValue, setWeightValue] = useState('');
   const [notes, setNotes] = useState('');
-  const [date, setDate] = useState(new Date());
+  const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    // TODO: Implement weight tracking functionality
-    console.log('Weight submitted:', { 
-      weight, 
-      timestamp: date.getTime(), 
-      notes 
-    });
-    navigation.goBack();
+  const handleSubmit = async () => {
+    if (!weightValue) {
+      Alert.alert('Error', 'Please enter a weight value');
+      return;
+    }
+
+    const numericValue = parseFloat(weightValue);
+    if (isNaN(numericValue) || numericValue <= 0 || numericValue > 1000) {
+      Alert.alert('Error', 'Please enter a valid weight value');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await addWeightMeasurement({
+        value: numericValue,
+        timestamp: timestamp.getTime(),
+        notes: notes.trim() || null
+      });
+
+      Alert.alert(
+        'Success',
+        'Weight measurement saved successfully',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setWeightValue('');
+              setNotes('');
+              setTimestamp(new Date());
+              navigation.goBack();
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error saving weight measurement:', error);
+      Alert.alert('Error', 'Failed to save weight measurement. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    const currentDate = selectedDate || timestamp;
     
-    if (selectedDate) {
-      const currentTime = new Date(date);
-      selectedDate.setHours(currentTime.getHours());
-      selectedDate.setMinutes(currentTime.getMinutes());
-      setDate(selectedDate);
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
     }
+    
+    // Preserve the time from the existing timestamp
+    const newDate = new Date(currentDate);
+    newDate.setHours(timestamp.getHours(), timestamp.getMinutes());
+    
+    setTimestamp(newDate);
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(Platform.OS === 'ios');
+    const currentTime = selectedTime || timestamp;
     
-    if (selectedTime) {
-      const newDate = new Date(date);
-      newDate.setHours(selectedTime.getHours());
-      newDate.setMinutes(selectedTime.getMinutes());
-      setDate(newDate);
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
     }
+    
+    // Preserve the date but update the time
+    const newDate = new Date(timestamp);
+    newDate.setHours(currentTime.getHours(), currentTime.getMinutes());
+    
+    setTimestamp(newDate);
   };
 
   const showDatepicker = () => {
@@ -58,100 +101,100 @@ const AddWeightScreen: React.FC = () => {
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
       year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
+      hour12: true
     });
   };
 
   return (
     <Container>
       <View style={styles.header}>
-        <Text style={styles.title}>Log Weight</Text>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Log Weight</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      <Card variant="elevated" style={styles.card}>
+      <View style={styles.inputContainer}>
         <Text style={styles.label}>Weight (lbs)</Text>
         <Input
-          placeholder="Enter weight"
-          value={weight}
-          onChangeText={setWeight}
+          value={weightValue}
+          onChangeText={setWeightValue}
+          placeholder="e.g., 160"
           keyboardType="decimal-pad"
         />
+      </View>
 
-        <Text style={styles.label}>When was this weight measured?</Text>
-        <View style={styles.dateTimeContainer}>
-          <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={showDatepicker}
-          >
-            <Text style={styles.dateTimeText}>
-              {formatDate(date)}
-            </Text>
+      <View style={styles.dateTimeContainer}>
+        <Text style={styles.label}>Date & Time</Text>
+        <View style={styles.dateTimeButtonsContainer}>
+          <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={showTimepicker}
-          >
-            <Text style={styles.dateTimeText}>
-              {formatTime(date)}
-            </Text>
+
+          <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
+            <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
           </TouchableOpacity>
         </View>
 
         {showDatePicker && (
           <DateTimePicker
-            testID="dateTimePicker"
-            value={date}
+            value={timestamp}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onDateChange}
             maximumDate={new Date()}
+            textColor={COLORS.text}
           />
         )}
 
         {showTimePicker && (
           <DateTimePicker
-            testID="timeTimePicker"
-            value={date}
+            value={timestamp}
             mode="time"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onTimeChange}
-            is24Hour={false}
+            textColor={COLORS.text}
           />
         )}
+      </View>
 
-        <Text style={styles.label}>Notes (optional)</Text>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Notes (Optional)</Text>
         <Input
-          placeholder="Add notes"
           value={notes}
           onChangeText={setNotes}
+          placeholder="Add any additional notes here"
           multiline
-          style={styles.notesInput}
+          numberOfLines={4}
+          inputStyle={styles.notesInput}
         />
+      </View>
 
-        <View style={styles.buttonContainer}>
-          <Button 
-            title="Save" 
-            onPress={handleSubmit} 
-            variant="primary"
-            style={styles.button}
-          />
-          <Button 
-            title="Cancel" 
-            onPress={() => navigation.goBack()} 
-            variant="outline"
-            style={styles.button}
-          />
-        </View>
-      </Card>
+      <View style={styles.footer}>
+        <Button
+          title="Save Weight Measurement"
+          onPress={handleSubmit}
+          disabled={!weightValue || isSubmitting}
+          loading={isSubmitting}
+          style={styles.saveButton}
+        />
+      </View>
     </Container>
   );
 };
@@ -159,17 +202,30 @@ const AddWeightScreen: React.FC = () => {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SIZES.md,
+    justifyContent: 'space-between',
+    marginBottom: SIZES.lg,
   },
-  title: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.text,
+    textAlign: 'center',
   },
-  card: {
-    padding: SIZES.md,
+  backButton: {
+    paddingVertical: SIZES.xs,
+    paddingRight: SIZES.sm,
+  },
+  backButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  placeholder: {
+    width: 50,
+  },
+  inputContainer: {
+    marginBottom: SIZES.md,
   },
   label: {
     fontSize: 16,
@@ -181,33 +237,34 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SIZES.lg,
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
   dateTimeContainer: {
-    flexDirection: 'row',
     marginBottom: SIZES.md,
   },
+  dateTimeButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: SIZES.xs,
+  },
   dateTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.inputBackground,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: SIZES.sm,
     borderRadius: SIZES.xs,
-    padding: SIZES.sm,
     marginRight: SIZES.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    flex: 1,
   },
   dateTimeText: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.text,
-    textAlign: 'center',
+    marginLeft: SIZES.xs,
+  },
+  footer: {
+    marginTop: 'auto',
+    marginBottom: SIZES.lg,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
   },
 });
 
-export default AddWeightScreen; 
+export default AddWeightScreen;

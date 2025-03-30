@@ -20,6 +20,10 @@ import SugarLogScreen from '../screens/main/SugarLogScreen';
 import MedicationScreen from '../screens/main/MedicationScreen';
 import AnalyticsScreen from '../screens/main/AnalyticsScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
+import AddA1CScreen from '../screens/main/AddA1CScreen';
+import AddWeightScreen from '../screens/main/AddWeightScreen';
+import AddBloodPressureScreen from '../screens/main/AddBloodPressureScreen';
+import BloodPressureLogScreen from '../screens/main/BloodPressureLogScreen';
 
 // Create navigators
 const Stack = createNativeStackNavigator();
@@ -40,6 +44,10 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_GLUCOSE} component={AddGlucoseScreen} />
       <Stack.Screen name={ROUTES.ADD_FOOD} component={AddFoodScreen} />
       <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />
+      <Stack.Screen name={ROUTES.ADD_A1C} component={AddA1CScreen} />
+      <Stack.Screen name={ROUTES.ADD_WEIGHT} component={AddWeightScreen} />
+      <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
+      <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
       <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
       <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
     </Stack.Navigator>
