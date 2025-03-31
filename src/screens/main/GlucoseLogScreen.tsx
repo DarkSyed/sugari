@@ -7,7 +7,8 @@ import {
   FlatList, 
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -35,6 +36,7 @@ const GlucoseLogScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'sugar' | 'glucose'>('sugar');
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const fetchReadings = useCallback(async () => {
     try {
@@ -80,7 +82,7 @@ const GlucoseLogScreen: React.FC = () => {
   }, [fetchReadings]);
 
   const handleAddReading = () => {
-    navigation.navigate('AddGlucose');
+    setShowQuickActions(true);
   };
 
   const handleEditReading = (reading: BloodSugarReading) => {
@@ -244,6 +246,108 @@ const GlucoseLogScreen: React.FC = () => {
     </Card>
   );
 
+  const renderQuickActionsModal = () => {
+    return (
+      <Modal
+        visible={showQuickActions}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowQuickActions(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Entry</Text>
+              <TouchableOpacity onPress={() => setShowQuickActions(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.quickActionsList}>
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddGlucose' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: COLORS.primary }]}>
+                  <Ionicons name="water-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>Blood Glucose</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddInsulin' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#F39C12' }]}>
+                  <Ionicons name="medical-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>Insulin</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddFood' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#2ECC71' }]}>
+                  <Ionicons name="restaurant-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>Food</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddA1C' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#9B59B6' }]}>
+                  <Ionicons name="pulse-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>A1C</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddWeight' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#3498DB' }]}>
+                  <Ionicons name="fitness-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>Weight</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.quickActionItem}
+                onPress={() => {
+                  setShowQuickActions(false);
+                  navigation.navigate('Home', { screen: 'AddBloodPressure' });
+                }}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#E74C3C' }]}>
+                  <Ionicons name="heart-outline" size={24} color="white" />
+                </View>
+                <Text style={styles.quickActionText}>Blood Pressure</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <Container>
       <View style={styles.header}>
@@ -300,6 +404,7 @@ const GlucoseLogScreen: React.FC = () => {
           )}
         </>
       )}
+      {renderQuickActionsModal()}
     </Container>
   );
 };
@@ -482,6 +587,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: 'white',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: SIZES.md,
+    borderRadius: SIZES.sm,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SIZES.sm,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  quickActionsList: {
+    marginBottom: SIZES.md,
+  },
+  quickActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.sm,
+    marginBottom: SIZES.xs,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SIZES.sm,
+  },
+  quickActionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
   },
 });
 

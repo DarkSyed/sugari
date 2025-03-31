@@ -50,10 +50,11 @@ const AddGlucoseScreen: React.FC = () => {
   const mealContext = watch('mealContext');
 
   const onSubmit = async (data: FormData) => {
-    if (!authState.user) {
-      Alert.alert('Error', 'You must be logged in to add readings');
-      return;
-    }
+    // Removing authentication check to allow data entry
+    // if (!authState.user) {
+    //   Alert.alert('Error', 'You must be logged in to add readings');
+    //   return;
+    // }
 
     setIsLoading(true);
     try {
