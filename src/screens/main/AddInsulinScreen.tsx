@@ -50,19 +50,9 @@ const AddInsulinScreen: React.FC = () => {
         notes: data.notes || null,
       });
 
-      Alert.alert(
-        'Success',
-        'Insulin dose saved successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              reset();
-              navigation.goBack();
-            }
-          }
-        ]
-      );
+      // Reset form and navigate directly to log screen
+      reset();
+      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
     } catch (error) {
       console.error('Error saving insulin dose:', error);
       Alert.alert('Error', 'Failed to save insulin dose. Please try again.');
@@ -200,6 +190,7 @@ const AddInsulinScreen: React.FC = () => {
           {showDatePicker && (
             <View style={dateTimePickerStyle}>
               <DateTimePicker
+                testID="dateTimePicker"
                 value={timestamp}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -207,12 +198,30 @@ const AddInsulinScreen: React.FC = () => {
                 maximumDate={new Date()}
                 textColor={COLORS.text}
               />
+              <View style={styles.pickerButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.cancelPickerButton]} 
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.okPickerButton]} 
+                  onPress={() => {
+                    // Just close the picker as the onChange event already updates the value
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={styles.okPickerButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
           {showTimePicker && (
             <View style={dateTimePickerStyle}>
               <DateTimePicker
+                testID="timeTimePicker"
                 value={timestamp}
                 mode="time"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -220,6 +229,23 @@ const AddInsulinScreen: React.FC = () => {
                 is24Hour={false}
                 textColor={COLORS.text}
               />
+              <View style={styles.pickerButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.cancelPickerButton]} 
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.okPickerButton]} 
+                  onPress={() => {
+                    // Just close the picker as the onChange event already updates the value
+                    setShowTimePicker(false);
+                  }}
+                >
+                  <Text style={styles.okPickerButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -360,6 +386,31 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
     marginLeft: SIZES.sm,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
   },
 });
 

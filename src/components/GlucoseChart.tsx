@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
-import { BloodGlucoseReading } from '../types';
-import { COLORS, SIZES, NORMAL_GLUCOSE_MIN, NORMAL_GLUCOSE_MAX } from '../constants';
+import { BloodSugarReading } from '../types';
+import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../constants';
 import Card from './Card';
 
 interface GlucoseChartProps {
-  data: BloodGlucoseReading[];
+  data: BloodSugarReading[];
   title?: string;
   timeRange?: '24h' | '7d' | '30d' | 'all';
 }
@@ -80,7 +80,7 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
   const max = values.length > 0 ? Math.max(...values) : 0;
   
   const inRangeCount = values.filter(
-    value => value >= NORMAL_GLUCOSE_MIN && value <= NORMAL_GLUCOSE_MAX
+    value => value >= NORMAL_SUGAR_MIN && value <= NORMAL_SUGAR_MAX
   ).length;
   
   const inRangePercentage = values.length > 0 
@@ -102,7 +102,7 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
   }
 
   return (
-    <Card variant="elevated" padding="none">
+    <Card variant="elevated" style={styles.cardWithoutPadding}>
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
         
@@ -116,13 +116,13 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
                 strokeWidth: 2,
               },
               {
-                data: [NORMAL_GLUCOSE_MIN, NORMAL_GLUCOSE_MIN],
+                data: [NORMAL_SUGAR_MIN, NORMAL_SUGAR_MIN],
                 color: () => COLORS.success + '80', // 50% opacity
                 strokeWidth: 1,
                 withDots: false,
               },
               {
-                data: [NORMAL_GLUCOSE_MAX, NORMAL_GLUCOSE_MAX],
+                data: [NORMAL_SUGAR_MAX, NORMAL_SUGAR_MAX],
                 color: () => COLORS.success + '80', // 50% opacity
                 strokeWidth: 1,
                 withDots: false,
@@ -187,6 +187,9 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: SIZES.md,
+  },
+  cardWithoutPadding: {
+    padding: 0, // Override the default padding from the Card component
   },
   title: {
     fontSize: 18,

@@ -80,16 +80,9 @@ const AddGlucoseScreen: React.FC = () => {
       }
 
       if (insertId) {
-        const hasInsulin = data.insulinUnits && parseFloat(data.insulinUnits) > 0;
-        Alert.alert('Success', hasInsulin ? 'Blood glucose and insulin logged successfully' : 'Blood glucose reading added successfully', [
-          {
-            text: 'OK',
-            onPress: () => {
-              reset();
-              navigation.goBack();
-            },
-          },
-        ]);
+        // Reset form and navigate directly to log screen
+        reset();
+        navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
       } else {
         Alert.alert('Error', 'Failed to add reading');
       }
@@ -241,7 +234,7 @@ const AddGlucoseScreen: React.FC = () => {
   };
 
   return (
-    <Container>
+    <Container keyboardAvoiding={true}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity 
@@ -361,6 +354,23 @@ const AddGlucoseScreen: React.FC = () => {
                 maximumDate={new Date()}
                 textColor={COLORS.text}
               />
+              <View style={styles.pickerButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.cancelPickerButton]} 
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.okPickerButton]} 
+                  onPress={() => {
+                    // Just close the picker as the onChange event already updates the value
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={styles.okPickerButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -375,6 +385,23 @@ const AddGlucoseScreen: React.FC = () => {
                 is24Hour={false}
                 textColor={COLORS.text}
               />
+              <View style={styles.pickerButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.cancelPickerButton]} 
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.pickerButton, styles.okPickerButton]} 
+                  onPress={() => {
+                    // Just close the picker as the onChange event already updates the value
+                    setShowTimePicker(false);
+                  }}
+                >
+                  <Text style={styles.okPickerButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -538,6 +565,31 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
   },
   notesInput: {
     height: 80,

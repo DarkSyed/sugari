@@ -26,8 +26,8 @@ const AddA1CScreen: React.FC = () => {
     }
 
     const numericValue = parseFloat(a1cValue);
-    if (isNaN(numericValue) || numericValue <= 0 || numericValue > 20) {
-      Alert.alert('Error', 'Please enter a valid A1C value (between 0 and 20%)');
+    if (isNaN(numericValue) || numericValue < 3 || numericValue > 20) {
+      Alert.alert('Error', 'Please enter a valid A1C value between 3% and 20%');
       return;
     }
 
@@ -40,21 +40,11 @@ const AddA1CScreen: React.FC = () => {
         notes: notes.trim() || null
       });
 
-      Alert.alert(
-        'Success',
-        'A1C reading saved successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setA1CValue('');
-              setNotes('');
-              setTimestamp(new Date());
-              navigation.goBack();
-            }
-          }
-        ]
-      );
+      // Reset form and navigate directly to log screen
+      setA1CValue('');
+      setNotes('');
+      setTimestamp(new Date());
+      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
     } catch (error) {
       console.error('Error saving A1C reading:', error);
       Alert.alert('Error', 'Failed to save A1C reading. Please try again.');
@@ -115,6 +105,12 @@ const AddA1CScreen: React.FC = () => {
     });
   };
 
+  const dateTimePickerStyle = Platform.OS === 'ios' ? {
+    alignSelf: 'center' as const,
+    marginBottom: SIZES.md,
+    width: '100%' as unknown as number
+  } : {};
+
   return (
     <Container>
       <View style={styles.header}>
@@ -154,24 +150,61 @@ const AddA1CScreen: React.FC = () => {
         </View>
 
         {showDatePicker && (
-          <DateTimePicker
-            value={timestamp}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-            maximumDate={new Date()}
-            textColor={COLORS.text}
-          />
+          <View style={dateTimePickerStyle}>
+            <DateTimePicker
+              value={timestamp}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
+            <View style={styles.pickerButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.cancelPickerButton]} 
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.okPickerButton]} 
+                onPress={() => {
+                  // Just close the picker as the onChange event already updates the value
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={styles.okPickerButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {showTimePicker && (
-          <DateTimePicker
-            value={timestamp}
-            mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onTimeChange}
-            textColor={COLORS.text}
-          />
+          <View style={dateTimePickerStyle}>
+            <DateTimePicker
+              value={timestamp}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onTimeChange}
+              is24Hour={false}
+            />
+            <View style={styles.pickerButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.cancelPickerButton]} 
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.okPickerButton]} 
+                onPress={() => {
+                  // Just close the picker as the onChange event already updates the value
+                  setShowTimePicker(false);
+                }}
+              >
+                <Text style={styles.okPickerButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
       </View>
 
@@ -268,6 +301,31 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: COLORS.primary,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
   },
 });
 

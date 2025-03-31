@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES, ROUTES } from '../../constants';
+import { Swipeable } from 'react-native-gesture-handler';
+import { COLORS, SIZES, ROUTES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
-import { getBloodSugarReadings, getFoodEntries, getInsulinDoses } from '../../services/database';
+import { 
+  getBloodSugarReadings, 
+  getFoodEntries, 
+  getInsulinDoses, 
+  getA1CReadings,
+  getWeightMeasurements,
+  getBloodPressureReadings,
+  deleteBloodSugarReading
+} from '../../services/databaseFix';
 import { getAIPoweredInsights } from '../../services/aiService';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
@@ -29,6 +38,7 @@ const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeReadingType, setActiveReadingType] = useState<'glucose' | 'sugar'>('sugar');
+  const [showLatestReading, setShowLatestReading] = useState(true);
 
   const fetchUserData = useCallback(async () => {
     try {
@@ -68,6 +78,13 @@ const DashboardScreen: React.FC = () => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  // Add useFocusEffect to reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [fetchUserData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -115,6 +132,17 @@ const DashboardScreen: React.FC = () => {
     }
   };
 
+  // Get color based on blood sugar value
+  const getReadingColor = (value: number) => {
+    if (value < NORMAL_SUGAR_MIN) {
+      return COLORS.danger; // Low
+    } else if (value > NORMAL_SUGAR_MAX) {
+      return COLORS.warning; // High
+    } else {
+      return COLORS.success; // Normal
+    }
+  };
+
   return (
     <Container scrollable>
       <ScrollView
@@ -140,14 +168,29 @@ const DashboardScreen: React.FC = () => {
         </View>
 
         {/* Latest Reading */}
-        <Card variant="elevated">
-          <Text style={styles.sectionTitle}>Latest Reading</Text>
-          
-          {latestSugarReading ? (
-            <>
+        {showLatestReading && latestSugarReading && (
+          <Swipeable
+            renderRightActions={() => (
+              <TouchableOpacity 
+                style={styles.dismissButton}
+                onPress={() => setShowLatestReading(false)}
+              >
+                <Text style={styles.dismissButtonText}>Dismiss</Text>
+              </TouchableOpacity>
+            )}
+            onSwipeableRightOpen={() => setShowLatestReading(false)}
+          >
+            <Card variant="elevated">
+              <View style={styles.latestReadingHeader}>
+                <Text style={styles.sectionTitle}>Latest Reading</Text>
+                <Text style={styles.timeSinceText}>{formatTimeSince(latestSugarReading.timestamp)}</Text>
+              </View>
+              
               <View style={styles.readingContent}>
                 <View style={styles.readingValueContainer}>
-                  <Text style={styles.readingValue}>{latestSugarReading.value}</Text>
+                  <Text style={[styles.readingValue, { color: getReadingColor(latestSugarReading.value) }]}>
+                    {latestSugarReading.value}
+                  </Text>
                   <Text style={styles.readingUnit}>mg/dL</Text>
                 </View>
                 <TouchableOpacity
@@ -158,6 +201,18 @@ const DashboardScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
               
+              <View style={styles.crudButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.crudButton}
+                  onPress={() => navigation.navigate(ROUTES.ADD_GLUCOSE, { 
+                    readingId: latestSugarReading.id,
+                    initialData: latestSugarReading
+                  })}
+                >
+                  <Text style={styles.crudButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+              
               {/* Insulin Button */}
               <TouchableOpacity
                 style={styles.insulinButton}
@@ -165,8 +220,21 @@ const DashboardScreen: React.FC = () => {
               >
                 <Text style={styles.insulinButtonText}>Log Insulin</Text>
               </TouchableOpacity>
-            </>
-          ) : (
+            </Card>
+          </Swipeable>
+        )}
+
+        {!showLatestReading && latestSugarReading && (
+          <TouchableOpacity 
+            style={styles.showLatestButton}
+            onPress={() => setShowLatestReading(true)}
+          >
+            <Text style={styles.showLatestButtonText}>Show Latest Reading</Text>
+          </TouchableOpacity>
+        )}
+
+        {!latestSugarReading && (
+          <Card variant="elevated">
             <View style={styles.noReadingContainer}>
               <Text style={styles.noReadingText}>No readings yet</Text>
               <TouchableOpacity
@@ -176,8 +244,8 @@ const DashboardScreen: React.FC = () => {
                 <Text style={styles.addFirstButtonText}>Add First Reading</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </Card>
+          </Card>
+        )}
 
         {/* Glucose Chart */}
         <View style={styles.chartContainer}>
@@ -639,6 +707,99 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontWeight: '500',
     fontSize: 14,
+  },
+  crudButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  crudButton: {
+    padding: SIZES.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.xs,
+  },
+  crudButtonText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  deleteButton: {
+    backgroundColor: COLORS.danger,
+  },
+  recentReadingsCard: {
+    marginTop: SIZES.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  recentReadingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  recentReadingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentReadingValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  recentReadingTime: {
+    fontSize: 12,
+    color: COLORS.lightText,
+    marginLeft: SIZES.sm,
+  },
+  recentReadingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentReadingButton: {
+    padding: SIZES.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.xs,
+  },
+  recentReadingButtonText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  recentReadingContext: {
+    fontSize: 12,
+    color: COLORS.lightText,
+  },
+  timeSinceText: {
+    fontSize: 14,
+    color: COLORS.lightText,
+  },
+  dismissButton: {
+    backgroundColor: COLORS.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: '100%',
+  },
+  dismissButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  showLatestButton: {
+    backgroundColor: COLORS.primary,
+    padding: SIZES.sm,
+    borderRadius: SIZES.sm,
+    alignItems: 'center',
+    marginBottom: SIZES.md,
+  },
+  showLatestButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

@@ -10,12 +10,15 @@ import {
   TextInput,
   ScrollView,
   Modal,
-  Platform
+  Platform,
+  Alert,
+  StyleProp,
+  TextStyle
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, ROUTES } from '../../constants';
+import { COLORS, SIZES, ROUTES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
 import { 
   getBloodSugarReadings, 
@@ -24,7 +27,12 @@ import {
   deleteBloodSugarReading,
   getA1CReadings,
   getWeightMeasurements,
-  getBloodPressureReadings
+  getBloodPressureReadings,
+  deleteInsulinDose,
+  deleteFoodEntry,
+  deleteA1CReading,
+  deleteWeightMeasurement,
+  deleteBloodPressureReading
 } from '../../services/databaseFix';
 import { formatDate, formatTime, getStartOfDay, dateToTimestamp } from '../../utils/dateUtils';
 import { useApp } from '../../contexts/AppContext';
@@ -34,7 +42,7 @@ import Button from '../../components/Button';
 
 // Health log entry types
 type LogEntryType = 'blood_sugar' | 'insulin' | 'food' | 'a1c' | 'weight' | 'bp' | 'all';
-type TimeRange = '3d' | '7d' | '14d' | '30d' | '90d';
+type TimeRange = '3d' | '7d' | '14d' | '30d' | '90d' | 'all';
 
 // Combined log entry type for the unified log
 interface HealthLogEntry {
@@ -54,6 +62,18 @@ interface StatsData {
   priorAvg: number | null;
   low: number | null;
   high: number | null;
+}
+
+interface LogEntry {
+  id: number;
+  type: LogEntryType;
+  date: number;
+  value: number | string;
+  secondaryValue?: number | string;
+  context?: string;
+  color: string;
+  icon: any; // Change from string to any to avoid type errors with Ionicons
+  notes?: string;
 }
 
 const SugarLogScreen: React.FC = () => {
@@ -118,8 +138,47 @@ const SugarLogScreen: React.FC = () => {
         icon: 'restaurant-outline'
       }));
       
+      // Fetch weight measurements
+      const weightData = await getWeightMeasurements();
+      const weightEntries: HealthLogEntry[] = weightData.map(measurement => ({
+        id: measurement.id,
+        type: 'weight',
+        timestamp: measurement.timestamp,
+        primaryValue: measurement.value,
+        secondaryValue: 'lbs', // Assuming weight is in pounds
+        notes: measurement.notes,
+        color: '#3498DB', // Blue
+        icon: 'fitness-outline'
+      }));
+      
+      // Fetch A1C readings
+      const a1cData = await getA1CReadings();
+      const a1cEntries: HealthLogEntry[] = a1cData.map(reading => ({
+        id: reading.id,
+        type: 'a1c',
+        timestamp: reading.timestamp,
+        primaryValue: reading.value,
+        secondaryValue: '%',
+        notes: reading.notes,
+        color: '#9B59B6', // Purple
+        icon: 'pulse-outline'
+      }));
+      
+      // Fetch blood pressure readings
+      const bpData = await getBloodPressureReadings();
+      const bpEntries: HealthLogEntry[] = bpData.map(reading => ({
+        id: reading.id,
+        type: 'bp',
+        timestamp: reading.timestamp,
+        primaryValue: reading.systolic,
+        secondaryValue: reading.diastolic,
+        notes: reading.notes,
+        color: '#E74C3C', // Red
+        icon: 'heart-outline'
+      }));
+      
       // Combine all entries and sort by timestamp (newest first)
-      const combined = [...sugarEntries, ...insulinEntries, ...foodEntries]
+      const combined = [...sugarEntries, ...insulinEntries, ...foodEntries, ...weightEntries, ...a1cEntries, ...bpEntries]
         .sort((a, b) => b.timestamp - a.timestamp);
       
       setAllEntries(combined);
@@ -200,10 +259,10 @@ const SugarLogScreen: React.FC = () => {
 
   const filterEntriesByTimeAndType = (entries: HealthLogEntry[], timeRange: TimeRange, type: LogEntryType) => {
     // First filter by time range
-    const now = new Date();
-    const msPerDay = 24 * 60 * 60 * 1000;
-    let daysToLookBack: number;
+    const now = new Date().getTime();
+    let daysToLookBack: number = 0;
     
+    // Determine the number of days to look back based on time range
     switch (timeRange) {
       case '3d':
         daysToLookBack = 3;
@@ -220,12 +279,18 @@ const SugarLogScreen: React.FC = () => {
       case '90d':
         daysToLookBack = 90;
         break;
+      case 'all':
+        // For 'all', we'll return all entries without filtering by time
+        daysToLookBack = 365 * 10; // Set to a very large number (10 years)
+        break;
     }
     
-    const cutoffDate = now.getTime() - (daysToLookBack * msPerDay);
-    let timeFiltered = entries.filter(entry => entry.timestamp >= cutoffDate);
+    // Filter by time range first
+    let timeFiltered = entries.filter(entry => {
+      return (now - entry.timestamp) <= (daysToLookBack * 24 * 60 * 60 * 1000);
+    });
     
-    // Then filter by type if not "all"
+    // Then filter by type if not 'all'
     if (type !== 'all') {
       timeFiltered = timeFiltered.filter(entry => entry.type === type);
     }
@@ -246,11 +311,14 @@ const SugarLogScreen: React.FC = () => {
       });
     }
     
-    setFilteredEntries(timeFiltered);
+    return timeFiltered;
   };
 
   const handleTimeRangeSelect = (timeRange: TimeRange) => {
     setSelectedTimeRange(timeRange);
+    
+    const filtered = filterEntriesByTimeAndType(allEntries, timeRange, selectedFilter);
+    setFilteredEntries(filtered);
   };
 
   const handleSearch = (text: string) => {
@@ -260,7 +328,45 @@ const SugarLogScreen: React.FC = () => {
   const handleDelete = (entryId: number, entryType: string) => {
     // Implementation of delete functionality will depend on the entry type
     // For now, just show an alert
-    alert(`Delete ${entryType} entry with ID ${entryId}`);
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to delete this entry?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              switch (entryType) {
+                case 'blood_sugar':
+                  await deleteBloodSugarReading(entryId);
+                  break;
+                case 'insulin':
+                  await deleteInsulinDose(entryId);
+                  break;
+                case 'food':
+                  await deleteFoodEntry(entryId);
+                  break;
+                case 'a1c':
+                  await deleteA1CReading(entryId);
+                  break;
+                case 'weight':
+                  await deleteWeightMeasurement(entryId);
+                  break;
+                case 'bp':
+                  await deleteBloodPressureReading(entryId);
+                  break;
+              }
+              fetchHealthData(); // Refresh data after deletion
+            } catch (error) {
+              console.error('Error deleting entry:', error);
+              Alert.alert('Error', 'Failed to delete entry.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleEdit = (entry: HealthLogEntry) => {
@@ -306,100 +412,179 @@ const SugarLogScreen: React.FC = () => {
   };
 
   const handleAddReading = () => {
-    // Navigate to the appropriate screen based on the selected filter
-    switch (selectedFilter) {
-      case 'blood_sugar':
-        navigation.navigate('Home', { screen: ROUTES.ADD_GLUCOSE });
-        break;
-      case 'insulin':
-        navigation.navigate('Home', { screen: ROUTES.ADD_INSULIN });
-        break;
-      case 'food':
-        navigation.navigate('Home', { screen: ROUTES.ADD_FOOD });
-        break;
-      case 'a1c':
-        navigation.navigate('Home', { screen: ROUTES.ADD_A1C });
-        break;
-      case 'weight':
-        navigation.navigate('Home', { screen: ROUTES.ADD_WEIGHT });
-        break;
-      case 'bp':
-        navigation.navigate('Home', { screen: ROUTES.ADD_BP });
-        break;
-      default:
-        navigation.navigate('Home', { screen: ROUTES.ADD_GLUCOSE });
-    }
+    // Show the quick actions modal instead of direct navigation
+    setShowQuickActions(true);
   };
 
   const renderItem = ({ item }: { item: HealthLogEntry }) => {
+    // Format the date and time
+    const date = new Date(item.timestamp);
+    const formattedDate = formatDate(date);
+    const formattedTime = formatTime(date);
+    
+    // Format the value based on the type
+    let valueDisplay = 
+      typeof item.primaryValue === 'number' 
+        ? item.primaryValue.toString() 
+        : item.primaryValue;
+    
+    let secondaryDisplay = '';
+    
+    // Get color for blood sugar values
+    const getBloodSugarColor = (value: number) => {
+      if (value < NORMAL_SUGAR_MIN) {
+        return COLORS.danger; // Low
+      } else if (value > NORMAL_SUGAR_MAX) {
+        return COLORS.warning; // High
+      } else {
+        return COLORS.success; // Normal
+      }
+    };
+    
+    // Set text color based on entry type
+    let valueTextStyle: StyleProp<TextStyle> = styles.entryValue;
+    if (item.type === 'blood_sugar') {
+      const numericValue = typeof item.primaryValue === 'number' 
+        ? item.primaryValue 
+        : parseFloat(item.primaryValue.toString());
+      
+      valueTextStyle = {
+        ...styles.entryValue,
+        color: getBloodSugarColor(numericValue)
+      };
+    }
+    
+    // Handle special formatting for blood pressure
+    if (item.type === 'bp') {
+      valueDisplay = `${item.primaryValue}/${item.secondaryValue} mmHg`;
+      secondaryDisplay = '';
+    } else if (item.secondaryValue) {
+      secondaryDisplay = ` • ${item.secondaryValue}`;
+    }
+      
+    let contextDisplay = item.context 
+      ? ` • ${item.context}`
+      : '';
+      
+    // Handle the click on an entry to edit/view
+    const handleEntryPress = () => {
+      switch (item.type) {
+        case 'blood_sugar':
+          navigation.navigate('Home', { screen: 'AddGlucose', params: { 
+            readingId: item.id, 
+            initialData: {
+              id: item.id,
+              value: typeof item.primaryValue === 'number' ? item.primaryValue : parseFloat(item.primaryValue as string),
+              timestamp: item.timestamp,
+              context: item.context,
+              notes: item.notes
+            }
+          }});
+          break;
+        case 'insulin':
+          navigation.navigate('Home', { screen: 'AddInsulin', params: {
+            doseId: item.id,
+            initialData: {
+              id: item.id,
+              units: typeof item.primaryValue === 'number' ? item.primaryValue : parseFloat(item.primaryValue as string),
+              type: typeof item.secondaryValue === 'string' ? item.secondaryValue : 'rapid',
+              timestamp: item.timestamp,
+              notes: item.notes
+            }
+          }});
+          break;
+        case 'food':
+          navigation.navigate('Home', { screen: 'AddFood', params: {
+            entryId: item.id,
+            initialData: {
+              id: item.id,
+              name: item.primaryValue.toString(),
+              carbs: typeof item.secondaryValue === 'number' ? item.secondaryValue : 
+                (item.secondaryValue ? parseFloat(item.secondaryValue.toString()) : null),
+              timestamp: item.timestamp,
+              notes: item.notes
+            }
+          }});
+          break;
+        case 'weight':
+          navigation.navigate('Home', { screen: 'AddWeight', params: {
+            measurementId: item.id,
+            initialData: {
+              id: item.id,
+              value: typeof item.primaryValue === 'number' ? item.primaryValue : parseFloat(item.primaryValue as string),
+              timestamp: item.timestamp,
+              notes: item.notes
+            }
+          }});
+          break;
+        case 'a1c':
+          navigation.navigate('Home', { screen: 'AddA1C', params: {
+            readingId: item.id,
+            initialData: {
+              id: item.id,
+              value: typeof item.primaryValue === 'number' ? item.primaryValue : parseFloat(item.primaryValue as string),
+              timestamp: item.timestamp,
+              notes: item.notes
+            }
+          }});
+          break;
+        case 'bp':
+          // For blood pressure, the primaryValue would be systolic and secondaryValue diastolic
+          navigation.navigate('Home', { screen: 'AddBloodPressure', params: {
+            readingId: item.id,
+            initialData: {
+              id: item.id,
+              systolic: typeof item.primaryValue === 'number' ? item.primaryValue : parseFloat(item.primaryValue as string),
+              diastolic: typeof item.secondaryValue === 'number' ? item.secondaryValue : 
+                (item.secondaryValue ? parseFloat(item.secondaryValue.toString()) : 0),
+              timestamp: item.timestamp,
+              notes: item.notes
+            }
+          }});
+          break;
+      }
+    };
+    
     return (
-      <Card variant="flat" style={styles.entryCard}>
-        <View style={styles.entryHeader}>
-          <View style={styles.entryDateContainer}>
-            <Text style={styles.entryDate}>{formatDate(new Date(item.timestamp))}</Text>
-            <Text style={styles.entryTime}>{formatTime(new Date(item.timestamp))}</Text>
-          </View>
-          <View style={styles.entryTypeContainer}>
-            <View style={[styles.entryTypeBadge, { backgroundColor: item.color }]}>
-              <Ionicons name={item.icon as any} size={14} color="white" />
-              <Text style={styles.entryTypeBadgeText}>
-                {item.type === 'blood_sugar' ? 'Blood Glucose' : 
-                 item.type === 'insulin' ? 'Insulin' : 
-                 item.type === 'food' ? 'Food' : 
-                 item.type === 'a1c' ? 'A1C' :
-                 item.type === 'weight' ? 'Weight' : 'BP'}
-              </Text>
+      <TouchableOpacity onPress={handleEntryPress}>
+        <Card style={styles.entryCard}>
+          <View style={styles.entryHeader}>
+            <View>
+              <Text style={styles.entryDate}>{formattedDate}</Text>
+              <Text style={styles.entryTime}>{formattedTime}</Text>
+            </View>
+            
+            <View style={styles.entryType}>
+              <View style={[styles.entryTypeBadge, { backgroundColor: item.color }]}>
+                <Ionicons name={item.icon as any} size={16} color="white" />
+                <Text style={styles.entryTypeText}>{item.type.replace('_', ' ')}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.entryActions}>
+              <TouchableOpacity onPress={handleEntryPress} style={styles.actionButton}>
+                <Ionicons name="pencil" size={20} color={COLORS.primary} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => handleDelete(item.id, item.type)} style={styles.actionButton}>
+                <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.entryActions}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => handleEdit(item)}
-            >
-              <Ionicons name="pencil" size={18} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => handleDelete(item.id, item.type)}
-            >
-              <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-            </TouchableOpacity>
+          
+          <View style={styles.entryContent}>
+            <Text style={valueTextStyle}>{valueDisplay}{secondaryDisplay}{contextDisplay}</Text>
+            {item.notes && <Text style={styles.entryNotes}>{item.notes}</Text>}
           </View>
-        </View>
-        
-        <View style={styles.entryContent}>
-          {item.type === 'blood_sugar' && (
-            <Text style={[styles.entryValue, { color: Number(item.primaryValue) > 180 || Number(item.primaryValue) < 70 ? COLORS.warning : COLORS.success }]}>
-              {item.primaryValue} {userSettings?.units || 'mg/dL'}
-              {item.context && <Text style={styles.entryContext}> • {item.context.replace('_', ' ')}</Text>}
-            </Text>
-          )}
-          
-          {item.type === 'insulin' && (
-            <Text style={styles.entryValue}>
-              {item.primaryValue} units {item.secondaryValue && `(${item.secondaryValue})`}
-            </Text>
-          )}
-          
-          {item.type === 'food' && (
-            <Text style={styles.entryValue}>
-              {item.primaryValue}
-              {item.secondaryValue && <Text style={styles.entrySecondary}> • {item.secondaryValue}g carbs</Text>}
-            </Text>
-          )}
-          
-          {item.notes && (
-            <Text style={styles.entryNotes}>{item.notes}</Text>
-          )}
-        </View>
-      </Card>
+        </Card>
+      </TouchableOpacity>
     );
   };
   
   const renderTimeRangeSelector = () => {
     return (
       <View style={styles.timeRangeContainer}>
-        {(['3d', '7d', '14d', '30d', '90d'] as TimeRange[]).map((range) => (
+        {(['3d', '7d', '14d', '30d', '90d', 'all'] as TimeRange[]).map((range) => (
           <TouchableOpacity
             key={range}
             style={[
@@ -412,7 +597,7 @@ const SugarLogScreen: React.FC = () => {
               styles.timeRangeButtonText,
               selectedTimeRange === range && styles.timeRangeButtonTextActive
             ]}>
-              {range.toUpperCase()}
+              {range === 'all' ? 'ALL' : range.toUpperCase()}
             </Text>
           </TouchableOpacity>
         ))}
@@ -450,14 +635,14 @@ const SugarLogScreen: React.FC = () => {
       <TouchableOpacity
         style={[
           styles.filterChip,
-          selectedFilter === filter && styles.filterChipSelected
+          selectedFilter === filter && styles.activeFilterChip
         ]}
         onPress={() => applyFilter(filter)}
       >
         <Text
           style={[
             styles.filterChipText,
-            selectedFilter === filter && styles.filterChipTextSelected
+            selectedFilter === filter && styles.activeFilterChipText
           ]}
         >
           {label}
@@ -620,10 +805,12 @@ const SugarLogScreen: React.FC = () => {
             contentContainerStyle={styles.filterScrollContent}
           >
             {renderFilterChip('All', 'all')}
-            {renderFilterChip('Blood Glucose', 'blood_sugar')}
+            {renderFilterChip('Blood Sugar', 'blood_sugar')}
             {renderFilterChip('Insulin', 'insulin')}
             {renderFilterChip('Food', 'food')}
+            {renderFilterChip('Weight', 'weight')}
             {renderFilterChip('A1C', 'a1c')}
+            {renderFilterChip('Blood Pressure', 'bp')}
           </ScrollView>
         </View>
       </View>
@@ -682,11 +869,22 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 50,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    borderRadius: 25,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    zIndex: 100,
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 4,
+    fontSize: 14,
   },
   timeRangeContainer: {
     flexDirection: 'row',
@@ -767,7 +965,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 80,
   },
-  filterChipSelected: {
+  activeFilterChip: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
@@ -776,7 +974,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
-  filterChipTextSelected: {
+  activeFilterChipText: {
     color: 'white',
   },
   searchContainer: {
@@ -835,72 +1033,60 @@ const styles = StyleSheet.create({
   },
   entryCard: {
     marginBottom: SIZES.sm,
+    borderRadius: SIZES.xs,
+    overflow: 'hidden',
+    padding: SIZES.sm,
   },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: SIZES.xs,
-  },
-  entryDateContainer: {
-    flex: 1,
   },
   entryDate: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: COLORS.text,
   },
   entryTime: {
     fontSize: 12,
     color: COLORS.lightText,
   },
-  entryTypeContainer: {
-    flex: 1,
-    alignItems: 'center',
+  entryType: {
+    flexDirection: 'row',
   },
   entryTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SIZES.xs,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: SIZES.xs,
   },
-  entryTypeBadgeText: {
-    fontSize: 10,
+  entryTypeText: {
+    fontSize: 12,
     color: 'white',
-    fontWeight: '500',
-    marginLeft: 2,
+    marginLeft: 4,
+    textTransform: 'capitalize',
   },
   entryActions: {
     flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'flex-end',
   },
   actionButton: {
-    padding: 4,
+    padding: 6,
     marginLeft: SIZES.xs,
   },
   entryContent: {
-    flexDirection: 'column',
+    marginTop: SIZES.xs,
   },
   entryValue: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
     color: COLORS.text,
-    marginBottom: 2,
-  },
-  entrySecondary: {
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
-  entryContext: {
-    fontSize: 14,
-    color: COLORS.lightText,
   },
   entryNotes: {
-    fontSize: 12,
+    fontSize: 14,
     color: COLORS.lightText,
-    marginTop: 2,
+    marginTop: 4,
   },
   modalOverlay: {
     flex: 1,
@@ -950,10 +1136,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.text,
     textAlign: 'center',
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
 });
 

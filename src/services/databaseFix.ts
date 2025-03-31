@@ -8,12 +8,15 @@ type SQLResultSet = any;
 type SQLError = any;
 
 // Open database using the correct method for Expo SQLite v15+
-const db = SQLite.openDatabaseSync('sugari.db');
+// Moving this inside each function to ensure it's initialized properly
+// const db = SQLite.openDatabaseSync('sugari.db');
 
 // Initialize the database by creating all necessary tables
 export const initDatabase = async (): Promise<void> => {
   return new Promise(async (resolve, reject) => {
     try {
+      const db = getDatabase();
+      
       // Create user_settings table
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS user_settings (
@@ -112,9 +115,15 @@ export const initDatabase = async (): Promise<void> => {
   });
 };
 
+// Helper function to get database instance
+const getDatabase = () => {
+  return SQLite.openDatabaseSync('sugari.db');
+};
+
 // User Settings functions
 export const getUserSettings = async (): Promise<UserSettings> => {
   try {
+    const db = getDatabase();
     // Try to get existing settings
     const result = await db.getAllAsync<any>('SELECT * FROM user_settings LIMIT 1');
     
@@ -161,6 +170,7 @@ export const getUserSettings = async (): Promise<UserSettings> => {
 
 export const updateUserSettings = async (settings: Partial<UserSettings>): Promise<void> => {
   try {
+    const db = getDatabase();
     const updates: string[] = [];
     const args: any[] = [];
 
@@ -210,6 +220,7 @@ export const updateUserSettings = async (settings: Partial<UserSettings>): Promi
 // Blood Sugar Reading functions
 export const addBloodSugarReading = async (reading: Omit<BloodSugarReading, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO blood_sugar_readings (value, timestamp, context, notes) VALUES (?, ?, ?, ?)',
       [reading.value, reading.timestamp, reading.context || null, reading.notes || null]
@@ -223,6 +234,7 @@ export const addBloodSugarReading = async (reading: Omit<BloodSugarReading, 'id'
 
 export const updateBloodSugarReading = async (id: number, reading: Partial<BloodSugarReading>): Promise<void> => {
   try {
+    const db = getDatabase();
     const updates: string[] = [];
     const args: any[] = [];
 
@@ -261,6 +273,7 @@ export const updateBloodSugarReading = async (id: number, reading: Partial<Blood
 
 export const deleteBloodSugarReading = async (id: number): Promise<void> => {
   try {
+    const db = getDatabase();
     await db.runAsync('DELETE FROM blood_sugar_readings WHERE id = ?', [id]);
   } catch (error) {
     console.error('Error deleting blood sugar reading:', error);
@@ -270,6 +283,7 @@ export const deleteBloodSugarReading = async (id: number): Promise<void> => {
 
 export const getBloodSugarReadings = async (limit?: number): Promise<BloodSugarReading[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM blood_sugar_readings ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -297,6 +311,7 @@ export const getBloodSugarReadings = async (limit?: number): Promise<BloodSugarR
 
 export const getBloodSugarReadingsForTimeRange = async (startTime: number, endTime: number): Promise<BloodSugarReading[]> => {
   try {
+    const db = getDatabase();
     const result = await db.getAllAsync<any>(
       'SELECT * FROM blood_sugar_readings WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC',
       [startTime, endTime]
@@ -326,6 +341,7 @@ export const getBloodSugarReadingsForCurrentWeek = async (): Promise<BloodSugarR
 // Food Entry functions
 export const addFoodEntry = async (entry: Omit<FoodEntry, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO food_entries (name, carbs, timestamp, notes) VALUES (?, ?, ?, ?)',
       [entry.name, entry.carbs || null, entry.timestamp, entry.notes || null]
@@ -339,6 +355,7 @@ export const addFoodEntry = async (entry: Omit<FoodEntry, 'id'>): Promise<number
 
 export const getFoodEntries = async (limit?: number): Promise<FoodEntry[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM food_entries ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -360,13 +377,24 @@ export const getFoodEntries = async (limit?: number): Promise<FoodEntry[]> => {
     return entries;
   } catch (error) {
     console.error('Error getting food entries:', error);
-    return [];  // Return empty array instead of rejecting
+    throw error;
+  }
+};
+
+export const deleteFoodEntry = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    await db.runAsync('DELETE FROM food_entries WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting food entry:', error);
+    throw error;
   }
 };
 
 // Insulin Dose functions
 export const addInsulinDose = async (dose: Omit<InsulinDose, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO insulin_doses (units, type, timestamp, notes) VALUES (?, ?, ?, ?)',
       [dose.units, dose.type, dose.timestamp, dose.notes || null]
@@ -380,6 +408,7 @@ export const addInsulinDose = async (dose: Omit<InsulinDose, 'id'>): Promise<num
 
 export const getInsulinDoses = async (limit?: number): Promise<InsulinDose[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM insulin_doses ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -401,13 +430,24 @@ export const getInsulinDoses = async (limit?: number): Promise<InsulinDose[]> =>
     return doses;
   } catch (error) {
     console.error('Error getting insulin doses:', error);
-    return [];  // Return empty array instead of rejecting
+    throw error;
+  }
+};
+
+export const deleteInsulinDose = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    await db.runAsync('DELETE FROM insulin_doses WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting insulin dose:', error);
+    throw error;
   }
 };
 
 // A1C functions
 export const addA1CReading = async (reading: Omit<A1CReading, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO a1c_readings (value, timestamp, notes) VALUES (?, ?, ?)',
       [reading.value, reading.timestamp, reading.notes || null]
@@ -421,6 +461,7 @@ export const addA1CReading = async (reading: Omit<A1CReading, 'id'>): Promise<nu
 
 export const getA1CReadings = async (limit?: number): Promise<A1CReading[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM a1c_readings ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -441,13 +482,24 @@ export const getA1CReadings = async (limit?: number): Promise<A1CReading[]> => {
     return readings;
   } catch (error) {
     console.error('Error getting A1C readings:', error);
-    return [];  // Return empty array instead of rejecting
+    throw error;
+  }
+};
+
+export const deleteA1CReading = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    await db.runAsync('DELETE FROM a1c_readings WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting A1C reading:', error);
+    throw error;
   }
 };
 
 // Weight functions
 export const addWeightMeasurement = async (measurement: Omit<WeightMeasurement, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO weight_measurements (value, timestamp, notes) VALUES (?, ?, ?)',
       [measurement.value, measurement.timestamp, measurement.notes || null]
@@ -461,6 +513,7 @@ export const addWeightMeasurement = async (measurement: Omit<WeightMeasurement, 
 
 export const getWeightMeasurements = async (limit?: number): Promise<WeightMeasurement[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM weight_measurements ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -481,13 +534,24 @@ export const getWeightMeasurements = async (limit?: number): Promise<WeightMeasu
     return measurements;
   } catch (error) {
     console.error('Error getting weight measurements:', error);
-    return [];  // Return empty array instead of rejecting
+    throw error;
+  }
+};
+
+export const deleteWeightMeasurement = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    await db.runAsync('DELETE FROM weight_measurements WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting weight measurement:', error);
+    throw error;
   }
 };
 
 // Blood Pressure functions
 export const addBloodPressureReading = async (reading: Omit<BloodPressureReading, 'id'>): Promise<number> => {
   try {
+    const db = getDatabase();
     const result = await db.runAsync(
       'INSERT INTO blood_pressure_readings (systolic, diastolic, timestamp, notes) VALUES (?, ?, ?, ?)',
       [reading.systolic, reading.diastolic, reading.timestamp, reading.notes || null]
@@ -499,8 +563,48 @@ export const addBloodPressureReading = async (reading: Omit<BloodPressureReading
   }
 };
 
+export const updateBloodPressureReading = async (id: number, reading: Partial<BloodPressureReading>): Promise<void> => {
+  try {
+    const db = getDatabase();
+    const updates: string[] = [];
+    const args: any[] = [];
+    
+    if (reading.systolic !== undefined) {
+      updates.push('systolic = ?');
+      args.push(reading.systolic);
+    }
+    if (reading.diastolic !== undefined) {
+      updates.push('diastolic = ?');
+      args.push(reading.diastolic);
+    }
+    if (reading.timestamp !== undefined) {
+      updates.push('timestamp = ?');
+      args.push(reading.timestamp);
+    }
+    if (reading.notes !== undefined) {
+      updates.push('notes = ?');
+      args.push(reading.notes);
+    }
+    
+    if (updates.length === 0) {
+      return;
+    }
+    
+    args.push(id);
+    
+    await db.runAsync(
+      `UPDATE blood_pressure_readings SET ${updates.join(', ')} WHERE id = ?`,
+      args
+    );
+  } catch (error) {
+    console.error('Error updating blood pressure reading:', error);
+    throw error;
+  }
+};
+
 export const getBloodPressureReadings = async (limit?: number): Promise<BloodPressureReading[]> => {
   try {
+    const db = getDatabase();
     let sql = 'SELECT * FROM blood_pressure_readings ORDER BY timestamp DESC';
     const params: any[] = [];
     
@@ -522,6 +626,39 @@ export const getBloodPressureReadings = async (limit?: number): Promise<BloodPre
     return readings;
   } catch (error) {
     console.error('Error getting blood pressure readings:', error);
-    return [];  // Return empty array instead of rejecting
+    throw error;
+  }
+};
+
+export const deleteBloodPressureReading = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    await db.runAsync('DELETE FROM blood_pressure_readings WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting blood pressure reading:', error);
+    throw error;
+  }
+};
+
+export const getBloodPressureReadingsForTimeRange = async (startTime: number, endTime: number): Promise<BloodPressureReading[]> => {
+  try {
+    const db = getDatabase();
+    const result = await db.getAllAsync<any>(
+      'SELECT * FROM blood_pressure_readings WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC',
+      [startTime, endTime]
+    );
+    
+    const readings: BloodPressureReading[] = result.map(row => ({
+      id: row.id,
+      systolic: row.systolic,
+      diastolic: row.diastolic,
+      timestamp: row.timestamp,
+      notes: row.notes
+    }));
+    
+    return readings;
+  } catch (error) {
+    console.error('Error getting blood pressure readings for time range:', error);
+    throw error;
   }
 }; 

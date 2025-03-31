@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS, SIZES } from '../../constants';
-import { addBloodPressureReading } from '../../services/databaseFix';
+import { useForm, Controller } from 'react-hook-form';
+import { COLORS, SIZES, ROUTES } from '../../constants';
+import { addBloodPressureReading, updateBloodPressureReading } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { BloodPressureReading } from '../../types';
 
-const AddBloodPressureScreen: React.FC = () => {
+type RouteParams = {
+  readingId?: number;
+  initialData?: BloodPressureReading;
+};
+
+const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteParams>, string> }> = ({ route }) => {
   const navigation = useNavigation<StackNavigationProp<any>>();
-  const [systolic, setSystolic] = useState('');
-  const [diastolic, setDiastolic] = useState('');
-  const [notes, setNotes] = useState('');
-  const [timestamp, setTimestamp] = useState(new Date());
+  const initialData = route?.params?.initialData;
+  const isEditing = !!initialData;
+  
+  const [systolic, setSystolic] = useState(initialData ? initialData.systolic.toString() : '');
+  const [diastolic, setDiastolic] = useState(initialData ? initialData.diastolic.toString() : '');
+  const [notes, setNotes] = useState(initialData?.notes || '');
+  const [timestamp, setTimestamp] = useState(initialData ? new Date(initialData.timestamp) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,42 +40,39 @@ const AddBloodPressureScreen: React.FC = () => {
     const diastolicValue = parseInt(diastolic, 10);
 
     if (isNaN(systolicValue) || systolicValue < 60 || systolicValue > 250) {
-      Alert.alert('Error', 'Please enter a valid systolic value (60-250 mmHg)');
+      Alert.alert('Error', 'Please enter a valid systolic value between 60 and 250');
       return;
     }
 
-    if (isNaN(diastolicValue) || diastolicValue < 40 || diastolicValue > 180) {
-      Alert.alert('Error', 'Please enter a valid diastolic value (40-180 mmHg)');
+    if (isNaN(diastolicValue) || diastolicValue < 40 || diastolicValue > 150) {
+      Alert.alert('Error', 'Please enter a valid diastolic value between 40 and 150');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await addBloodPressureReading({
+      const readingData = {
         systolic: systolicValue,
         diastolic: diastolicValue,
         timestamp: timestamp.getTime(),
         notes: notes.trim() || null
-      });
+      };
+      
+      if (isEditing && initialData) {
+        // Update existing reading
+        await updateBloodPressureReading(initialData.id, readingData);
+      } else {
+        // Add new reading
+        await addBloodPressureReading(readingData);
+      }
 
-      Alert.alert(
-        'Success',
-        'Blood pressure reading saved successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Clear form and navigate back
-              setSystolic('');
-              setDiastolic('');
-              setNotes('');
-              setTimestamp(new Date());
-              navigation.goBack();
-            }
-          }
-        ]
-      );
+      // Reset form and navigate directly to log screen
+      setSystolic('');
+      setDiastolic('');
+      setNotes('');
+      setTimestamp(new Date());
+      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
     } catch (error) {
       console.error('Error saving blood pressure reading:', error);
       Alert.alert('Error', 'Failed to save blood pressure reading. Please try again.');
@@ -126,8 +133,14 @@ const AddBloodPressureScreen: React.FC = () => {
     });
   };
 
+  const dateTimePickerStyle = Platform.OS === 'ios' ? {
+    alignSelf: 'center' as const,
+    marginBottom: SIZES.md,
+    width: '100%' as unknown as number
+  } : {};
+
   return (
-    <Container>
+    <Container keyboardAvoiding={true}>
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
@@ -135,7 +148,7 @@ const AddBloodPressureScreen: React.FC = () => {
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Log Blood Pressure</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Blood Pressure' : 'Log Blood Pressure'}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -176,24 +189,61 @@ const AddBloodPressureScreen: React.FC = () => {
         </View>
 
         {showDatePicker && (
-          <DateTimePicker
-            value={timestamp}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-            maximumDate={new Date()}
-            textColor={COLORS.text}
-          />
+          <View style={dateTimePickerStyle}>
+            <DateTimePicker
+              value={timestamp}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
+            <View style={styles.pickerButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.cancelPickerButton]} 
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.okPickerButton]} 
+                onPress={() => {
+                  // Just close the picker as the onChange event already updates the value
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={styles.okPickerButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {showTimePicker && (
-          <DateTimePicker
-            value={timestamp}
-            mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onTimeChange}
-            textColor={COLORS.text}
-          />
+          <View style={dateTimePickerStyle}>
+            <DateTimePicker
+              value={timestamp}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onTimeChange}
+              is24Hour={false}
+            />
+            <View style={styles.pickerButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.cancelPickerButton]} 
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.pickerButton, styles.okPickerButton]} 
+                onPress={() => {
+                  // Just close the picker as the onChange event already updates the value
+                  setShowTimePicker(false);
+                }}
+              >
+                <Text style={styles.okPickerButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
       </View>
 
@@ -211,7 +261,7 @@ const AddBloodPressureScreen: React.FC = () => {
 
       <View style={styles.footer}>
         <Button
-          title="Save Blood Pressure"
+          title={isEditing ? "Update Blood Pressure" : "Save Blood Pressure"}
           onPress={handleSubmit}
           disabled={!systolic || !diastolic || isSubmitting}
           loading={isSubmitting}
@@ -294,6 +344,31 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: COLORS.primary,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
   },
 });
 

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading } from '../../types';
-import { getBloodSugarReadings } from '../../services/database';
+import { getBloodSugarReadings } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import GlucoseChart from '../../components/GlucoseChart';
@@ -560,7 +560,7 @@ const AnalyticsScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Glucose Chart */}
           <Card variant="elevated" style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Blood Sugar Trends</Text>
+            <Text style={styles.chartTitle}>Blood Glucose Trends</Text>
             <GlucoseChart data={filteredReadings} timeRange={timeRange} />
           </Card>
           

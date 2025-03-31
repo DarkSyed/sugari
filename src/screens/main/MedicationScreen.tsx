@@ -283,7 +283,7 @@ const MedicationScreen: React.FC = () => {
       transparent={false}
       onRequestClose={() => setShowAddModal(false)}
     >
-      <Container>
+      <Container scrollable={true}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setShowAddModal(false)}>
             <Ionicons name="close" size={24} color={COLORS.text} />
@@ -514,7 +514,7 @@ const MedicationScreen: React.FC = () => {
   );
 
   return (
-    <Container>
+    <Container scrollable={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Medication Log</Text>
         <Button 

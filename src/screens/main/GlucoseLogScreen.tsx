@@ -19,7 +19,7 @@ import Card from '../../components/Card';
 import {
   getBloodSugarReadings,
   deleteBloodSugarReading
-} from '../../services/database';
+} from '../../services/databaseFix';
 import { formatDate, formatTime } from '../../utils/dateUtils';
 import { BloodSugarReading } from '../../types';
 
@@ -428,6 +428,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden'
   },
   tabContainer: {
     flexDirection: 'row',

@@ -155,11 +155,14 @@ export const getAIPoweredInsights = async (
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     
-    // For MVP, we'll use rule-based insights
+    // NOTE: This is a placeholder for a real AI API integration
+    // In production, this would call an external API that would analyze each user's unique data
+    // The rule-based analysis below is just a temporary solution until the AI API is integrated
     return analyzeGlucoseReadings(combinedReadings, foodEntries, insulinDoses, userSettings);
 
     /* 
-    // OpenAI API integration (future implementation)
+    // Example of how the OpenAI API integration would work
+    // This would be personalized for each user based on their actual data
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
