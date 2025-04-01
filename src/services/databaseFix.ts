@@ -661,4 +661,38 @@ export const getBloodPressureReadingsForTimeRange = async (startTime: number, en
     console.error('Error getting blood pressure readings for time range:', error);
     throw error;
   }
+};
+
+/**
+ * Reset the database by dropping all tables and reinitializing them
+ */
+export const resetDatabase = async (): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('Resetting database...');
+    const db = getDatabase();
+    
+    // Drop all tables
+    await db.runAsync('DROP TABLE IF EXISTS user_settings');
+    await db.runAsync('DROP TABLE IF EXISTS blood_sugar_readings');
+    await db.runAsync('DROP TABLE IF EXISTS food_entries');
+    await db.runAsync('DROP TABLE IF EXISTS insulin_doses');
+    await db.runAsync('DROP TABLE IF EXISTS a1c_readings');
+    await db.runAsync('DROP TABLE IF EXISTS weight_measurements');
+    await db.runAsync('DROP TABLE IF EXISTS blood_pressure_readings');
+    
+    // Reinitialize the database with empty tables
+    await initDatabase();
+    
+    console.log('Database reset successfully');
+    return { 
+      success: true, 
+      message: 'Database has been reset successfully. All data has been cleared.' 
+    };
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    return { 
+      success: false, 
+      message: `Failed to reset database: ${error}` 
+    };
+  }
 }; 

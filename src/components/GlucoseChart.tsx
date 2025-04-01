@@ -104,8 +104,6 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
   return (
     <Card variant="elevated" style={styles.cardWithoutPadding}>
       <View style={styles.container}>
-        <Text style={styles.title}>{title}</Text>
-        
         <LineChart
           data={{
             labels,

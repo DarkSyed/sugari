@@ -40,7 +40,23 @@ const DashboardStack = () => {
       }}
     >
       <Stack.Screen name={ROUTES.DASHBOARD} component={DashboardScreen} />
-      <Stack.Screen name={ROUTES.ADD_SUGAR} component={AddSugarScreen} />
+      <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
+      <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// SugarLog navigator
+const SugarLogStack = () => {
+  return (
+    <Stack.Navigator
+      initialRouteName={ROUTES.SUGAR_LOG}
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: 'white' },
+      }}
+    >
+      <Stack.Screen name={ROUTES.SUGAR_LOG} component={SugarLogScreen} />
       <Stack.Screen name={ROUTES.ADD_GLUCOSE} component={AddGlucoseScreen} />
       <Stack.Screen name={ROUTES.ADD_FOOD} component={AddFoodScreen} />
       <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />
@@ -48,8 +64,22 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_WEIGHT} component={AddWeightScreen} />
       <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
       <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
-      <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
-      <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// Medication navigator
+const MedicationStack = () => {
+  return (
+    <Stack.Navigator
+      initialRouteName={ROUTES.MEDICATION}
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: 'white' },
+      }}
+    >
+      <Stack.Screen name={ROUTES.MEDICATION} component={MedicationScreen} />
+      <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />
     </Stack.Navigator>
   );
 };
@@ -102,14 +132,14 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name={ROUTES.SUGAR_LOG}
-        component={SugarLogScreen}
+        component={SugarLogStack}
         options={{
           tabBarLabel: 'Sugar',
         }}
       />
       <Tab.Screen
         name={ROUTES.MEDICATION}
-        component={MedicationScreen}
+        component={MedicationStack}
         options={{
           tabBarLabel: 'Medication',
         }}
@@ -138,10 +168,10 @@ const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Show splash screen for 2 seconds
+    // Show splash screen only for the minimum time needed
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2000);
+    }, 500); // Reduced from 2000ms to 500ms
 
     return () => clearTimeout(timer);
   }, []);

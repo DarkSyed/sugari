@@ -174,11 +174,11 @@ const DashboardScreen: React.FC = () => {
               <TouchableOpacity 
                 style={styles.dismissButton}
                 onPress={() => setShowLatestReading(false)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.dismissButtonText}>Dismiss</Text>
               </TouchableOpacity>
             )}
-            onSwipeableRightOpen={() => setShowLatestReading(false)}
           >
             <Card variant="elevated">
               <View style={styles.latestReadingHeader}>
@@ -781,8 +781,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 100,
-    height: '100%',
+    width: 110,
+    height: '90%',
+    borderRadius: 20,
+    marginLeft: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   dismissButtonText: {
     color: 'white',

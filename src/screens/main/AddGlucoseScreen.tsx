@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
@@ -30,6 +30,8 @@ const AddGlucoseScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showMealContextPicker, setShowMealContextPicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
 
   const {
     control,
@@ -122,34 +124,50 @@ const AddGlucoseScreen: React.FC = () => {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    // Only close the picker and update the date when the user explicitly selects a date
-    if (event.type === 'set' && selectedDate) {
-      const currentTime = new Date(timestamp);
-      selectedDate.setHours(currentTime.getHours());
-      selectedDate.setMinutes(currentTime.getMinutes());
-      setTimestamp(selectedDate);
-      setShowDatePicker(false);
-    } else if (event.type === 'dismissed') {
-      setShowDatePicker(false);
+    // Don't update the timestamp for "change" events, only for "set" events
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedDate) {
+        const currentTime = new Date(timestamp);
+        selectedDate.setHours(currentTime.getHours());
+        selectedDate.setMinutes(currentTime.getMinutes());
+        setTimestamp(selectedDate);
+        setShowDatePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowDatePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedDate) {
+        const currentTime = new Date(timestamp);
+        selectedDate.setHours(currentTime.getHours());
+        selectedDate.setMinutes(currentTime.getMinutes());
+        setTempDate(selectedDate);
+      }
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    // Only close the picker and update the time when the user explicitly selects a time
-    // For iOS, event.type will be 'set' when the user taps "Done" button
-    // For Android, event.type will be 'set' when an option is tapped
-    if (event.type === 'set' && selectedTime) {
-      const newDate = new Date(timestamp);
-      newDate.setHours(selectedTime.getHours());
-      newDate.setMinutes(selectedTime.getMinutes());
-      setTimestamp(newDate);
-      setShowTimePicker(false);
-    } else if (event.type === 'dismissed') {
-      // Just close the picker without updating the time when dismissed
-      setShowTimePicker(false);
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTimestamp(newDate);
+        setShowTimePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowTimePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTempTime(newDate);
+      }
     }
-    // Important: Do nothing if the event.type is undefined,
-    // which happens during scrolling on iOS pickers
   };
 
   const formatDate = (date: Date) => {
@@ -364,7 +382,11 @@ const AddGlucoseScreen: React.FC = () => {
                 <TouchableOpacity 
                   style={[styles.pickerButton, styles.okPickerButton]} 
                   onPress={() => {
-                    // Just close the picker as the onChange event already updates the value
+                    // Apply the temp date value on iOS
+                    if (Platform.OS === 'ios' && tempDate) {
+                      setTimestamp(tempDate);
+                      setTempDate(null);
+                    }
                     setShowDatePicker(false);
                   }}
                 >
@@ -395,7 +417,11 @@ const AddGlucoseScreen: React.FC = () => {
                 <TouchableOpacity 
                   style={[styles.pickerButton, styles.okPickerButton]} 
                   onPress={() => {
-                    // Just close the picker as the onChange event already updates the value
+                    // Apply the temp time value on iOS
+                    if (Platform.OS === 'ios' && tempTime) {
+                      setTimestamp(tempTime);
+                      setTempTime(null);
+                    }
                     setShowTimePicker(false);
                   }}
                 >

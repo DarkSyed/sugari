@@ -184,7 +184,8 @@ const SugarLogScreen: React.FC = () => {
       setAllEntries(combined);
       
       // Apply time range and filter
-      filterEntriesByTimeAndType(combined, selectedTimeRange, selectedFilter);
+      const filtered = filterEntriesByTimeAndType(combined, selectedTimeRange, selectedFilter);
+      setFilteredEntries(filtered);
     } catch (error) {
       console.error('Error fetching health data:', error);
     } finally {
@@ -412,7 +413,7 @@ const SugarLogScreen: React.FC = () => {
   };
 
   const handleAddReading = () => {
-    // Show the quick actions modal instead of direct navigation
+    // Show the quick actions modal
     setShowQuickActions(true);
   };
 
@@ -470,7 +471,7 @@ const SugarLogScreen: React.FC = () => {
     const handleEntryPress = () => {
       switch (item.type) {
         case 'blood_sugar':
-          navigation.navigate('Home', { screen: 'AddGlucose', params: { 
+          navigation.navigate(ROUTES.ADD_GLUCOSE, { 
             readingId: item.id, 
             initialData: {
               id: item.id,
@@ -479,10 +480,10 @@ const SugarLogScreen: React.FC = () => {
               context: item.context,
               notes: item.notes
             }
-          }});
+          });
           break;
         case 'insulin':
-          navigation.navigate('Home', { screen: 'AddInsulin', params: {
+          navigation.navigate(ROUTES.ADD_INSULIN, { 
             doseId: item.id,
             initialData: {
               id: item.id,
@@ -491,10 +492,10 @@ const SugarLogScreen: React.FC = () => {
               timestamp: item.timestamp,
               notes: item.notes
             }
-          }});
+          });
           break;
         case 'food':
-          navigation.navigate('Home', { screen: 'AddFood', params: {
+          navigation.navigate(ROUTES.ADD_FOOD, { 
             entryId: item.id,
             initialData: {
               id: item.id,
@@ -504,10 +505,10 @@ const SugarLogScreen: React.FC = () => {
               timestamp: item.timestamp,
               notes: item.notes
             }
-          }});
+          });
           break;
         case 'weight':
-          navigation.navigate('Home', { screen: 'AddWeight', params: {
+          navigation.navigate(ROUTES.ADD_WEIGHT, { 
             measurementId: item.id,
             initialData: {
               id: item.id,
@@ -515,10 +516,10 @@ const SugarLogScreen: React.FC = () => {
               timestamp: item.timestamp,
               notes: item.notes
             }
-          }});
+          });
           break;
         case 'a1c':
-          navigation.navigate('Home', { screen: 'AddA1C', params: {
+          navigation.navigate(ROUTES.ADD_A1C, { 
             readingId: item.id,
             initialData: {
               id: item.id,
@@ -526,11 +527,11 @@ const SugarLogScreen: React.FC = () => {
               timestamp: item.timestamp,
               notes: item.notes
             }
-          }});
+          });
           break;
         case 'bp':
           // For blood pressure, the primaryValue would be systolic and secondaryValue diastolic
-          navigation.navigate('Home', { screen: 'AddBloodPressure', params: {
+          navigation.navigate(ROUTES.ADD_BP, { 
             readingId: item.id,
             initialData: {
               id: item.id,
@@ -540,7 +541,7 @@ const SugarLogScreen: React.FC = () => {
               timestamp: item.timestamp,
               notes: item.notes
             }
-          }});
+          });
           break;
       }
     };
@@ -653,6 +654,9 @@ const SugarLogScreen: React.FC = () => {
 
   const applyFilter = (filter: LogEntryType) => {
     setSelectedFilter(filter);
+    // Apply the filter to the entries
+    const filtered = filterEntriesByTimeAndType(allEntries, selectedTimeRange, filter);
+    setFilteredEntries(filtered);
   };
 
   const renderEmptyList = () => {
