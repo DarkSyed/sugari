@@ -10,7 +10,12 @@ import {
   TextInput,
   Platform,
   Image,
-  Alert
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Keyboard,
+  InputAccessoryView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -58,6 +63,7 @@ const MedicationScreen: React.FC = () => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const inputAccessoryViewID = 'inputAccessoryViewMedicationScreen';
 
   const fetchMedications = useCallback(async () => {
     try {
@@ -286,10 +292,10 @@ const MedicationScreen: React.FC = () => {
       <Container scrollable={true}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setShowAddModal(false)}>
-            <Ionicons name="close" size={24} color={COLORS.text} />
+            <Text style={styles.cancelButton}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Add Medication</Text>
-          <TouchableOpacity onPress={handleSaveMedication}>
+          <TouchableOpacity onPress={handleSaveMedication} disabled={isSaving}>
             <Text style={styles.saveButton}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -302,6 +308,7 @@ const MedicationScreen: React.FC = () => {
               placeholder="Enter medication name"
               value={newMedication.name}
               onChangeText={(text) => setNewMedication(prev => ({ ...prev, name: text }))}
+              inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
             />
           </View>
 
@@ -385,6 +392,7 @@ const MedicationScreen: React.FC = () => {
                 keyboardType="numeric"
                 value={newMedication.dosage}
                 onChangeText={(text) => setNewMedication(prev => ({ ...prev, dosage: text }))}
+                inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
               />
               
               {newMedication.type === 'insulin' ? (
@@ -442,6 +450,23 @@ const MedicationScreen: React.FC = () => {
                   maximumDate={new Date()}
                   textColor={COLORS.text}
                 />
+                <View style={styles.pickerButtonsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.cancelPickerButton]} 
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.okPickerButton]} 
+                    onPress={() => {
+                      // Just close the picker as the onChange event already updates the value
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <Text style={styles.okPickerButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             
@@ -455,6 +480,23 @@ const MedicationScreen: React.FC = () => {
                   is24Hour={false}
                   textColor={COLORS.text}
                 />
+                <View style={styles.pickerButtonsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.cancelPickerButton]} 
+                    onPress={() => setShowTimePicker(false)}
+                  >
+                    <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.okPickerButton]} 
+                    onPress={() => {
+                      // Just close the picker as the onChange event already updates the value
+                      setShowTimePicker(false);
+                    }}
+                  >
+                    <Text style={styles.okPickerButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -468,6 +510,7 @@ const MedicationScreen: React.FC = () => {
               numberOfLines={4}
               value={newMedication.notes}
               onChangeText={(text) => setNewMedication(prev => ({ ...prev, notes: text }))}
+              inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
             />
           </View>
 
@@ -509,6 +552,19 @@ const MedicationScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {Platform.OS === 'ios' && (
+          <InputAccessoryView nativeID={inputAccessoryViewID}>
+            <View style={styles.keyboardAccessory}>
+              <TouchableOpacity
+                style={styles.doneButton}
+                onPress={() => Keyboard.dismiss()}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </InputAccessoryView>
+        )}
       </Container>
     </Modal>
   );
@@ -870,6 +926,55 @@ const styles = StyleSheet.create({
   typeButtonIconText: {
     fontSize: 16,
     marginRight: 5,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
+  },
+  keyboardAccessory: {
+    height: 44,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderTopColor: '#d8d8d8',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  doneButton: {
+    padding: 8,
+  },
+  doneButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

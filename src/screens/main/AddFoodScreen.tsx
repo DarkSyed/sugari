@@ -1,9 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  Modal,
+  KeyboardAvoidingView,
+  ScrollView,
+  Keyboard,
+  InputAccessoryView
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SIZES, VALIDATION } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +33,14 @@ type FormData = {
   notes: string;
 };
 
+// Define meal options similar to MEAL_CONTEXTS in constants
+const MEAL_OPTIONS = [
+  { label: 'Breakfast', value: 'breakfast' },
+  { label: 'Lunch', value: 'lunch' },
+  { label: 'Dinner', value: 'dinner' },
+  { label: 'Snack', value: 'snack' },
+];
+
 const AddFoodScreen: React.FC = () => {
   const { authState } = useAuth();
   const navigation = useNavigation<StackNavigationProp<any>>();
@@ -27,12 +48,17 @@ const AddFoodScreen: React.FC = () => {
   const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showMealPicker, setShowMealPicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
+  const inputAccessoryViewID = 'inputAccessoryViewFoodScreen';
 
   const {
     control,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<FormData>({
     defaultValues: {
       name: '',
@@ -64,34 +90,71 @@ const AddFoodScreen: React.FC = () => {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    setShowTimePicker(Platform.OS === 'ios');
-
-    if (selectedDate) {
-      const currentTime = new Date(timestamp);
-      selectedDate.setHours(currentTime.getHours());
-      selectedDate.setMinutes(currentTime.getMinutes());
-      setTimestamp(selectedDate);
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedDate) {
+        const currentTime = new Date(timestamp);
+        selectedDate.setHours(currentTime.getHours());
+        selectedDate.setMinutes(currentTime.getMinutes());
+        setTimestamp(selectedDate);
+        setShowDatePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowDatePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedDate) {
+        const currentTime = new Date(timestamp);
+        selectedDate.setHours(currentTime.getHours());
+        selectedDate.setMinutes(currentTime.getMinutes());
+        setTempDate(selectedDate);
+      }
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-
-    if (selectedTime) {
-      const newDate = new Date(timestamp);
-      newDate.setHours(selectedTime.getHours());
-      newDate.setMinutes(selectedTime.getMinutes());
-      setTimestamp(newDate);
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTimestamp(newDate);
+        setShowTimePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowTimePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTempTime(newDate);
+      }
     }
   };
 
   const showDatepicker = () => {
-    setShowDatePicker(true);
+    if (showDatePicker) {
+      // If already open, close it (toggle behavior)
+      setShowDatePicker(false);
+    } else {
+      // Close time picker if open and open date picker
+      setShowTimePicker(false);
+      setShowDatePicker(true);
+    }
   };
 
   const showTimepicker = () => {
-    setShowTimePicker(true);
+    if (showTimePicker) {
+      // If already open, close it (toggle behavior)
+      setShowTimePicker(false);
+    } else {
+      // Close date picker if open and open time picker
+      setShowDatePicker(false);
+      setShowTimePicker(true);
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -115,200 +178,296 @@ const AddFoodScreen: React.FC = () => {
     width: '100%' as unknown as number
   } : {};
 
+  const getMealLabel = (value: string) => {
+    const meal = MEAL_OPTIONS.find(m => m.value === value);
+    return meal ? meal.label : 'Breakfast';
+  };
+
+  const renderMealContextModal = () => {
+    return (
+      <Modal
+        visible={showMealPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMealPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Meal</Text>
+              <TouchableOpacity onPress={() => setShowMealPicker(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.mealContextList}>
+              {MEAL_OPTIONS.map((meal) => (
+                <TouchableOpacity
+                  key={meal.value}
+                  style={[
+                    styles.mealContextItem,
+                    control._formValues.meal === meal.value && styles.selectedMealContext
+                  ]}
+                  onPress={() => {
+                    setValue('meal', meal.value as any);
+                    setShowMealPicker(false);
+                  }}
+                >
+                  <Text 
+                    style={[
+                      styles.mealContextText,
+                      control._formValues.meal === meal.value && styles.selectedMealContextText
+                    ]}
+                  >
+                    {meal.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <Container>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Add Food</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        <Card variant="elevated" style={styles.inputCard}>
-          <Controller
-            control={control}
-            rules={{
-              required: VALIDATION.REQUIRED,
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Food Name"
-                placeholder="Enter food name"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.name?.message}
-                touched={value !== ''}
-              />
-            )}
-            name="name"
-          />
-
-          <Controller
-            control={control}
-            rules={{
-              required: VALIDATION.REQUIRED,
-              pattern: {
-                value: /^[0-9]+$/,
-                message: 'Please enter a valid number',
-              },
-              validate: {
-                min: value => parseFloat(value) > 0 || VALIDATION.CARBS_MIN,
-                max: value => parseFloat(value) <= 500 || VALIDATION.CARBS_MAX,
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Carbohydrates (g)"
-                placeholder="Enter carbs"
-                keyboardType="numeric"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={errors.carbs?.message}
-                touched={value !== ''}
-              />
-            )}
-            name="carbs"
-          />
-
-          <Text style={styles.label}>When did you eat this?</Text>
-          <View style={styles.dateTimeContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          alwaysBounceVertical={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollViewContent}
+        >
+          <View style={styles.header}>
             <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={showDatepicker}
-            >
-              <Text style={styles.dateTimeText}>
-                {formatDate(timestamp)}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={showTimepicker}
-            >
-              <Text style={styles.dateTimeText}>
-                {formatTime(timestamp)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {showDatePicker && (
-            <View style={dateTimePickerStyle}>
-              <DateTimePicker
-                value={timestamp}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onDateChange}
-                maximumDate={new Date()}
-              />
-              <View style={styles.pickerButtonsContainer}>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.cancelPickerButton]} 
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.okPickerButton]} 
-                  onPress={() => {
-                    // Just close the picker as the onChange event already updates the value
-                    setShowDatePicker(false);
-                  }}
-                >
-                  <Text style={styles.okPickerButtonText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {showTimePicker && (
-            <View style={dateTimePickerStyle}>
-              <DateTimePicker
-                value={timestamp}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onTimeChange}
-                is24Hour={false}
-              />
-              <View style={styles.pickerButtonsContainer}>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.cancelPickerButton]} 
-                  onPress={() => setShowTimePicker(false)}
-                >
-                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.okPickerButton]} 
-                  onPress={() => {
-                    // Just close the picker as the onChange event already updates the value
-                    setShowTimePicker(false);
-                  }}
-                >
-                  <Text style={styles.okPickerButtonText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          <Text style={styles.label}>Meal</Text>
-          <Controller
-            control={control}
-            render={({ field: { onChange, value } }) => (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={value}
-                  onValueChange={onChange}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Breakfast" value="breakfast" />
-                  <Picker.Item label="Lunch" value="lunch" />
-                  <Picker.Item label="Dinner" value="dinner" />
-                  <Picker.Item label="Snack" value="snack" />
-                </Picker>
-              </View>
-            )}
-            name="meal"
-          />
-
-          <Controller
-            control={control}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Notes (Optional)"
-                placeholder="Add any additional notes"
-                multiline
-                numberOfLines={3}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                inputStyle={styles.notesInput}
-              />
-            )}
-            name="notes"
-          />
-
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Cancel"
-              variant="outline"
+              style={styles.backButton}
               onPress={() => navigation.goBack()}
-              style={styles.cancelButton}
-            />
-            <Button
-              title="Save Entry"
-              onPress={handleSubmit(onSubmit)}
-              loading={isLoading}
-              disabled={isLoading}
-              style={styles.saveButton}
-            />
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Add Food</Text>
+            <View style={styles.placeholder} />
           </View>
-        </Card>
-      </View>
+
+          <Card variant="elevated" style={styles.inputCard}>
+            <Controller
+              control={control}
+              rules={{
+                required: VALIDATION.REQUIRED,
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Food Name"
+                  placeholder="Enter food name"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.name?.message}
+                  touched={value !== ''}
+                />
+              )}
+              name="name"
+            />
+
+            <Controller
+              control={control}
+              rules={{
+                required: VALIDATION.REQUIRED,
+                pattern: {
+                  value: /^[0-9]+$/,
+                  message: 'Please enter a valid number',
+                },
+                validate: {
+                  min: value => parseFloat(value) > 0 || VALIDATION.CARBS_MIN,
+                  max: value => parseFloat(value) <= 500 || VALIDATION.CARBS_MAX,
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Carbohydrates (g)"
+                  placeholder="Enter carbs"
+                  keyboardType="numeric"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.carbs?.message}
+                  touched={value !== ''}
+                />
+              )}
+              name="carbs"
+            />
+
+            <Text style={styles.label}>When did you eat this?</Text>
+            <View style={styles.dateTimeContainer}>
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={showDatepicker}
+              >
+                <Text style={styles.dateTimeText}>
+                  {formatDate(timestamp)}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={showTimepicker}
+              >
+                <Text style={styles.dateTimeText}>
+                  {formatTime(timestamp)}
+                </Text>
+                <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+              </TouchableOpacity>
+            </View>
+
+            {showDatePicker && (
+              <View style={dateTimePickerStyle}>
+                <DateTimePicker
+                  value={timestamp}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onDateChange}
+                  maximumDate={new Date()}
+                  style={{width: '100%'}}
+                />
+                <View style={styles.pickerButtonsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.cancelPickerButton]} 
+                    onPress={() => {
+                      setTempDate(null);
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.okPickerButton]} 
+                    onPress={() => {
+                      // Apply the temp date value on iOS
+                      if (Platform.OS === 'ios' && tempDate) {
+                        setTimestamp(tempDate);
+                        setTempDate(null);
+                      }
+                      setShowDatePicker(false);
+                    }}
+                  >
+                    <Text style={styles.okPickerButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {showTimePicker && (
+              <View style={dateTimePickerStyle}>
+                <DateTimePicker
+                  value={timestamp}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onTimeChange}
+                  is24Hour={false}
+                  style={{width: '100%'}}
+                />
+                <View style={styles.pickerButtonsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.cancelPickerButton]} 
+                    onPress={() => {
+                      setTempTime(null);
+                      setShowTimePicker(false);
+                    }}
+                  >
+                    <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.pickerButton, styles.okPickerButton]} 
+                    onPress={() => {
+                      // Apply the temp time value on iOS
+                      if (Platform.OS === 'ios' && tempTime) {
+                        setTimestamp(tempTime);
+                        setTempTime(null);
+                      }
+                      setShowTimePicker(false);
+                    }}
+                  >
+                    <Text style={styles.okPickerButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <Text style={styles.label}>Meal</Text>
+            <Controller
+              control={control}
+              render={({ field: { value } }) => (
+                <TouchableOpacity 
+                  style={styles.mealContextButton}
+                  onPress={() => setShowMealPicker(true)}
+                >
+                  <Text style={styles.mealContextButtonText}>
+                    {getMealLabel(value)}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={COLORS.text} />
+                </TouchableOpacity>
+              )}
+              name="meal"
+            />
+
+            <Controller
+              control={control}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Notes (Optional)"
+                  placeholder="Add any additional notes"
+                  multiline
+                  numberOfLines={3}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  inputStyle={styles.notesInput}
+                  inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                />
+              )}
+              name="notes"
+            />
+
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => navigation.goBack()}
+                style={styles.cancelButton}
+              />
+              <Button
+                title="Save Entry"
+                onPress={handleSubmit(onSubmit)}
+                loading={isLoading}
+                disabled={isLoading}
+                style={styles.saveButton}
+              />
+            </View>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
+      
+      {renderMealContextModal()}
+
+      {/* Input Accessory View for iOS with simplified styling */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={inputAccessoryViewID}>
+          <View style={styles.keyboardAccessory}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => Keyboard.dismiss()}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      )}
     </Container>
   );
 };
@@ -349,21 +508,27 @@ const styles = StyleSheet.create({
   },
   dateTimeContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: SIZES.md,
   },
   dateTimeButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     padding: SIZES.sm,
-    marginRight: SIZES.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
     flex: 1,
+    marginRight: 8,
   },
   dateTimeText: {
     fontSize: 16,
     color: COLORS.text,
-    textAlign: 'center',
+  },
+  dateTimeIcon: {
+    marginLeft: 4,
   },
   pickerContainer: {
     backgroundColor: COLORS.inputBackground,
@@ -417,6 +582,86 @@ const styles = StyleSheet.create({
   },
   cancelPickerButtonText: {
     color: COLORS.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.cardBackground,
+    borderTopLeftRadius: SIZES.md,
+    borderTopRightRadius: SIZES.md,
+    padding: SIZES.lg,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  mealContextList: {
+    marginBottom: SIZES.md,
+  },
+  mealContextItem: {
+    paddingVertical: SIZES.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  selectedMealContext: {
+    backgroundColor: COLORS.primary + '20',
+  },
+  mealContextText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  selectedMealContextText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  mealContextButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SIZES.sm,
+    marginBottom: SIZES.md,
+  },
+  mealContextButtonText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  keyboardAccessory: {
+    height: 44,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderTopColor: '#d8d8d8',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  doneButton: {
+    padding: 8,
+  },
+  doneButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
 });
 

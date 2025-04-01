@@ -24,7 +24,7 @@ const AnalyticsScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
   const [readings, setReadings] = useState<BloodSugarReading[]>([]);
   const [filteredReadings, setFilteredReadings] = useState<BloodSugarReading[]>([]);
-  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
   const [selectedStatistic, setSelectedStatistic] = useState<'overview' | 'time-of-day' | 'meal-impact'>('overview');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,11 +61,8 @@ const AnalyticsScreen: React.FC = () => {
           filtered = readings.filter(r => (now - r.timestamp) <= 7 * 24 * 60 * 60 * 1000);
           break;
         case '30d':
-          filtered = readings.filter(r => (now - r.timestamp) <= 30 * 24 * 60 * 60 * 1000);
-          break;
-        case 'all':
         default:
-          filtered = [...readings];
+          filtered = readings.filter(r => (now - r.timestamp) <= 30 * 24 * 60 * 60 * 1000);
           break;
       }
       
@@ -223,7 +220,7 @@ const AnalyticsScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const renderTimeRangeButton = (label: string, range: '24h' | '7d' | '30d' | 'all') => (
+  const renderTimeRangeButton = (label: string, range: '24h' | '7d' | '30d') => (
     <TouchableOpacity
       style={[
         styles.timeRangeButton,
@@ -546,7 +543,6 @@ const AnalyticsScreen: React.FC = () => {
         {renderTimeRangeButton('24h', '24h')}
         {renderTimeRangeButton('Week', '7d')}
         {renderTimeRangeButton('Month', '30d')}
-        {renderTimeRangeButton('All', 'all')}
       </View>
       
       {filteredReadings.length === 0 ? (

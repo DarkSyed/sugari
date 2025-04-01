@@ -42,6 +42,14 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.DASHBOARD} component={DashboardScreen} />
       <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
       <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
+      <Stack.Screen name={ROUTES.ADD_GLUCOSE} component={AddGlucoseScreen} />
+      <Stack.Screen name={ROUTES.ADD_FOOD} component={AddFoodScreen} />
+      <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />
+      <Stack.Screen name={ROUTES.ADD_A1C} component={AddA1CScreen} />
+      <Stack.Screen name={ROUTES.ADD_WEIGHT} component={AddWeightScreen} />
+      <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
+      <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
+      <Stack.Screen name={ROUTES.ADD_SUGAR} component={AddSugarScreen} />
     </Stack.Navigator>
   );
 };

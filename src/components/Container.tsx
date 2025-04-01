@@ -7,7 +7,9 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   StatusBar, 
-  ViewStyle 
+  ViewStyle,
+  Keyboard,
+  TouchableWithoutFeedback 
 } from 'react-native';
 import { COLORS, SIZES } from '../constants';
 
@@ -18,6 +20,7 @@ interface ContainerProps {
   contentContainerStyle?: ViewStyle;
   keyboardAvoiding?: boolean;
   safeArea?: boolean;
+  dismissKeyboardOnTap?: boolean;
 }
 
 const Container: React.FC<ContainerProps> = ({
@@ -27,6 +30,7 @@ const Container: React.FC<ContainerProps> = ({
   contentContainerStyle,
   keyboardAvoiding = true,
   safeArea = true,
+  dismissKeyboardOnTap = true,
 }) => {
   const renderContent = () => {
     if (scrollable) {
@@ -36,6 +40,9 @@ const Container: React.FC<ContainerProps> = ({
           contentContainerStyle={[styles.scrollViewContent, contentContainerStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          alwaysBounceVertical={false}
+          alwaysBounceHorizontal={false}
         >
           {children}
         </ScrollView>
@@ -53,9 +60,15 @@ const Container: React.FC<ContainerProps> = ({
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {renderContent()}
+      {dismissKeyboardOnTap ? (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          {renderContent()}
+        </TouchableWithoutFeedback>
+      ) : (
+        renderContent()
+      )}
     </KeyboardAvoidingView>
   ) : (
     renderContent()

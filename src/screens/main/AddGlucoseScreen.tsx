@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, Keyboard, KeyboardAvoidingView, Dimensions, InputAccessoryView, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,6 +13,7 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { ROUTES } from '../../constants';
 
 type FormData = {
   value: string;
@@ -32,6 +33,8 @@ const AddGlucoseScreen: React.FC = () => {
   const [showMealContextPicker, setShowMealContextPicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date | null>(null);
   const [tempTime, setTempTime] = useState<Date | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const inputAccessoryViewID = 'doneAccessoryViewID';
 
   const {
     control,
@@ -50,6 +53,27 @@ const AddGlucoseScreen: React.FC = () => {
   });
 
   const mealContext = watch('mealContext');
+
+  // Add keyboard listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const onSubmit = async (data: FormData) => {
     // Removing authentication check to allow data entry
@@ -84,7 +108,7 @@ const AddGlucoseScreen: React.FC = () => {
       if (insertId) {
         // Reset form and navigate directly to log screen
         reset();
-        navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
+        navigation.navigate(ROUTES.SUGAR_LOG); // Use the correct screen name defined in the navigator
       } else {
         Alert.alert('Error', 'Failed to add reading');
       }
@@ -252,238 +276,270 @@ const AddGlucoseScreen: React.FC = () => {
   };
 
   return (
-    <Container keyboardAvoiding={true}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.title}>Log Blood Glucose</Text>
-          </View>
-          <View style={styles.backButton} />
-        </View>
-
-        <Card variant="elevated" style={styles.inputCard}>
-          <Controller
-            control={control}
-            rules={{
-              required: VALIDATION.REQUIRED,
-              pattern: {
-                value: /^[0-9]+$/,
-                message: 'Please enter a valid number',
-              },
-              validate: {
-                min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
-                max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <View style={styles.glucoseInputContainer}>
-                <Input
-                  label="Blood Glucose"
-                  placeholder="Enter value"
-                  keyboardType="numeric"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.value?.message}
-                  touched={value !== ''}
-                  containerStyle={styles.glucoseInput}
-                />
-                <View style={styles.unitContainer}>
-                  <Text
-                    style={[
-                      styles.valuePreview,
-                      { color: getStatusColor(value) },
-                    ]}
-                  >
-                    {value ? value : '---'}
-                  </Text>
-                  <Text style={styles.unitText}>mg/dL</Text>
-                </View>
-              </View>
-            )}
-            name="value"
-          />
-
-          <Controller
-            control={control}
-            rules={{
-              pattern: {
-                value: /^\d*\.?\d*$/,
-                message: 'Please enter a valid number',
-              },
-              validate: {
-                min: value => !value || parseFloat(value) > 0 || 'Insulin must be greater than 0 units',
-                max: value => !value || parseFloat(value) <= 100 || 'Insulin must be less than 100 units',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <View style={styles.insulinInputContainer}>
-                <Input
-                  label="Insulin Units (optional)"
-                  placeholder="Enter units"
-                  keyboardType="numeric"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.insulinUnits?.message}
-                  touched={value !== ''}
-                  containerStyle={styles.insulinInput}
-                />
-                <Text style={styles.insulinUnitText}>units</Text>
-              </View>
-            )}
-            name="insulinUnits"
-          />
-
-          <Text style={styles.label}>When was this reading taken?</Text>
-          <View style={styles.dateTimeContainer}>
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={showDatepicker}
-            >
-              <Text style={styles.dateTimeText}>
-                {formatDate(timestamp)}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={showTimepicker}
-            >
-              <Text style={styles.dateTimeText}>
-                {formatTime(timestamp)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {showDatePicker && (
-            <View style={dateTimePickerStyle}>
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={timestamp}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onDateChange}
-                maximumDate={new Date()}
-                textColor={COLORS.text}
-              />
-              <View style={styles.pickerButtonsContainer}>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.cancelPickerButton]} 
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.okPickerButton]} 
-                  onPress={() => {
-                    // Apply the temp date value on iOS
-                    if (Platform.OS === 'ios' && tempDate) {
-                      setTimestamp(tempDate);
-                      setTempDate(null);
-                    }
-                    setShowDatePicker(false);
-                  }}
-                >
-                  <Text style={styles.okPickerButtonText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {showTimePicker && (
-            <View style={dateTimePickerStyle}>
-              <DateTimePicker
-                testID="timeTimePicker"
-                value={timestamp}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onTimeChange}
-                is24Hour={false}
-                textColor={COLORS.text}
-              />
-              <View style={styles.pickerButtonsContainer}>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.cancelPickerButton]} 
-                  onPress={() => setShowTimePicker(false)}
-                >
-                  <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.pickerButton, styles.okPickerButton]} 
-                  onPress={() => {
-                    // Apply the temp time value on iOS
-                    if (Platform.OS === 'ios' && tempTime) {
-                      setTimestamp(tempTime);
-                      setTempTime(null);
-                    }
-                    setShowTimePicker(false);
-                  }}
-                >
-                  <Text style={styles.okPickerButtonText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          <Text style={styles.label}>Meal Context</Text>
-          <Controller
-            control={control}
-            render={({ field: { value } }) => (
-              <TouchableOpacity 
-                style={styles.mealContextButton}
-                onPress={() => setShowMealContextPicker(true)}
+    <Container keyboardAvoiding={false}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoidingContainer}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          bounces={false}
+          alwaysBounceVertical={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
               >
-                <Text style={styles.mealContextButtonText}>
-                  {getMealContextLabel(value)}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color={COLORS.text} />
+                <Text style={styles.backButtonText}>Back</Text>
               </TouchableOpacity>
-            )}
-            name="mealContext"
-          />
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.title}>Add Blood Sugar</Text>
+              </View>
+              <View style={{ width: 80 }} />
+            </View>
 
-          <Controller
-            control={control}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Notes (optional)"
-                placeholder="Add any additional information"
-                multiline
-                numberOfLines={3}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                inputStyle={styles.notesInput}
+            <Card variant="elevated" style={styles.inputCard}>
+              <Controller
+                control={control}
+                rules={{
+                  required: VALIDATION.REQUIRED,
+                  pattern: {
+                    value: /^[0-9]+$/,
+                    message: 'Please enter a valid number',
+                  },
+                  validate: {
+                    min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
+                    max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <View style={styles.glucoseInputContainer}>
+                    <Input
+                      label="Blood Glucose"
+                      placeholder="Enter value"
+                      keyboardType="numeric"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.value?.message}
+                      touched={value !== ''}
+                      containerStyle={styles.glucoseInput}
+                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                    />
+                    <View style={styles.unitContainer}>
+                      <Text
+                        style={[
+                          styles.valuePreview,
+                          { color: getStatusColor(value) },
+                        ]}
+                      >
+                        {value ? value : '---'}
+                      </Text>
+                      <Text style={styles.unitText}>mg/dL</Text>
+                    </View>
+                  </View>
+                )}
+                name="value"
               />
-            )}
-            name="notes"
-          />
-        </Card>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Cancel"
-            onPress={() => navigation.goBack()}
-            variant="outline"
-            style={styles.cancelButton}
-          />
-          <Button
-            title="Save"
-            onPress={handleSubmit(onSubmit)}
-            loading={isLoading}
-            disabled={isLoading}
-            style={styles.saveButton}
-          />
-        </View>
-      </View>
+              <Controller
+                control={control}
+                rules={{
+                  pattern: {
+                    value: /^\d*\.?\d*$/,
+                    message: 'Please enter a valid number',
+                  },
+                  validate: {
+                    min: value => !value || parseFloat(value) > 0 || 'Insulin must be greater than 0 units',
+                    max: value => !value || parseFloat(value) <= 100 || 'Insulin must be less than 100 units',
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <View style={styles.insulinInputContainer}>
+                    <Input
+                      label="Insulin Units (optional)"
+                      placeholder="Enter units"
+                      keyboardType="numeric"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.insulinUnits?.message}
+                      touched={value !== ''}
+                      containerStyle={styles.insulinInput}
+                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                    />
+                    <Text style={styles.insulinUnitText}>units</Text>
+                  </View>
+                )}
+                name="insulinUnits"
+              />
+
+              <Text style={styles.label}>When was this reading taken?</Text>
+              <View style={styles.dateTimeContainer}>
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={showDatepicker}
+                >
+                  <Text style={styles.dateTimeText}>
+                    {formatDate(timestamp)}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dateTimeButton}
+                  onPress={showTimepicker}
+                >
+                  <Text style={styles.dateTimeText}>
+                    {formatTime(timestamp)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {showDatePicker && (
+                <View style={dateTimePickerStyle}>
+                  <DateTimePicker
+                    testID="dateTimePicker"
+                    value={timestamp}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                    textColor={COLORS.text}
+                  />
+                  <View style={styles.pickerButtonsContainer}>
+                    <TouchableOpacity 
+                      style={[styles.pickerButton, styles.cancelPickerButton]} 
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.pickerButton, styles.okPickerButton]} 
+                      onPress={() => {
+                        // Apply the temp date value on iOS
+                        if (Platform.OS === 'ios' && tempDate) {
+                          setTimestamp(tempDate);
+                          setTempDate(null);
+                        }
+                        setShowDatePicker(false);
+                      }}
+                    >
+                      <Text style={styles.okPickerButtonText}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {showTimePicker && (
+                <View style={dateTimePickerStyle}>
+                  <DateTimePicker
+                    testID="timeTimePicker"
+                    value={timestamp}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onTimeChange}
+                    is24Hour={false}
+                    textColor={COLORS.text}
+                  />
+                  <View style={styles.pickerButtonsContainer}>
+                    <TouchableOpacity 
+                      style={[styles.pickerButton, styles.cancelPickerButton]} 
+                      onPress={() => setShowTimePicker(false)}
+                    >
+                      <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.pickerButton, styles.okPickerButton]} 
+                      onPress={() => {
+                        // Apply the temp time value on iOS
+                        if (Platform.OS === 'ios' && tempTime) {
+                          setTimestamp(tempTime);
+                          setTempTime(null);
+                        }
+                        setShowTimePicker(false);
+                      }}
+                    >
+                      <Text style={styles.okPickerButtonText}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.label}>Meal Context</Text>
+              <Controller
+                control={control}
+                render={({ field: { value } }) => (
+                  <TouchableOpacity 
+                    style={styles.mealContextButton}
+                    onPress={() => setShowMealContextPicker(true)}
+                  >
+                    <Text style={styles.mealContextButtonText}>
+                      {getMealContextLabel(value)}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color={COLORS.text} />
+                  </TouchableOpacity>
+                )}
+                name="mealContext"
+              />
+
+              <Controller
+                control={control}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Notes (optional)"
+                    placeholder="Add any additional information"
+                    multiline
+                    numberOfLines={3}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    inputStyle={styles.notesInput}
+                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                  />
+                )}
+                name="notes"
+              />
+            </Card>
+
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Cancel"
+                onPress={() => navigation.goBack()}
+                variant="outline"
+                style={styles.cancelButton}
+              />
+              <Button
+                title="Save"
+                onPress={handleSubmit(onSubmit)}
+                loading={isLoading}
+                disabled={isLoading}
+                style={styles.saveButton}
+              />
+            </View>
+          </View>
+        </ScrollView>
+        
+        {renderMealContextModal()}
+      </KeyboardAvoidingView>
       
-      {renderMealContextModal()}
+      {/* Input Accessory View for iOS */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={inputAccessoryViewID}>
+          <View style={styles.keyboardAccessory}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => Keyboard.dismiss()}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      )}
     </Container>
   );
 };
@@ -689,6 +745,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
     marginBottom: 15,
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
+  keyboardAccessory: {
+    height: 44,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderTopColor: '#d8d8d8',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  doneButton: {
+    padding: 8,
+  },
+  doneButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
   },
 });
 

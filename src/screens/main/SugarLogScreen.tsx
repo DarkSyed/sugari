@@ -463,8 +463,18 @@ const SugarLogScreen: React.FC = () => {
       secondaryDisplay = ` • ${item.secondaryValue}`;
     }
       
+    // Format the meal context text for display
+    const formatContextText = (context: string | null | undefined): string => {
+      if (!context) return '';
+      
+      // Replace underscores with spaces and capitalize each word
+      return context.split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    };
+    
     let contextDisplay = item.context 
-      ? ` • ${item.context}`
+      ? ` • ${formatContextText(item.context)}`
       : '';
       
     // Handle the click on an entry to edit/view

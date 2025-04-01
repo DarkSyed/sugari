@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Modal
+  Modal,
+  Keyboard,
+  InputAccessoryView,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -50,6 +53,9 @@ const AddSugarScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showContextPicker, setShowContextPicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
+  const inputAccessoryViewID = 'inputAccessoryViewSugarScreen';
 
   const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -106,9 +112,9 @@ const AddSugarScreen: React.FC = () => {
   };
 
   const dateTimePickerStyle = Platform.OS === 'ios' ? {
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
     marginBottom: SIZES.md,
-    width: '100%'
+    width: '100%' as unknown as number
   } : {};
 
   // Modified to toggle the date picker on/off
@@ -145,29 +151,50 @@ const AddSugarScreen: React.FC = () => {
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    // Only update date when user explicitly selects (not while scrolling)
-    if (event.type === 'set' && selectedDate) {
-      const newDate = new Date(timestamp);
-      newDate.setFullYear(selectedDate.getFullYear());
-      newDate.setMonth(selectedDate.getMonth());
-      newDate.setDate(selectedDate.getDate());
-      setTimestamp(newDate);
-      setShowDatePicker(false);
-    } else if (event.type === 'dismissed') {
-      setShowDatePicker(false);
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedDate) {
+        const newDate = new Date(timestamp);
+        newDate.setFullYear(selectedDate.getFullYear());
+        newDate.setMonth(selectedDate.getMonth());
+        newDate.setDate(selectedDate.getDate());
+        setTimestamp(newDate);
+        setShowDatePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowDatePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedDate) {
+        const newDate = new Date(timestamp);
+        newDate.setFullYear(selectedDate.getFullYear());
+        newDate.setMonth(selectedDate.getMonth());
+        newDate.setDate(selectedDate.getDate());
+        setTempDate(newDate);
+      }
     }
   };
 
   const handleTimeChange = (event: any, selectedTime?: Date) => {
-    // Only update time when user explicitly selects (not while scrolling)
-    if (event.type === 'set' && selectedTime) {
-      const newDate = new Date(timestamp);
-      newDate.setHours(selectedTime.getHours());
-      newDate.setMinutes(selectedTime.getMinutes());
-      setTimestamp(newDate);
-      setShowTimePicker(false);
-    } else if (event.type === 'dismissed') {
-      setShowTimePicker(false);
+    if (Platform.OS === 'android') {
+      // On Android, update only when "set" is triggered (user taps OK)
+      if (event.type === 'set' && selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTimestamp(newDate);
+        setShowTimePicker(false);
+      } else if (event.type === 'dismissed') {
+        setShowTimePicker(false);
+      }
+    } else {
+      // On iOS, don't update right away, just store the temporary value
+      if (selectedTime) {
+        const newDate = new Date(timestamp);
+        newDate.setHours(selectedTime.getHours());
+        newDate.setMinutes(selectedTime.getMinutes());
+        setTempTime(newDate);
+      }
     }
   };
 
@@ -176,8 +203,15 @@ const AddSugarScreen: React.FC = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          alwaysBounceVertical={false}
+          keyboardShouldPersistTaps="always"
+          contentContainerStyle={styles.scrollViewContent}
+        >
           <View style={styles.header}>
             <Text style={styles.screenTitle}>
               {isEditing ? 'Edit Blood Sugar' : 'Add Blood Sugar'}
@@ -198,6 +232,7 @@ const AddSugarScreen: React.FC = () => {
                     placeholder={`Enter blood sugar value in ${settings?.units || 'mg/dL'}`}
                     keyboardType="numeric"
                     error={errors.value?.message}
+                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
                   />
                 )}
                 name="value"
@@ -271,6 +306,7 @@ const AddSugarScreen: React.FC = () => {
                     numberOfLines={3}
                     textAlignVertical="top"
                     style={styles.notesInput}
+                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
                   />
                 )}
                 name="notes"
@@ -307,6 +343,30 @@ const AddSugarScreen: React.FC = () => {
             maximumDate={new Date()}
             style={{width: '100%'}}
           />
+          <View style={styles.pickerButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.pickerButton, styles.cancelPickerButton]} 
+              onPress={() => {
+                setTempDate(null);
+                setShowDatePicker(false);
+              }}
+            >
+              <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.pickerButton, styles.okPickerButton]} 
+              onPress={() => {
+                // Apply the temp date value on iOS
+                if (Platform.OS === 'ios' && tempDate) {
+                  setTimestamp(tempDate);
+                  setTempDate(null);
+                }
+                setShowDatePicker(false);
+              }}
+            >
+              <Text style={styles.okPickerButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
       
@@ -321,6 +381,30 @@ const AddSugarScreen: React.FC = () => {
             is24Hour={false}
             style={{width: '100%'}}
           />
+          <View style={styles.pickerButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.pickerButton, styles.cancelPickerButton]} 
+              onPress={() => {
+                setTempTime(null);
+                setShowTimePicker(false);
+              }}
+            >
+              <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.pickerButton, styles.okPickerButton]} 
+              onPress={() => {
+                // Apply the temp time value on iOS
+                if (Platform.OS === 'ios' && tempTime) {
+                  setTimestamp(tempTime);
+                  setTempTime(null);
+                }
+                setShowTimePicker(false);
+              }}
+            >
+              <Text style={styles.okPickerButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
       
@@ -368,6 +452,20 @@ const AddSugarScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+      
+      {/* Input Accessory View for iOS */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={inputAccessoryViewID}>
+          <View style={styles.keyboardAccessory}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => Keyboard.dismiss()}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      )}
     </Container>
   );
 };
@@ -482,6 +580,54 @@ const styles = StyleSheet.create({
   contextOptionTextSelected: {
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  pickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: '500',
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  keyboardAccessory: {
+    height: 44,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1, 
+    borderTopColor: '#d8d8d8',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  doneButton: {
+    padding: 8,
+  },
+  doneButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
