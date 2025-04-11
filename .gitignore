@@ -9,29 +9,41 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Metro
+.metro-health-check*
+
+# Native build artifacts & secrets
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+# Optional: Uncomment if you have these platform-specific secret files
+# android/app/google-services.json
+# ios/GoogleService-Info.plist
 
-# Metro
-.metro-health-check*
-
-# debug
+# debug logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
 # macOS
 .DS_Store
+
+# Certificates
 *.pem
 
-# local env files
+# Environment variables
+# Ignore .env files in root and subdirectories
+*.env
+**/.env
+# Ignore local environment overrides
 .env*.local
-.env
 
-# typescript
+# typescript build info
 *.tsbuildinfo
+
+# Optional: Other common config/key files if you use them
+# config.js
+# secrets.json
