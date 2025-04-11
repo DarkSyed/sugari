@@ -62,9 +62,11 @@ const DashboardScreen: React.FC = () => {
 
   // Data fetching
   const fetchUserData = useCallback(async () => {
-    try {
+    // Don't show main loader if just refreshing
+    if (!refreshing) {
       setLoading(true);
-      
+    }
+    try {
       // Parallel data fetching
       const [sugarData, foodData, insulinData] = await Promise.all([
         getBloodSugarReadings(),
@@ -88,19 +90,20 @@ const DashboardScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+      Alert.alert('Error', 'Could not load dashboard data.');
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      setRefreshing(false); // Ensure refreshing is set to false
     }
-  }, []);
+  }, [refreshing]);
 
   // Initial load and refresh handling
   useEffect(() => { fetchUserData(); }, [fetchUserData]);
   useFocusEffect(useCallback(() => { fetchUserData(); }, [fetchUserData]));
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchUserData();
-  };
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true); // Start refreshing indicator
+    await fetchUserData(); // Fetch data (will set refreshing to false)
+  }, [fetchUserData]);
 
   // Helper functions
   const getLatestReading = (): BloodSugarReading | null => {
@@ -360,7 +363,12 @@ const DashboardScreen: React.FC = () => {
     <Container scrollable>
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[COLORS.primary]} 
+            tintColor={COLORS.primary}
+          />
         }
       >
         {renderHeader()}

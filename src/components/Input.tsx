@@ -6,7 +6,11 @@ import {
   StyleSheet, 
   ViewStyle, 
   TextStyle, 
-  TextInputProps 
+  TextInputProps,
+  Platform,
+  InputAccessoryView,
+  Button,
+  Keyboard
 } from 'react-native';
 import { COLORS, SIZES } from '../constants';
 
@@ -28,9 +32,13 @@ const Input: React.FC<InputProps> = ({
   labelStyle,
   inputStyle,
   errorStyle,
+  inputAccessoryViewID,
   ...props
 }) => {
   const showError = error && touched;
+  
+  // Generate a unique inputAccessoryViewID if not provided
+  const accessoryViewID = inputAccessoryViewID || `input-${Math.random().toString(36).substring(2, 10)}`;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -43,11 +51,25 @@ const Input: React.FC<InputProps> = ({
           inputStyle,
         ]}
         placeholderTextColor={COLORS.lightText}
+        inputAccessoryViewID={Platform.OS === 'ios' ? accessoryViewID : undefined}
+        returnKeyType="done"
         {...props}
       />
       
       {showError && (
         <Text style={[styles.errorText, errorStyle]}>{error}</Text>
+      )}
+
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID={accessoryViewID}>
+          <View style={styles.accessoryContainer}>
+            <Button
+              onPress={() => Keyboard.dismiss()}
+              title="Done"
+              color={COLORS.primary}
+            />
+          </View>
+        </InputAccessoryView>
       )}
     </View>
   );
@@ -81,6 +103,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
+  accessoryContainer: {
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderTopColor: '#dedede',
+    padding: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
 });
 
-export default Input; 
+export default Input;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { BloodSugarReading } from '../types';
 import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../constants';
@@ -9,14 +9,17 @@ interface GlucoseChartProps {
   data: BloodSugarReading[];
   title?: string;
   timeRange?: '24h' | '7d' | '30d' | 'all';
+  onDataPointPress?: (reading: BloodSugarReading) => void;
 }
 
 const GlucoseChart: React.FC<GlucoseChartProps> = ({
   data,
   title = 'Blood Glucose Trends',
   timeRange = '24h',
+  onDataPointPress,
 }) => {
-  const screenWidth = Dimensions.get('window').width - (SIZES.md * 2);
+  // Use full width minus padding to ensure proper alignment
+  const screenWidth = Dimensions.get('window').width - (SIZES.md * 4);
   
   // Sort data by timestamp
   const sortedData = [...data].sort((a, b) => 
@@ -87,6 +90,13 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
     ? Math.round((inRangeCount / values.length) * 100) 
     : 0;
 
+  // Handle data point press
+  const handleDataPointClick = (data: any) => {
+    if (onDataPointPress && filteredData[data.index]) {
+      onDataPointPress(filteredData[data.index]);
+    }
+  };
+
   // If no data, display a message
   if (filteredData.length === 0) {
     return (
@@ -140,7 +150,7 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
               borderRadius: 16,
             },
             propsForDots: {
-              r: '4',
+              r: '5',
               strokeWidth: '1',
               stroke: COLORS.primary,
             },
@@ -154,6 +164,8 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
           style={styles.chart}
           fromZero={false}
           segments={5}
+          onDataPointClick={handleDataPointClick}
+          verticalLabelRotation={30}
         />
         
         <View style={styles.statsContainer}>
@@ -185,6 +197,7 @@ const GlucoseChart: React.FC<GlucoseChartProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: SIZES.md,
+    alignItems: 'center',
   },
   cardWithoutPadding: {
     padding: 0, // Override the default padding from the Card component
@@ -206,9 +219,11 @@ const styles = StyleSheet.create({
     paddingTop: SIZES.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+    width: '100%',
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
   },
   statValue: {
     fontSize: 18,
@@ -238,4 +253,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GlucoseChart; 
+export default GlucoseChart;

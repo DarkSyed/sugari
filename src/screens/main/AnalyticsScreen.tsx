@@ -6,18 +6,23 @@ import {
   TouchableOpacity, 
   ScrollView, 
   ActivityIndicator, 
-  Dimensions 
+  Dimensions,
+  Alert,
+  Modal,
+  RefreshControl
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading } from '../../types';
-import { getBloodSugarReadings } from '../../services/databaseFix';
+import { getBloodSugarReadings, updateBloodSugarReading, deleteBloodSugarReading } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import GlucoseChart from '../../components/GlucoseChart';
+import Button from '../../components/Button';
+import Input from '../../components/Input';
 
 const AnalyticsScreen: React.FC = () => {
   const { theme } = useApp();
@@ -27,21 +32,36 @@ const AnalyticsScreen: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
   const [selectedStatistic, setSelectedStatistic] = useState<'overview' | 'time-of-day' | 'meal-impact'>('overview');
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReading, setSelectedReading] = useState<BloodSugarReading | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchReadings = useCallback(async () => {
-    try {
+    if (!refreshing) {
       setIsLoading(true);
+    }
+    try {
       const data = await getBloodSugarReadings();
       setReadings(data);
     } catch (error) {
       console.error('Error fetching readings:', error);
+      Alert.alert('Error', 'Could not fetch readings.');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [refreshing]);
 
-  useEffect(() => {
-    fetchReadings();
+  useFocusEffect(
+    useCallback(() => {
+      fetchReadings();
+    }, [fetchReadings])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchReadings();
   }, [fetchReadings]);
 
   // Filter readings based on time range
@@ -200,6 +220,78 @@ const AnalyticsScreen: React.FC = () => {
   };
 
   const mealContextData = getMealContextData();
+
+  // Handle data point selection for editing
+  const handleDataPointPress = (reading: BloodSugarReading) => {
+    setSelectedReading(reading);
+    setEditValue(reading.value.toString());
+    setEditModalVisible(true);
+  };
+
+  // Save edited reading
+  const handleSaveEdit = async () => {
+    if (!selectedReading || !editValue) return;
+    
+    const numValue = parseFloat(editValue);
+    if (isNaN(numValue) || numValue < 40 || numValue > 400) {
+      Alert.alert('Invalid Value', 'Please enter a valid blood glucose value between 40 and 400 mg/dL');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      await updateBloodSugarReading(selectedReading.id!, {
+        ...selectedReading,
+        value: numValue
+      });
+      
+      setEditModalVisible(false);
+      setSelectedReading(null);
+      await fetchReadings();
+      Alert.alert('Success', 'Reading updated successfully');
+    } catch (error) {
+      console.error('Error updating reading:', error);
+      Alert.alert('Error', 'Failed to update reading');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete reading
+  const handleDeleteReading = async () => {
+    if (!selectedReading) return;
+    
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this reading?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await deleteBloodSugarReading(selectedReading.id!);
+              
+              setEditModalVisible(false);
+              setSelectedReading(null);
+              await fetchReadings();
+              Alert.alert('Success', 'Reading deleted successfully');
+            } catch (error) {
+              console.error('Error deleting reading:', error);
+              Alert.alert('Error', 'Failed to delete reading');
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const renderTabButton = (label: string, tab: 'overview' | 'time-of-day' | 'meal-impact') => (
     <TouchableOpacity
@@ -490,6 +582,56 @@ const AnalyticsScreen: React.FC = () => {
     return "Add more before and after meal readings to get insights on how food affects your glucose levels.";
   };
 
+  // Render edit modal
+  const renderEditModal = () => (
+    <Modal
+      visible={editModalVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setEditModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Reading</Text>
+            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedReading && (
+            <View style={styles.editForm}>
+              <Text style={styles.editLabel}>
+                Reading from {new Date(selectedReading.timestamp).toLocaleString()}
+              </Text>
+              
+              <Input
+                label="Blood Glucose Value (mg/dL)"
+                value={editValue}
+                onChangeText={setEditValue}
+                keyboardType="numeric"
+                placeholder="Enter blood glucose value"
+              />
+              
+              <View style={styles.editButtonsContainer}>
+                <Button
+                  title="Delete"
+                  onPress={handleDeleteReading}
+                  style={styles.deleteButton}
+                />
+                <Button
+                  title="Save"
+                  onPress={handleSaveEdit}
+                  style={styles.saveButton}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
   if (isLoading) {
     return (
       <Container>
@@ -532,7 +674,7 @@ const AnalyticsScreen: React.FC = () => {
   );
 
   return (
-    <Container>
+    <Container scrollable>
       <Text style={styles.title}>Analytics</Text>
 
       {/* Quick stats at the top */}
@@ -546,18 +688,35 @@ const AnalyticsScreen: React.FC = () => {
       </View>
       
       {filteredReadings.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={styles.emptyContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary}/>
+          }
+        >
           <Text style={styles.emptyText}>No Data Available</Text>
           <Text style={styles.emptySubText}>
-            Add blood sugar readings to see your analytics here.
+            Add blood sugar readings for the selected period to see your analytics.
           </Text>
-        </View>
+        </ScrollView>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary}/>
+          }
+        >
           {/* Glucose Chart */}
           <Card variant="elevated" style={styles.chartCard}>
             <Text style={styles.chartTitle}>Blood Glucose Trends</Text>
-            <GlucoseChart data={filteredReadings} timeRange={timeRange} />
+            <View style={styles.chartContainer}>
+              <GlucoseChart 
+                data={filteredReadings} 
+                timeRange={timeRange} 
+                onDataPointPress={handleDataPointPress}
+              />
+              <Text style={styles.chartHint}>Tap on any data point to edit or delete</Text>
+            </View>
           </Card>
           
           {/* Tabs for different statistics */}
@@ -574,6 +733,9 @@ const AnalyticsScreen: React.FC = () => {
           </Card>
         </ScrollView>
       )}
+
+      {/* Edit Modal */}
+      {renderEditModal()}
     </Container>
   );
 };
@@ -624,11 +786,21 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
     marginBottom: SIZES.md,
   },
+  chartContainer: {
+    alignItems: 'center',
+  },
   chartTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: SIZES.sm,
+  },
+  chartHint: {
+    fontSize: 12,
+    color: COLORS.lightText,
+    fontStyle: 'italic',
+    marginTop: SIZES.xs,
+    textAlign: 'center',
   },
   timeRangeSelector: {
     flexDirection: 'row',
@@ -678,6 +850,7 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     marginTop: SIZES.md,
+    padding: SIZES.md,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -798,16 +971,22 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   timeOfDayIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: SIZES.xs,
   },
   timeOfDayIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   timeOfDayName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   timeOfDayValue: {
     fontSize: 20,
@@ -818,6 +997,15 @@ const styles = StyleSheet.create({
   timeOfDayReadings: {
     fontSize: 12,
     color: COLORS.lightText,
+  },
+  insightText: {
+    fontSize: 14,
+    color: COLORS.text,
+    backgroundColor: COLORS.primaryLight,
+    padding: SIZES.md,
+    borderRadius: SIZES.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
   },
   mealContextContainer: {
     flexWrap: 'wrap',
@@ -836,16 +1024,22 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   mealContextIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: SIZES.xs,
   },
   mealContextIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   mealContextName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   mealContextValue: {
     fontSize: 20,
@@ -857,25 +1051,66 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.lightText,
   },
-  insightText: {
-    fontSize: 14,
-    color: COLORS.text,
-    backgroundColor: COLORS.primary + '10',
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-    padding: SIZES.sm,
-    borderRadius: SIZES.xs,
-  },
   statCard: {
     width: '48%',
     backgroundColor: COLORS.cardBackground,
     borderRadius: SIZES.sm,
     padding: SIZES.md,
-    marginBottom: SIZES.sm,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.lg,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: SIZES.md,
+    padding: SIZES.md,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingBottom: SIZES.sm,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  editForm: {
+    marginTop: SIZES.sm,
+  },
+  editLabel: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginBottom: SIZES.md,
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.xl,
+  },
+  deleteButton: {
+    flex: 1,
+    marginRight: SIZES.sm,
+    backgroundColor: COLORS.error,
+    borderColor: COLORS.error,
+  },
+  saveButton: {
+    flex: 1,
+    marginLeft: SIZES.sm,
+  },
 });
 
-export default AnalyticsScreen; 
+export default AnalyticsScreen;

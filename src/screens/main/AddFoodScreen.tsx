@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Keyboard,
-  InputAccessoryView
+  InputAccessoryView,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -230,13 +231,22 @@ const AddFoodScreen: React.FC = () => {
     );
   };
 
+  // --- Calculate potential offset ---
+  // Example: If using react-navigation header, you might use useHeaderHeight()
+  // import { useHeaderHeight } from '@react-navigation/elements';
+  // const headerHeight = useHeaderHeight();
+  // Otherwise, use the known height of your custom header or tab bar.
+  const iosOffset = 60; // Example: Replace with actual header/tab bar height if applicable
+  const androidOffset = 0; // Example: Start with 0 for Android and test
+
   return (
-    <Container>
+    <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        style={styles.keyboardAvoidingContainer}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? iosOffset : androidOffset}
       >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -244,15 +254,18 @@ const AddFoodScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollViewContent}
         >
+            <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Text style={styles.backButtonText}>← Back</Text>
+                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
             </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
             <Text style={styles.title}>Add Food</Text>
-            <View style={styles.placeholder} />
+                </View>
+                <View style={styles.headerSpacer} />
           </View>
 
           <Card variant="elevated" style={styles.inputCard}>
@@ -269,7 +282,6 @@ const AddFoodScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.name?.message}
-                  touched={value !== ''}
                 />
               )}
               name="name"
@@ -297,7 +309,7 @@ const AddFoodScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   error={errors.carbs?.message}
-                  touched={value !== ''}
+                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
                 />
               )}
               name="carbs"
@@ -428,7 +440,6 @@ const AddFoodScreen: React.FC = () => {
                   onChangeText={onChange}
                   onBlur={onBlur}
                   inputStyle={styles.notesInput}
-                  inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
                 />
               )}
               name="notes"
@@ -450,7 +461,9 @@ const AddFoodScreen: React.FC = () => {
               />
             </View>
           </Card>
+            </View>
         </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       
       {renderMealContextModal()}
@@ -475,30 +488,31 @@ const AddFoodScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: SIZES.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.md,
+    width: '100%',
   },
   backButton: {
     padding: SIZES.xs,
   },
-  backButtonText: {
-    fontSize: 16,
-    color: COLORS.primary,
+  headerTitleContainer: {
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
+    textAlign: 'center',
   },
-  placeholder: {
-    width: 50,
+  headerSpacer: {
+    width: 40,
   },
   inputCard: {
-    marginBottom: SIZES.lg,
+    padding: SIZES.md,
   },
   label: {
     fontSize: 16,
@@ -643,7 +657,7 @@ const styles = StyleSheet.create({
   keyboardAccessory: {
     height: 44,
     backgroundColor: '#f8f8f8',
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#d8d8d8',
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -661,7 +675,198 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: SIZES.xl * 2,
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: SIZES.xl,
+  },
+  container: {
+    flex: 1,
+    padding: SIZES.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SIZES.md,
+    width: '100%',
+  },
+  headerTitleContainer: {
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  inputCard: {
+    padding: SIZES.md,
+    marginBottom: SIZES.lg,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: SIZES.xs,
+    color: COLORS.text,
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SIZES.md,
+  },
+  dateTimeButton: {
+    width: '48.5%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.xs,
+    paddingVertical: SIZES.sm,
+    paddingHorizontal: SIZES.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  dateTimeText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  dateTimeIcon: {
+    marginLeft: SIZES.xs,
+  },
+  mealContextButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.xs,
+    padding: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SIZES.md,
+  },
+  mealContextButtonText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  notesInput: {
+    height: 80,
+    textAlignVertical: 'top',
+    marginBottom: SIZES.lg,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    marginTop: SIZES.md,
+  },
+  cancelButton: {
+    flex: 1,
+    marginRight: SIZES.sm,
+  },
+  saveButton: {
+    flex: 1,
+    marginLeft: SIZES.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: SIZES.md,
+    borderTopRightRadius: SIZES.md,
+    padding: SIZES.md,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.md,
+    paddingBottom: SIZES.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  mealOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  mealOptionSelected: {
+    backgroundColor: `${COLORS.primary}10`,
+  },
+  mealOptionText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  mealOptionTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  iosPickerContainer: {
+    borderRadius: SIZES.sm,
+    marginBottom: SIZES.md,
+  },
+  pickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: SIZES.sm,
+  },
+  pickerButton: {
+    paddingVertical: SIZES.xs + 2,
+    paddingHorizontal: SIZES.lg,
+    borderRadius: 20,
+    marginHorizontal: SIZES.sm,
+  },
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButtonText: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  keyboardAccessory: {
+    height: 44,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#d8d8d8',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  doneButton: {
+    padding: 8,
+  },
+  doneButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

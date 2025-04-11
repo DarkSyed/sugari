@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -9,6 +9,8 @@ import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { Keyboard } from 'react-native';
+import Card from '../../components/Card';
 
 const AddWeightScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
@@ -112,150 +114,179 @@ const AddWeightScreen: React.FC = () => {
   } : {};
 
   return (
-    <Container>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Log Weight</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <Container keyboardAvoiding={false}>
+      <KeyboardAvoidingView
+        // ... KAV props ...
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            // ... ScrollView props ...
+          >
+            <View style={styles.container}>
+              {/* --- Header --- */}
+              <View style={styles.header}>
+                {/* Back Button with Icon */}
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
+                </TouchableOpacity>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Weight (lbs)</Text>
-        <Input
-          value={weightValue}
-          onChangeText={setWeightValue}
-          placeholder="e.g., 160"
-          keyboardType="decimal-pad"
-        />
-      </View>
+                {/* Title Container */}
+                <View style={styles.headerTitleContainer}>
+                   {/* Adjust title text as needed */}
+                  <Text style={styles.title}>Add Weight</Text>
+                </View>
 
-      <View style={styles.dateTimeContainer}>
-        <Text style={styles.label}>Date & Time</Text>
-        <View style={styles.dateTimeButtonsContainer}>
-          <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
-          </TouchableOpacity>
+                {/* Spacer */}
+                <View style={styles.headerSpacer} />
+              </View>
+              {/* --- End Header --- */}
 
-          <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
-            <Ionicons name="time-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
-          </TouchableOpacity>
-        </View>
+              <Card variant="elevated" style={styles.inputCard}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Weight (lbs)</Text>
+                  <Input
+                    value={weightValue}
+                    onChangeText={setWeightValue}
+                    placeholder="e.g., 160"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
 
-        {showDatePicker && (
-          <View style={dateTimePickerStyle}>
-            <DateTimePicker
-              value={timestamp}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onDateChange}
-              maximumDate={new Date()}
-            />
-            <View style={styles.pickerButtonsContainer}>
-              <TouchableOpacity 
-                style={[styles.pickerButton, styles.cancelPickerButton]} 
-                onPress={() => setShowDatePicker(false)}
-              >
-                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.pickerButton, styles.okPickerButton]} 
-                onPress={() => {
-                  // Just close the picker as the onChange event already updates the value
-                  setShowDatePicker(false);
-                }}
-              >
-                <Text style={styles.okPickerButtonText}>OK</Text>
-              </TouchableOpacity>
+                <View style={styles.dateTimeContainer}>
+                  <Text style={styles.label}>Date & Time</Text>
+                  <View style={styles.dateTimeButtonsContainer}>
+                    <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
+                      <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                      <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
+                      <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+                      <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {showDatePicker && (
+                    <View style={dateTimePickerStyle}>
+                      <DateTimePicker
+                        value={timestamp}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onDateChange}
+                        maximumDate={new Date()}
+                      />
+                      <View style={styles.pickerButtonsContainer}>
+                        <TouchableOpacity 
+                          style={[styles.pickerButton, styles.cancelPickerButton]} 
+                          onPress={() => setShowDatePicker(false)}
+                        >
+                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.pickerButton, styles.okPickerButton]} 
+                          onPress={() => {
+                            // Just close the picker as the onChange event already updates the value
+                            setShowDatePicker(false);
+                          }}
+                        >
+                          <Text style={styles.okPickerButtonText}>OK</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {showTimePicker && (
+                    <View style={dateTimePickerStyle}>
+                      <DateTimePicker
+                        value={timestamp}
+                        mode="time"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onTimeChange}
+                        is24Hour={false}
+                      />
+                      <View style={styles.pickerButtonsContainer}>
+                        <TouchableOpacity 
+                          style={[styles.pickerButton, styles.cancelPickerButton]} 
+                          onPress={() => setShowTimePicker(false)}
+                        >
+                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.pickerButton, styles.okPickerButton]} 
+                          onPress={() => {
+                            // Just close the picker as the onChange event already updates the value
+                            setShowTimePicker(false);
+                          }}
+                        >
+                          <Text style={styles.okPickerButtonText}>OK</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Notes (Optional)</Text>
+                  <Input
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Add any additional notes here"
+                    multiline
+                    numberOfLines={4}
+                    inputStyle={styles.notesInput}
+                  />
+                </View>
+
+                <View style={styles.footer}>
+                  <Button
+                    title="Save Weight Measurement"
+                    onPress={handleSubmit}
+                    disabled={!weightValue || isSubmitting}
+                    loading={isSubmitting}
+                    style={styles.saveButton}
+                  />
+                </View>
+              </Card>
             </View>
-          </View>
-        )}
-
-        {showTimePicker && (
-          <View style={dateTimePickerStyle}>
-            <DateTimePicker
-              value={timestamp}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onTimeChange}
-              is24Hour={false}
-            />
-            <View style={styles.pickerButtonsContainer}>
-              <TouchableOpacity 
-                style={[styles.pickerButton, styles.cancelPickerButton]} 
-                onPress={() => setShowTimePicker(false)}
-              >
-                <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.pickerButton, styles.okPickerButton]} 
-                onPress={() => {
-                  // Just close the picker as the onChange event already updates the value
-                  setShowTimePicker(false);
-                }}
-              >
-                <Text style={styles.okPickerButtonText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Notes (Optional)</Text>
-        <Input
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Add any additional notes here"
-          multiline
-          numberOfLines={4}
-          inputStyle={styles.notesInput}
-        />
-      </View>
-
-      <View style={styles.footer}>
-        <Button
-          title="Save Weight Measurement"
-          onPress={handleSubmit}
-          disabled={!weightValue || isSubmitting}
-          loading={isSubmitting}
-          style={styles.saveButton}
-        />
-      </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+      {/* ... Modals and InputAccessoryView ... */}
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: SIZES.md,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.md,
+    width: '100%',
   },
-  headerTitle: {
-    fontSize: 20,
+  backButton: {
+    padding: SIZES.xs,
+  },
+  headerTitleContainer: {
+  },
+  title: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
     textAlign: 'center',
   },
-  backButton: {
-    paddingVertical: SIZES.xs,
-    paddingRight: SIZES.sm,
+  headerSpacer: {
+    width: 40,
   },
-  backButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  placeholder: {
-    width: 50,
+  inputCard: {
+    padding: SIZES.md,
   },
   inputContainer: {
     marginBottom: SIZES.md,

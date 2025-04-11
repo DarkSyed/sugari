@@ -226,7 +226,7 @@ const SettingsScreen: React.FC = () => {
                 // Force a refresh of all screens that show data
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'Main' }],
+                  routes: [{ name: 'Home' }],
                 });
               } else {
                 Alert.alert('Error', result.message);

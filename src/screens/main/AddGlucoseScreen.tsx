@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, Keyboard, KeyboardAvoidingView, Dimensions, InputAccessoryView, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, Keyboard, KeyboardAvoidingView, Dimensions, ScrollView, InputAccessoryView, TouchableWithoutFeedback } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SIZES, VALIDATION, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX, MEAL_CONTEXTS } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addBloodSugarReading, addInsulinDose } from '../../services/databaseFix';
+import { addBloodSugarReading, addInsulinDose, updateBloodSugarReading } from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { ROUTES } from '../../constants';
+import { useApp } from '../../contexts/AppContext';
+import { formatDate, formatTime } from '../../utils/dateUtils';
+import { BloodSugarReading, MainStackParamList } from '../../types';
 
 type FormData = {
   value: string;
@@ -23,9 +26,13 @@ type FormData = {
   insulinType?: string;
 };
 
+type RouteParams = RouteProp<MainStackParamList, 'AddGlucose'>;
+
 const AddGlucoseScreen: React.FC = () => {
   const { authState } = useAuth();
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteParams>();
+  const { settings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -34,7 +41,7 @@ const AddGlucoseScreen: React.FC = () => {
   const [tempDate, setTempDate] = useState<Date | null>(null);
   const [tempTime, setTempTime] = useState<Date | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const inputAccessoryViewID = 'doneAccessoryViewID';
+  const inputAccessoryViewID = 'inputAccessoryViewGlucoseScreen';
 
   const {
     control,
@@ -54,7 +61,6 @@ const AddGlucoseScreen: React.FC = () => {
 
   const mealContext = watch('mealContext');
 
-  // Add keyboard listeners
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -75,13 +81,17 @@ const AddGlucoseScreen: React.FC = () => {
     };
   }, []);
 
-  const onSubmit = async (data: FormData) => {
-    // Removing authentication check to allow data entry
-    // if (!authState.user) {
-    //   Alert.alert('Error', 'You must be logged in to add readings');
-    //   return;
-    // }
+  useEffect(() => {
+    if (route.params?.initialData) {
+      setValue('value', route.params.initialData.value.toString());
+      setValue('mealContext', route.params.initialData.context || 'before_meal');
+      setValue('notes', route.params.initialData.notes || '');
+      setValue('insulinUnits', route.params.initialData.insulinUnits?.toString() || '');
+      setTimestamp(new Date(route.params.initialData.timestamp));
+    }
+  }, [route.params, setValue]);
 
+  const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
       const glucoseValue = parseFloat(data.value);
@@ -95,20 +105,18 @@ const AddGlucoseScreen: React.FC = () => {
 
       const insertId = await addBloodSugarReading(reading);
 
-      // Log insulin if units provided
       if (data.insulinUnits && parseFloat(data.insulinUnits) > 0) {
         await addInsulinDose({
           units: parseFloat(data.insulinUnits),
-          type: 'rapid', // Default to rapid since we removed the type selector
+          type: 'rapid',
           timestamp: timestamp.getTime(),
           notes: data.notes.trim() || null,
         });
       }
 
       if (insertId) {
-        // Reset form and navigate directly to log screen
         reset();
-        navigation.navigate(ROUTES.SUGAR_LOG); // Use the correct screen name defined in the navigator
+        navigation.navigate(ROUTES.SUGAR_LOG);
       } else {
         Alert.alert('Error', 'Failed to add reading');
       }
@@ -119,6 +127,10 @@ const AddGlucoseScreen: React.FC = () => {
     }
   };
 
+  const handleCancel = () => {
+    navigation.goBack();
+  };
+
   const dateTimePickerStyle = Platform.OS === 'ios' ? {
     alignSelf: 'center' as const,
     marginBottom: SIZES.md,
@@ -127,10 +139,8 @@ const AddGlucoseScreen: React.FC = () => {
 
   const showDatepicker = () => {
     if (showDatePicker) {
-      // If already open, close it (toggle behavior)
       setShowDatePicker(false);
     } else {
-      // Close time picker if open and open date picker
       setShowTimePicker(false);
       setShowDatePicker(true);
     }
@@ -138,30 +148,39 @@ const AddGlucoseScreen: React.FC = () => {
 
   const showTimepicker = () => {
     if (showTimePicker) {
-      // If already open, close it (toggle behavior)
       setShowTimePicker(false);
     } else {
-      // Close date picker if open and open time picker
       setShowDatePicker(false);
       setShowTimePicker(true);
     }
   };
 
+  const confirmIosDate = () => {
+    if (tempDate) {
+      setTimestamp(tempDate);
+    }
+    setShowDatePicker(false);
+    setTempDate(null);
+  };
+
+  const confirmIosTime = () => {
+    if (tempTime) {
+      setTimestamp(tempTime);
+    }
+    setShowTimePicker(false);
+    setTempTime(null);
+  };
+
   const onDateChange = (event: any, selectedDate?: Date) => {
-    // Don't update the timestamp for "change" events, only for "set" events
     if (Platform.OS === 'android') {
-      // On Android, update only when "set" is triggered (user taps OK)
+      setShowDatePicker(false);
       if (event.type === 'set' && selectedDate) {
         const currentTime = new Date(timestamp);
         selectedDate.setHours(currentTime.getHours());
         selectedDate.setMinutes(currentTime.getMinutes());
         setTimestamp(selectedDate);
-        setShowDatePicker(false);
-      } else if (event.type === 'dismissed') {
-        setShowDatePicker(false);
       }
     } else {
-      // On iOS, don't update right away, just store the temporary value
       if (selectedDate) {
         const currentTime = new Date(timestamp);
         selectedDate.setHours(currentTime.getHours());
@@ -173,18 +192,14 @@ const AddGlucoseScreen: React.FC = () => {
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
     if (Platform.OS === 'android') {
-      // On Android, update only when "set" is triggered (user taps OK)
+      setShowTimePicker(false);
       if (event.type === 'set' && selectedTime) {
         const newDate = new Date(timestamp);
         newDate.setHours(selectedTime.getHours());
         newDate.setMinutes(selectedTime.getMinutes());
         setTimestamp(newDate);
-        setShowTimePicker(false);
-      } else if (event.type === 'dismissed') {
-        setShowTimePicker(false);
       }
     } else {
-      // On iOS, don't update right away, just store the temporary value
       if (selectedTime) {
         const newDate = new Date(timestamp);
         newDate.setHours(selectedTime.getHours());
@@ -282,252 +297,240 @@ const AddGlucoseScreen: React.FC = () => {
         style={styles.keyboardAvoidingContainer}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
-          bounces={false}
-          alwaysBounceVertical={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.container}>
-            <View style={styles.header}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.backButtonText}>Back</Text>
-              </TouchableOpacity>
-              <View style={styles.headerTitleContainer}>
-                <Text style={styles.title}>Add Blood Sugar</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            bounces={false}
+            alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.container}>
+              <View style={styles.header}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.title}>Add Blood Sugar</Text>
+                </View>
+                <View style={styles.headerSpacer} />
               </View>
-              <View style={{ width: 80 }} />
-            </View>
 
-            <Card variant="elevated" style={styles.inputCard}>
-              <Controller
-                control={control}
-                rules={{
-                  required: VALIDATION.REQUIRED,
-                  pattern: {
-                    value: /^[0-9]+$/,
-                    message: 'Please enter a valid number',
-                  },
-                  validate: {
-                    min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
-                    max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
-                  },
-                }}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.glucoseInputContainer}>
-                    <Input
-                      label="Blood Glucose"
-                      placeholder="Enter value"
-                      keyboardType="numeric"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      error={errors.value?.message}
-                      touched={value !== ''}
-                      containerStyle={styles.glucoseInput}
-                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+              <Card variant="elevated" style={styles.inputCard}>
+                <Controller
+                  control={control}
+                  rules={{
+                    required: VALIDATION.REQUIRED,
+                    pattern: {
+                      value: /^[0-9]+$/,
+                      message: 'Please enter a valid number',
+                    },
+                    validate: {
+                      min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
+                      max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
+                    },
+                  }}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.glucoseInputContainer}>
+                      <Input
+                        label="Blood Glucose"
+                        placeholder="Enter value"
+                        keyboardType="numeric"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors.value?.message}
+                        touched={value !== ''}
+                        containerStyle={styles.glucoseInput}
+                        inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                      />
+                      <View style={styles.unitContainer}>
+                        <Text
+                          style={[
+                            styles.valuePreview,
+                            { color: getStatusColor(value) },
+                          ]}
+                        >
+                          {value ? value : '---'}
+                        </Text>
+                        <Text style={styles.unitText}>mg/dL</Text>
+                      </View>
+                    </View>
+                  )}
+                  name="value"
+                />
+
+                <Controller
+                  control={control}
+                  rules={{
+                    pattern: {
+                      value: /^\d*\.?\d*$/,
+                      message: 'Please enter a valid number',
+                    },
+                    validate: {
+                      min: value => !value || parseFloat(value) > 0 || 'Insulin must be greater than 0 units',
+                      max: value => !value || parseFloat(value) <= 100 || 'Insulin must be less than 100 units',
+                    },
+                  }}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View style={styles.insulinInputContainer}>
+                      <Input
+                        label="Insulin Units (optional)"
+                        placeholder="Enter units"
+                        keyboardType="numeric"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors.insulinUnits?.message}
+                        touched={value !== ''}
+                        containerStyle={styles.insulinInput}
+                        inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                      />
+                      <Text style={styles.insulinUnitText}>units</Text>
+                    </View>
+                  )}
+                  name="insulinUnits"
+                />
+
+                <Text style={styles.label}>When was this reading taken?</Text>
+                <View style={styles.dateTimeContainer}>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={showDatepicker}
+                  >
+                    <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={showTimepicker}
+                  >
+                    <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
+                    <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* --- iOS Date Picker --- */}
+                {Platform.OS === 'ios' && showDatePicker && (
+                  <View style={styles.iosPickerContainer}>
+                    <DateTimePicker
+                      value={tempDate || timestamp}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange}
+                      style={dateTimePickerStyle}
+                      maximumDate={new Date()}
                     />
-                    <View style={styles.unitContainer}>
-                      <Text
-                        style={[
-                          styles.valuePreview,
-                          { color: getStatusColor(value) },
-                        ]}
-                      >
-                        {value ? value : '---'}
-                      </Text>
-                      <Text style={styles.unitText}>mg/dL</Text>
+                    <View style={styles.pickerButtonsContainer}>
+                      <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }} style={[styles.pickerButton, styles.cancelPickerButton]}>
+                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={confirmIosDate} style={[styles.pickerButton, styles.okPickerButton]}>
+                        <Text style={styles.okPickerButtonText}>OK</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 )}
-                name="value"
-              />
-
-              <Controller
-                control={control}
-                rules={{
-                  pattern: {
-                    value: /^\d*\.?\d*$/,
-                    message: 'Please enter a valid number',
-                  },
-                  validate: {
-                    min: value => !value || parseFloat(value) > 0 || 'Insulin must be greater than 0 units',
-                    max: value => !value || parseFloat(value) <= 100 || 'Insulin must be less than 100 units',
-                  },
-                }}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.insulinInputContainer}>
-                    <Input
-                      label="Insulin Units (optional)"
-                      placeholder="Enter units"
-                      keyboardType="numeric"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      error={errors.insulinUnits?.message}
-                      touched={value !== ''}
-                      containerStyle={styles.insulinInput}
-                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                {/* --- Android Date Picker --- */}
+                {Platform.OS === 'android' && showDatePicker && (
+                   <DateTimePicker
+                      value={timestamp}
+                      mode="date"
+                      display="default"
+                      onChange={onDateChange}
+                      maximumDate={new Date()}
                     />
-                    <Text style={styles.insulinUnitText}>units</Text>
+                )}
+
+                {/* --- iOS Time Picker --- */}
+                {Platform.OS === 'ios' && showTimePicker && (
+                  <View style={styles.iosPickerContainer}>
+                    <DateTimePicker
+                      value={tempTime || timestamp}
+                      mode="time"
+                      display="spinner"
+                      onChange={onTimeChange}
+                      style={dateTimePickerStyle}
+                    />
+                    <View style={styles.pickerButtonsContainer}>
+                      <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }} style={[styles.pickerButton, styles.cancelPickerButton]}>
+                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={confirmIosTime} style={[styles.pickerButton, styles.okPickerButton]}>
+                        <Text style={styles.okPickerButtonText}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
-                name="insulinUnits"
-              />
+                 {/* --- Android Time Picker --- */}
+                {Platform.OS === 'android' && showTimePicker && (
+                   <DateTimePicker
+                      value={timestamp}
+                      mode="time"
+                      display="default"
+                      onChange={onTimeChange}
+                    />
+                )}
 
-              <Text style={styles.label}>When was this reading taken?</Text>
-              <View style={styles.dateTimeContainer}>
-                <TouchableOpacity
-                  style={styles.dateTimeButton}
-                  onPress={showDatepicker}
-                >
-                  <Text style={styles.dateTimeText}>
-                    {formatDate(timestamp)}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dateTimeButton}
-                  onPress={showTimepicker}
-                >
-                  <Text style={styles.dateTimeText}>
-                    {formatTime(timestamp)}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {showDatePicker && (
-                <View style={dateTimePickerStyle}>
-                  <DateTimePicker
-                    testID="dateTimePicker"
-                    value={timestamp}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onDateChange}
-                    maximumDate={new Date()}
-                    textColor={COLORS.text}
-                  />
-                  <View style={styles.pickerButtonsContainer}>
-                    <TouchableOpacity 
-                      style={[styles.pickerButton, styles.cancelPickerButton]} 
-                      onPress={() => setShowDatePicker(false)}
-                    >
-                      <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.pickerButton, styles.okPickerButton]} 
-                      onPress={() => {
-                        // Apply the temp date value on iOS
-                        if (Platform.OS === 'ios' && tempDate) {
-                          setTimestamp(tempDate);
-                          setTempDate(null);
-                        }
-                        setShowDatePicker(false);
-                      }}
-                    >
-                      <Text style={styles.okPickerButtonText}>OK</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {showTimePicker && (
-                <View style={dateTimePickerStyle}>
-                  <DateTimePicker
-                    testID="timeTimePicker"
-                    value={timestamp}
-                    mode="time"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                    is24Hour={false}
-                    textColor={COLORS.text}
-                  />
-                  <View style={styles.pickerButtonsContainer}>
-                    <TouchableOpacity 
-                      style={[styles.pickerButton, styles.cancelPickerButton]} 
-                      onPress={() => setShowTimePicker(false)}
-                    >
-                      <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.pickerButton, styles.okPickerButton]} 
-                      onPress={() => {
-                        // Apply the temp time value on iOS
-                        if (Platform.OS === 'ios' && tempTime) {
-                          setTimestamp(tempTime);
-                          setTempTime(null);
-                        }
-                        setShowTimePicker(false);
-                      }}
-                    >
-                      <Text style={styles.okPickerButtonText}>OK</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              <Text style={styles.label}>Meal Context</Text>
-              <Controller
-                control={control}
-                render={({ field: { value } }) => (
-                  <TouchableOpacity 
+                <View style={styles.mealContextContainer}>
+                  <Text style={styles.label}>Meal Context</Text>
+                  <TouchableOpacity
                     style={styles.mealContextButton}
                     onPress={() => setShowMealContextPicker(true)}
                   >
                     <Text style={styles.mealContextButtonText}>
-                      {getMealContextLabel(value)}
+                      {getMealContextLabel(mealContext)}
                     </Text>
-                    <Ionicons name="chevron-down" size={16} color={COLORS.text} />
+                    <Ionicons name="chevron-down" size={20} color={COLORS.text} />
                   </TouchableOpacity>
-                )}
-                name="mealContext"
-              />
+                </View>
 
-              <Controller
-                control={control}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    label="Notes (optional)"
-                    placeholder="Add any additional information"
-                    multiline
-                    numberOfLines={3}
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    inputStyle={styles.notesInput}
-                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                <Controller
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Notes (optional)"
+                      placeholder="Add any notes about this reading"
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      style={styles.notesInput}
+                    />
+                  )}
+                  name="notes"
+                />
+
+                <View style={styles.buttonGroup}>
+                  <Button
+                    title="Cancel"
+                    variant="outline"
+                    onPress={handleCancel}
+                    style={styles.cancelButton}
+                    disabled={isLoading}
                   />
-                )}
-                name="notes"
-              />
-            </Card>
-
-            <View style={styles.buttonContainer}>
-              <Button
-                title="Cancel"
-                onPress={() => navigation.goBack()}
-                variant="outline"
-                style={styles.cancelButton}
-              />
-              <Button
-                title="Save"
-                onPress={handleSubmit(onSubmit)}
-                loading={isLoading}
-                disabled={isLoading}
-                style={styles.saveButton}
-              />
+                  <Button
+                    title="Save Reading"
+                    onPress={handleSubmit(onSubmit)}
+                    loading={isLoading}
+                    disabled={isLoading}
+                    style={styles.saveButton}
+                  />
+                </View>
+              </Card>
             </View>
-          </View>
-        </ScrollView>
-        
-        {renderMealContextModal()}
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-      
-      {/* Input Accessory View for iOS */}
+
+      {renderMealContextModal()}
+
       {Platform.OS === 'ios' && (
         <InputAccessoryView nativeID={inputAccessoryViewID}>
           <View style={styles.keyboardAccessory}>
@@ -545,82 +548,114 @@ const AddGlucoseScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoidingContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: SIZES.xl,
+  },
   container: {
     flex: 1,
+    padding: SIZES.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SIZES.md,
     justifyContent: 'space-between',
+    marginBottom: SIZES.md,
+    width: '100%',
   },
   backButton: {
     padding: SIZES.xs,
-    width: 80,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: COLORS.primary,
   },
   headerTitleContainer: {
-    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: SIZES.xs,
     color: COLORS.text,
     textAlign: 'center',
   },
+  headerSpacer: {
+    width: 40,
+  },
   inputCard: {
-    marginBottom: SIZES.lg,
+    padding: SIZES.md,
   },
   glucoseInputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     marginBottom: SIZES.md,
   },
   glucoseInput: {
-    flex: 2,
-    marginRight: SIZES.md,
+    flex: 1,
+    marginBottom: 0,
   },
   unitContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginLeft: SIZES.sm,
+    alignItems: 'flex-end',
+    paddingBottom: 10,
   },
   valuePreview: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: COLORS.success,
   },
   unitText: {
     fontSize: 14,
     color: COLORS.lightText,
-    marginTop: 4,
+  },
+  insulinInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: SIZES.md,
+  },
+  insulinInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  insulinUnitText: {
+    marginLeft: SIZES.sm,
+    paddingBottom: 10,
+    fontSize: 14,
+    color: COLORS.lightText,
   },
   label: {
     fontSize: 16,
+    fontWeight: '500',
     marginBottom: SIZES.xs,
     color: COLORS.text,
-    fontWeight: '500',
   },
   dateTimeContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: SIZES.md,
   },
   dateTimeButton: {
+    width: '48.5%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
-    padding: SIZES.sm,
-    marginRight: SIZES.sm,
+    paddingVertical: SIZES.sm,
+    paddingHorizontal: SIZES.xs,
     borderWidth: 1,
     borderColor: COLORS.border,
-    flex: 1,
+  },
+  dateTimeIcon: {
+    marginLeft: SIZES.xs,
   },
   dateTimeText: {
     fontSize: 16,
     color: COLORS.text,
-    textAlign: 'center',
+  },
+  mealContextContainer: {
+    marginBottom: SIZES.md,
   },
   mealContextButton: {
     flexDirection: 'row',
@@ -629,7 +664,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     padding: SIZES.sm,
-    marginBottom: SIZES.md,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -637,49 +671,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
   },
-  pickerContainer: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: SIZES.md,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
-  },
-  pickerButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  pickerButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginHorizontal: 8,
-  },
-  okPickerButton: {
-    backgroundColor: COLORS.primary,
-  },
-  cancelPickerButton: {
-    backgroundColor: '#E0E0E0',
-  },
-  okPickerButtonText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  cancelPickerButtonText: {
-    color: COLORS.text,
-  },
   notesInput: {
     height: 80,
-    textAlignVertical: 'top',
   },
-  buttonContainer: {
+  buttonGroup: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginTop: SIZES.md,
   },
   cancelButton: {
@@ -696,10 +692,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.cardBackground,
+    backgroundColor: 'white',
     borderTopLeftRadius: SIZES.md,
     borderTopRightRadius: SIZES.md,
-    padding: SIZES.lg,
+    padding: SIZES.md,
     maxHeight: '70%',
   },
   modalHeader: {
@@ -718,11 +714,12 @@ const styles = StyleSheet.create({
   },
   mealContextItem: {
     paddingVertical: SIZES.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: SIZES.md,
+    borderRadius: SIZES.xs,
+    marginBottom: SIZES.xs,
   },
   selectedMealContext: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.primaryLight,
   },
   mealContextText: {
     fontSize: 16,
@@ -732,27 +729,38 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: 'bold',
   },
-  insulinInputContainer: {
+  pickerButtonsContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SIZES.md,
+    paddingTop: SIZES.sm,
   },
-  insulinInput: {
-    flex: 1,
-    marginRight: SIZES.sm,
+  pickerButton: {
+    paddingVertical: SIZES.xs + 2,
+    paddingHorizontal: SIZES.lg,
+    borderRadius: 20,
+    marginHorizontal: SIZES.sm,
   },
-  insulinUnitText: {
-    fontSize: 16,
+  cancelPickerButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  okPickerButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelPickerButtonText: {
     color: COLORS.text,
-    marginBottom: 15,
+    fontSize: 16,
+    fontWeight: '500',
   },
-  keyboardAvoidingContainer: {
-    flex: 1,
+  okPickerButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   keyboardAccessory: {
     height: 44,
     backgroundColor: '#f8f8f8',
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#d8d8d8',
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -768,12 +776,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
+  iosPickerContainer: {
+    borderRadius: SIZES.sm,
+    marginBottom: SIZES.md,
   },
 });
 
-export default AddGlucoseScreen; 
+export default AddGlucoseScreen;

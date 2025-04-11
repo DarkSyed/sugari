@@ -19,16 +19,15 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
-import { COLORS, SIZES, MEAL_CONTEXTS } from '../../constants';
+import { COLORS, SIZES, MEAL_CONTEXTS, VALIDATION } from '../../constants';
 import { BloodSugarReading, MainStackParamList } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
-import { addBloodSugarReading, updateBloodSugarReading } from '../../services/database';
-import { formatDate, formatTime } from '../../utils/dateUtils';
+import { addBloodSugarReading, updateBloodSugarReading } from '../../services/databaseFix';
+import { formatDate, formatTime, dateToTimestamp } from '../../utils/dateUtils';
 
 type FormData = {
   value: string;
@@ -82,10 +81,14 @@ const AddSugarScreen: React.FC = () => {
     setLoading(true);
     
     try {
+      // Convert timestamp string back to number for database operations
+      const timestampInMs = timestamp.getTime();
+
       const readingData = {
         value: parseFloat(data.value),
         type: 'sugar' as const,
-        timestamp: timestamp.toISOString(),
+        // Use timestampInMs (number) for database operations
+        timestamp: timestampInMs,
         context: data.context || null,
         notes: data.notes || null
       };
@@ -105,10 +108,6 @@ const AddSugarScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCancel = () => {
-    navigation.goBack();
   };
 
   const dateTimePickerStyle = Platform.OS === 'ios' ? {
@@ -205,131 +204,121 @@ const AddSugarScreen: React.FC = () => {
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
       >
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          alwaysBounceVertical={false}
-          keyboardShouldPersistTaps="always"
-          contentContainerStyle={styles.scrollViewContent}
-        >
-          <View style={styles.header}>
-            <Text style={styles.screenTitle}>
-              {isEditing ? 'Edit Blood Sugar' : 'Add Blood Sugar'}
-            </Text>
-            {loading && <ActivityIndicator size="small" color={COLORS.primary} />}
-          </View>
-          
-          <Card variant="elevated">
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Blood Sugar Value ({settings?.units || 'mg/dL'})</Text>
-              <Controller
-                control={control}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    placeholder={`Enter blood sugar value in ${settings?.units || 'mg/dL'}`}
-                    keyboardType="numeric"
-                    error={errors.value?.message}
-                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
-                  />
-                )}
-                name="value"
-                rules={{
-                  required: 'Blood sugar value is required',
-                  pattern: {
-                    value: /^[0-9]*\.?[0-9]*$/,
-                    message: 'Please enter a valid number'
-                  },
-                  validate: {
-                    positive: (value) => parseFloat(value) > 0 || 'Value must be greater than 0',
-                    reasonable: (value) => {
-                      const num = parseFloat(value);
-                      const isMMOL = settings?.units === 'mmol/L';
-                      const max = isMMOL ? 33.3 : 600; // Max reasonable values
-                      return num <= max || `Value seems too high (max: ${max})`;
-                    }
-                  }
-                }}
-              />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollViewContent}
+          >
+            <View style={styles.header}>
+              <Text style={styles.screenTitle}>
+                {isEditing ? 'Edit Blood Sugar' : 'Add Blood Sugar'}
+              </Text>
+              {loading && <ActivityIndicator size="small" color={COLORS.primary} />}
             </View>
             
-            <View style={styles.dateTimeContainer}>
-              <View style={styles.dateTimeField}>
-                <Text style={styles.label}>Date</Text>
+            <Card variant="elevated" style={styles.inputCard}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Blood Sugar Value ({settings?.units || 'mg/dL'})</Text>
+                <Controller
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder={`Enter blood sugar value in ${settings?.units || 'mg/dL'}`}
+                      keyboardType="numeric"
+                      error={errors.value?.message}
+                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                    />
+                  )}
+                  name="value"
+                  rules={{
+                    required: VALIDATION.REQUIRED,
+                    pattern: {
+                      value: /^[0-9]+$/,
+                      message: 'Please enter a valid number',
+                    },
+                    validate: {
+                      min: value => parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
+                      max: value => parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
+                    },
+                  }}
+                />
+              </View>
+              
+              <View style={styles.dateTimeContainer}>
+                <View style={styles.dateTimeField}>
+                  <Text style={styles.label}>Date</Text>
+                  <TouchableOpacity
+                    style={styles.dateTimePicker}
+                    onPress={toggleDatePicker}
+                  >
+                    <Text style={styles.dateTimeText}>{formattedDate}</Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.dateTimeField}>
+                  <Text style={styles.label}>Time</Text>
+                  <TouchableOpacity
+                    style={styles.dateTimePicker}
+                    onPress={toggleTimePicker}
+                  >
+                    <Text style={styles.dateTimeText}>{formattedTime}</Text>
+                    <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Context</Text>
                 <TouchableOpacity
-                  style={styles.dateTimePicker}
-                  onPress={toggleDatePicker}
+                  style={styles.contextPicker}
+                  onPress={toggleContextPicker}
                 >
-                  <Text style={styles.dateTimeText}>{formattedDate}</Text>
-                  <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.contextText}>
+                    {selectedContext ? getContextLabel(selectedContext) : 'Select Context'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={COLORS.primary} />
                 </TouchableOpacity>
               </View>
               
-              <View style={styles.dateTimeField}>
-                <Text style={styles.label}>Time</Text>
-                <TouchableOpacity
-                  style={styles.dateTimePicker}
-                  onPress={toggleTimePicker}
-                >
-                  <Text style={styles.dateTimeText}>{formattedTime}</Text>
-                  <Ionicons name="time-outline" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Notes (Optional)</Text>
+                <Controller
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder="Add any additional notes"
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                      style={styles.notesInput}
+                    />
+                  )}
+                  name="notes"
+                />
               </View>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Context</Text>
-              <TouchableOpacity
-                style={styles.contextPicker}
-                onPress={toggleContextPicker}
-              >
-                <Text style={styles.contextText}>
-                  {selectedContext ? getContextLabel(selectedContext) : 'Select Context'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Notes (Optional)</Text>
-              <Controller
-                control={control}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    placeholder="Add any additional notes"
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    style={styles.notesInput}
-                    inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
-                  />
-                )}
-                name="notes"
-              />
-            </View>
-            
-            <View style={styles.buttonGroup}>
-              <Button
-                title="Cancel"
-                onPress={handleCancel}
-                variant="outline"
-                style={{ flex: 1, marginRight: 8 }}
-              />
-              <Button
-                title={isEditing ? 'Update' : 'Save'}
-                onPress={handleSubmit(onSubmit)}
-                loading={loading}
-                disabled={loading}
-                style={{ flex: 1, marginLeft: 8 }}
-              />
-            </View>
-          </Card>
-        </ScrollView>
+              
+              <View style={styles.buttonGroup}>
+                <Button
+                  title={isEditing ? 'Update Reading' : 'Save Reading'}
+                  onPress={handleSubmit(onSubmit)}
+                  loading={loading}
+                  disabled={loading}
+                  style={styles.saveButton}
+                />
+              </View>
+            </Card>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       
       {/* Date Picker Modal */}
@@ -533,8 +522,11 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SIZES.sm,
+    marginTop: SIZES.lg,
+  },
+  saveButton: {
+    flex: 1,
+    marginLeft: SIZES.sm,
   },
   modalOverlay: {
     flex: 1,
@@ -613,7 +605,7 @@ const styles = StyleSheet.create({
   keyboardAccessory: {
     height: 44,
     backgroundColor: '#f8f8f8',
-    borderTopWidth: 1, 
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#d8d8d8',
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -628,6 +620,15 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  inputCard: {
+    padding: SIZES.md,
+    marginBottom: SIZES.lg,
+  },
+  notesInput: {
+    height: 100,
+    paddingTop: SIZES.sm,
+    textAlignVertical: 'top',
   },
 });
 
