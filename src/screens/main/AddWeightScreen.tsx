@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, ScrollView, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -9,17 +9,22 @@ import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { Keyboard } from 'react-native';
 import Card from '../../components/Card';
+import { useApp } from '../../contexts/AppContext';
 
 const AddWeightScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const { userSettings } = useApp();
   const [weightValue, setWeightValue] = useState('');
   const [notes, setNotes] = useState('');
   const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
+
+  const weightUnit = userSettings?.weightUnit || 'kg';
 
   const handleSubmit = async () => {
     if (!weightValue) {
@@ -38,6 +43,7 @@ const AddWeightScreen: React.FC = () => {
     try {
       await addWeightMeasurement({
         value: numericValue,
+        unit: weightUnit,
         timestamp: timestamp.getTime(),
         notes: notes.trim() || null
       });
@@ -55,40 +61,47 @@ const AddWeightScreen: React.FC = () => {
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || timestamp;
-    
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    // Preserve the time from the existing timestamp
-    const newDate = new Date(currentDate);
-    newDate.setHours(timestamp.getHours(), timestamp.getMinutes());
-    
-    setTimestamp(newDate);
-  };
-
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || timestamp;
-    
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    
-    // Preserve the date but update the time
-    const newDate = new Date(timestamp);
-    newDate.setHours(currentTime.getHours(), currentTime.getMinutes());
-    
-    setTimestamp(newDate);
-  };
-
   const showDatepicker = () => {
-    setShowDatePicker(true);
+    if (showDatePicker) {
+      setShowDatePicker(false);
+    } else {
+      setShowTimePicker(false);
+      setShowDatePicker(true);
+    }
+    Keyboard.dismiss();
   };
 
   const showTimepicker = () => {
-    setShowTimePicker(true);
+    if (showTimePicker) {
+      setShowTimePicker(false);
+    } else {
+      setShowDatePicker(false);
+      setShowTimePicker(true);
+    }
+    Keyboard.dismiss();
+  };
+
+  const confirmIosDate = () => {
+    if (tempDate) {
+      const newDate = new Date(timestamp);
+      newDate.setFullYear(tempDate.getFullYear());
+      newDate.setMonth(tempDate.getMonth());
+      newDate.setDate(tempDate.getDate());
+      setTimestamp(newDate);
+    }
+    setShowDatePicker(false);
+    setTempDate(null);
+  };
+
+  const confirmIosTime = () => {
+    if (tempTime) {
+      const newDate = new Date(timestamp);
+      newDate.setHours(tempTime.getHours());
+      newDate.setMinutes(tempTime.getMinutes());
+      setTimestamp(newDate);
+    }
+    setShowTimePicker(false);
+    setTempTime(null);
   };
 
   const formatDate = (date: Date) => {
@@ -102,7 +115,7 @@ const AddWeightScreen: React.FC = () => {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
-      minute: '2-digit',
+      minute: 'numeric',
       hour12: true
     });
   };
@@ -159,38 +172,61 @@ const AddWeightScreen: React.FC = () => {
                   <Text style={styles.label}>Date & Time</Text>
                   <View style={styles.dateTimeButtonsContainer}>
                     <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
-                      <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                       <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
+                      <Ionicons 
+                        name="calendar-outline" 
+                        size={18} 
+                        color={COLORS.primary} 
+                        style={styles.dateTimeIcon} 
+                      />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
-                      <Ionicons name="time-outline" size={20} color={COLORS.primary} />
                       <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
+                      <Ionicons 
+                        name="time-outline" 
+                        size={18} 
+                        color={COLORS.primary} 
+                        style={styles.dateTimeIcon} 
+                      />
                     </TouchableOpacity>
                   </View>
 
                   {showDatePicker && (
                     <View style={dateTimePickerStyle}>
                       <DateTimePicker
-                        value={timestamp}
+                        value={tempDate || timestamp}
                         mode="date"
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onDateChange}
-                        maximumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                          if (Platform.OS === 'android') {
+                            setShowDatePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const newDate = new Date(timestamp);
+                              newDate.setFullYear(selectedDate.getFullYear());
+                              newDate.setMonth(selectedDate.getMonth());
+                              newDate.setDate(selectedDate.getDate());
+                              setTimestamp(newDate);
+                            }
+                          } else if (selectedDate) {
+                            setTempDate(selectedDate);
+                          }
+                        }}
+                        style={Platform.OS === 'ios' ? { alignSelf: 'center', width: '100%' } : {}}
                       />
                       <View style={styles.pickerButtonsContainer}>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => setShowDatePicker(false)}
+                          onPress={() => {
+                            setShowDatePicker(false);
+                            setTempDate(null);
+                          }}
                         >
                           <Text style={styles.cancelPickerButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={() => {
-                            // Just close the picker as the onChange event already updates the value
-                            setShowDatePicker(false);
-                          }}
+                          onPress={confirmIosDate}
                         >
                           <Text style={styles.okPickerButtonText}>OK</Text>
                         </TouchableOpacity>
@@ -201,25 +237,37 @@ const AddWeightScreen: React.FC = () => {
                   {showTimePicker && (
                     <View style={dateTimePickerStyle}>
                       <DateTimePicker
-                        value={timestamp}
+                        value={tempTime || timestamp}
                         mode="time"
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onTimeChange}
-                        is24Hour={false}
+                        onChange={(event, selectedTime) => {
+                          if (Platform.OS === 'android') {
+                            setShowTimePicker(false);
+                            if (event.type === 'set' && selectedTime) {
+                              const newDate = new Date(timestamp);
+                              newDate.setHours(selectedTime.getHours());
+                              newDate.setMinutes(selectedTime.getMinutes());
+                              setTimestamp(newDate);
+                            }
+                          } else if (selectedTime) {
+                            setTempTime(selectedTime);
+                          }
+                        }}
+                        style={Platform.OS === 'ios' ? { alignSelf: 'center', width: '100%' } : {}}
                       />
                       <View style={styles.pickerButtonsContainer}>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => setShowTimePicker(false)}
+                          onPress={() => {
+                            setShowTimePicker(false);
+                            setTempTime(null);
+                          }}
                         >
                           <Text style={styles.cancelPickerButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={() => {
-                            // Just close the picker as the onChange event already updates the value
-                            setShowTimePicker(false);
-                          }}
+                          onPress={confirmIosTime}
                         >
                           <Text style={styles.okPickerButtonText}>OK</Text>
                         </TouchableOpacity>
@@ -311,6 +359,7 @@ const styles = StyleSheet.create({
   dateTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: COLORS.inputBackground,
     paddingHorizontal: SIZES.sm,
     paddingVertical: SIZES.sm,
@@ -320,6 +369,8 @@ const styles = StyleSheet.create({
   dateTimeText: {
     fontSize: 14,
     color: COLORS.text,
+  },
+  dateTimeIcon: {
     marginLeft: SIZES.xs,
   },
   footer: {

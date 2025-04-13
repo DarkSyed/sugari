@@ -25,11 +25,16 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
   
   const [systolic, setSystolic] = useState(initialData ? initialData.systolic.toString() : '');
   const [diastolic, setDiastolic] = useState(initialData ? initialData.diastolic.toString() : '');
+  const [pulse, setPulse] = useState(initialData ? initialData.pulse ? initialData.pulse.toString() : '' : '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [timestamp, setTimestamp] = useState(initialData ? new Date(initialData.timestamp) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Add temporary date/time state for iOS picker
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
 
   const handleSubmit = async () => {
     if (!systolic || !diastolic) {
@@ -56,6 +61,7 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
       const readingData = {
         systolic: systolicValue,
         diastolic: diastolicValue,
+        pulse: pulse ? parseInt(pulse, 10) : null,
         timestamp: timestamp.getTime(),
         notes: notes.trim() || null
       };
@@ -71,6 +77,7 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
       // Reset form and navigate directly to log screen
       setSystolic('');
       setDiastolic('');
+      setPulse('');
       setNotes('');
       setTimestamp(new Date());
       navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
@@ -111,11 +118,46 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
   };
 
   const showDatepicker = () => {
-    setShowDatePicker(true);
+    if (showDatePicker) {
+      setShowDatePicker(false);
+    } else {
+      setShowTimePicker(false); // Close time picker if open
+      setShowDatePicker(true);
+    }
+    Keyboard.dismiss();
   };
 
   const showTimepicker = () => {
-    setShowTimePicker(true);
+    if (showTimePicker) {
+      setShowTimePicker(false);
+    } else {
+      setShowDatePicker(false); // Close date picker if open
+      setShowTimePicker(true);
+    }
+    Keyboard.dismiss();
+  };
+
+  const confirmIosDate = () => {
+    if (tempDate) {
+      const newDate = new Date(timestamp);
+      newDate.setFullYear(tempDate.getFullYear());
+      newDate.setMonth(tempDate.getMonth());
+      newDate.setDate(tempDate.getDate());
+      setTimestamp(newDate);
+    }
+    setShowDatePicker(false);
+    setTempDate(null);
+  };
+
+  const confirmIosTime = () => {
+    if (tempTime) {
+      const newDate = new Date(timestamp);
+      newDate.setHours(tempTime.getHours());
+      newDate.setMinutes(tempTime.getMinutes());
+      setTimestamp(newDate);
+    }
+    setShowTimePicker(false);
+    setTempTime(null);
   };
 
   const formatDate = (date: Date) => {
@@ -199,38 +241,50 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
                   <Text style={styles.label}>Date & Time</Text>
                   <View style={styles.dateTimeButtonsContainer}>
                     <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
-                      <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                       <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
+                      <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
-                      <Ionicons name="time-outline" size={20} color={COLORS.primary} />
                       <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
+                      <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
                     </TouchableOpacity>
                   </View>
 
                   {showDatePicker && (
                     <View style={dateTimePickerStyle}>
                       <DateTimePicker
-                        value={timestamp}
+                        value={tempDate || timestamp}
                         mode="date"
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onDateChange}
-                        maximumDate={new Date()}
+                        onChange={(event, selectedDate) => {
+                          if (Platform.OS === 'android') {
+                            setShowDatePicker(false);
+                            if (event.type === 'set' && selectedDate) {
+                              const newDate = new Date(timestamp);
+                              newDate.setFullYear(selectedDate.getFullYear());
+                              newDate.setMonth(selectedDate.getMonth());
+                              newDate.setDate(selectedDate.getDate());
+                              setTimestamp(newDate);
+                            }
+                          } else if (selectedDate) {
+                            setTempDate(selectedDate);
+                          }
+                        }}
                       />
                       <View style={styles.pickerButtonsContainer}>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => setShowDatePicker(false)}
+                          onPress={() => {
+                            setShowDatePicker(false);
+                            setTempDate(null);
+                          }}
                         >
                           <Text style={styles.cancelPickerButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={() => {
-                            // Just close the picker as the onChange event already updates the value
-                            setShowDatePicker(false);
-                          }}
+                          onPress={confirmIosDate}
                         >
                           <Text style={styles.okPickerButtonText}>OK</Text>
                         </TouchableOpacity>
@@ -241,31 +295,52 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
                   {showTimePicker && (
                     <View style={dateTimePickerStyle}>
                       <DateTimePicker
-                        value={timestamp}
+                        value={tempTime || timestamp}
                         mode="time"
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onTimeChange}
-                        is24Hour={false}
+                        onChange={(event, selectedTime) => {
+                          if (Platform.OS === 'android') {
+                            setShowTimePicker(false);
+                            if (event.type === 'set' && selectedTime) {
+                              const newDate = new Date(timestamp);
+                              newDate.setHours(selectedTime.getHours());
+                              newDate.setMinutes(selectedTime.getMinutes());
+                              setTimestamp(newDate);
+                            }
+                          } else if (selectedTime) {
+                            setTempTime(selectedTime);
+                          }
+                        }}
                       />
                       <View style={styles.pickerButtonsContainer}>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => setShowTimePicker(false)}
+                          onPress={() => {
+                            setShowTimePicker(false);
+                            setTempTime(null);
+                          }}
                         >
                           <Text style={styles.cancelPickerButtonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={() => {
-                            // Just close the picker as the onChange event already updates the value
-                            setShowTimePicker(false);
-                          }}
+                          onPress={confirmIosTime}
                         >
                           <Text style={styles.okPickerButtonText}>OK</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
                   )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Pulse (bpm) (optional)</Text>
+                  <Input
+                    value={pulse}
+                    onChangeText={setPulse}
+                    placeholder="e.g., 72"
+                    keyboardType="number-pad"
+                  />
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -366,6 +441,9 @@ const styles = StyleSheet.create({
   dateTimeText: {
     fontSize: 14,
     color: COLORS.text,
+    marginLeft: SIZES.xs,
+  },
+  dateTimeIcon: {
     marginLeft: SIZES.xs,
   },
   footer: {
