@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES, APP_NAME, APP_VERSION } from '../../constants';
+import { COLORS, SIZES, APP_NAME, APP_VERSION, ROUTES } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
@@ -294,7 +294,7 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleEditProfile = () => {
-    navigation.navigate('Profile');
+    navigation.navigate(ROUTES.HOME, { screen: ROUTES.PROFILE });
   };
 
   const renderSettingSwitch = (
@@ -322,9 +322,12 @@ const SettingsScreen: React.FC = () => {
     title: string,
     onPress: () => void
   ) => (
-    <TouchableOpacity style={styles.navigationRow} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.navigationRow}
+      onPress={onPress}
+    >
       <View style={styles.navigationIconContainer}>
-        <Ionicons name={icon as any} size={22} color={COLORS.primary} />
+        <Ionicons name={icon as any} size={20} color={COLORS.primary} />
       </View>
       <Text style={styles.navigationTitle}>{title}</Text>
       <Ionicons name="chevron-forward" size={20} color={COLORS.lightText} />
@@ -396,14 +399,11 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.settingsRow}
-            onPress={handleEditProfile}
-          >
-            <Ionicons name="person-outline" size={24} color={COLORS.text} />
-            <Text style={styles.settingsText}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.lightText} />
-          </TouchableOpacity>
+          {renderNavigationItem(
+            'person-outline',
+            'Edit Profile',
+            handleEditProfile
+          )}
           
           {renderNavigationItem(
             'lock-closed-outline',

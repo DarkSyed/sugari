@@ -60,6 +60,8 @@ const AddGlucoseScreen: React.FC = () => {
   });
 
   const mealContext = watch('mealContext');
+  const value = watch('value');
+  const notes = watch('notes');
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -91,37 +93,44 @@ const AddGlucoseScreen: React.FC = () => {
     }
   }, [route.params, setValue]);
 
-  const onSubmit = async (data: FormData) => {
-    setIsLoading(true);
+  const handleSave = async () => {
+    if (!value) {
+      Alert.alert('Error', 'Please enter a blood sugar value');
+      return;
+    }
+
     try {
-      const glucoseValue = parseFloat(data.value);
-
-      const reading = {
-        value: glucoseValue,
+      setIsLoading(true);
+      
+      const readingData = {
+        value: parseFloat(value),
         timestamp: timestamp.getTime(),
-        context: data.mealContext,
-        notes: data.notes.trim() || null,
+        context: mealContext,
+        notes: notes,
+        // Add any other fields you need
       };
-
-      const insertId = await addBloodSugarReading(reading);
-
-      if (data.insulinUnits && parseFloat(data.insulinUnits) > 0) {
-        await addInsulinDose({
-          units: parseFloat(data.insulinUnits),
-          type: 'rapid',
-          timestamp: timestamp.getTime(),
-          notes: data.notes.trim() || null,
-        });
-      }
-
-      if (insertId) {
-        reset();
-        navigation.navigate(ROUTES.SUGAR_LOG);
+      
+      if (route.params?.initialData) {
+        // We're editing an existing reading
+        const updatedReading = {
+          ...readingData,
+          id: route.params.initialData.id // Keep the original ID
+        };
+        
+        // Use updateBloodSugarReading instead of addBloodSugarReading
+        await updateBloodSugarReading(updatedReading);
+        
+        Alert.alert('Success', 'Blood sugar reading updated successfully');
       } else {
-        Alert.alert('Error', 'Failed to add reading');
+        // We're adding a new reading
+        await addBloodSugarReading(readingData);
+        Alert.alert('Success', 'Blood sugar reading added successfully');
       }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+      
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving blood sugar reading:', error);
+      Alert.alert('Error', 'Failed to save blood sugar reading');
     } finally {
       setIsLoading(false);
     }
@@ -517,7 +526,7 @@ const AddGlucoseScreen: React.FC = () => {
                   />
                   <Button
                     title="Save Reading"
-                    onPress={handleSubmit(onSubmit)}
+                    onPress={handleSave}
                     loading={isLoading}
                     disabled={isLoading}
                     style={styles.saveButton}

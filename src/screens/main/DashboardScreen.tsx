@@ -155,6 +155,18 @@ const DashboardScreen: React.FC = () => {
     return `${greeting}, ${name}!`;
   };
 
+  const handleEditLatestReading = () => {
+    if (readings && readings.length > 0) {
+      const latestReading = readings[0]; // Assuming readings are already sorted by date (newest first)
+      navigation.navigate('AddGlucose', { 
+        initialData: latestReading,
+        isEditing: true // This flag tells the AddGlucoseScreen we're editing, not adding
+      });
+    } else {
+      Alert.alert('No Reading', 'There is no reading to edit.');
+    }
+  };
+
   // UI Components
   const renderHeader = () => (
     <View style={styles.header}>
@@ -237,10 +249,7 @@ const DashboardScreen: React.FC = () => {
           <View style={styles.crudButtonsContainer}>
             <TouchableOpacity
               style={styles.crudButton}
-              onPress={() => navigateTo('Home', ROUTES.ADD_GLUCOSE, { 
-                readingId: latestReading.id,
-                initialData: latestReading
-              })}
+              onPress={handleEditLatestReading}
             >
               <Text style={styles.crudButtonText}>Edit</Text>
             </TouchableOpacity>

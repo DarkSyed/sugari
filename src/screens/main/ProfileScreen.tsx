@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -34,6 +34,10 @@ const ProfileScreen: React.FC = () => {
   const [diabetesType, setDiabetesType] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  const firstNameInputRef = useRef<TextInput | null>(null);
+  const lastNameInputRef = useRef<TextInput | null>(null);
+  const diabetesTypeInputRef = useRef<TextInput | null>(null);
 
   // Load user data when component mounts or userSettings changes
   useEffect(() => {
@@ -250,11 +254,17 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>First Name</Text>
           <TextInput
+            ref={firstNameInputRef}
             style={styles.textInput}
             value={firstName}
             onChangeText={setFirstName}
-            returnKeyType="done"
-            onSubmitEditing={() => Keyboard.dismiss()}
+            returnKeyType="next"
+            autoCapitalize="words"
+            autoCorrect={false}
+            onSubmitEditing={() => {
+              // Focus the last name input when Next is pressed
+              lastNameInputRef.current?.focus();
+            }}
             placeholder="Enter your first name"
           />
         </View>
@@ -263,11 +273,17 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Last Name</Text>
           <TextInput
+            ref={lastNameInputRef}
             style={styles.textInput}
             value={lastName}
             onChangeText={setLastName}
-            returnKeyType="done"
-            onSubmitEditing={() => Keyboard.dismiss()}
+            returnKeyType="next"
+            autoCapitalize="words"
+            autoCorrect={false}
+            onSubmitEditing={() => {
+              // Focus the diabetes type input when Next is pressed
+              diabetesTypeInputRef.current?.focus();
+            }}
             placeholder="Enter your last name"
           />
         </View>
@@ -276,10 +292,13 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Diabetes Type</Text>
           <TextInput
+            ref={diabetesTypeInputRef}
             style={styles.textInput}
             value={diabetesType}
             onChangeText={setDiabetesType}
             returnKeyType="done"
+            autoCapitalize="words"
+            autoCorrect={false}
             onSubmitEditing={() => Keyboard.dismiss()}
             placeholder="Type 1, Type 2, etc."
           />

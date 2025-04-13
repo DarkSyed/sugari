@@ -232,38 +232,22 @@ export const addBloodSugarReading = async (reading: Omit<BloodSugarReading, 'id'
   }
 };
 
-export const updateBloodSugarReading = async (id: number, reading: Partial<BloodSugarReading>): Promise<void> => {
+export const updateBloodSugarReading = async (reading: BloodSugarReading): Promise<void> => {
   try {
     const db = getDatabase();
-    const updates: string[] = [];
-    const args: any[] = [];
-
-    if (reading.value !== undefined) {
-      updates.push('value = ?');
-      args.push(reading.value);
-    }
-    if (reading.timestamp !== undefined) {
-      updates.push('timestamp = ?');
-      args.push(reading.timestamp);
-    }
-    if (reading.context !== undefined) {
-      updates.push('context = ?');
-      args.push(reading.context);
-    }
-    if (reading.notes !== undefined) {
-      updates.push('notes = ?');
-      args.push(reading.notes);
-    }
-
-    if (updates.length === 0) {
-      return;
-    }
-
-    args.push(id);
-
+    
+    // Use runAsync instead of transaction
     await db.runAsync(
-      `UPDATE blood_sugar_readings SET ${updates.join(', ')} WHERE id = ?`,
-      args
+      `UPDATE blood_sugar_readings 
+       SET value = ?, timestamp = ?, context = ?, notes = ? 
+       WHERE id = ?`,
+      [
+        reading.value,
+        reading.timestamp,
+        reading.context || null,
+        reading.notes || null,
+        reading.id
+      ]
     );
   } catch (error) {
     console.error('Error updating blood sugar reading:', error);
