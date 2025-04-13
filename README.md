@@ -1,4 +1,8 @@
-# Sugari - Diabetes Management App
+
+![Sugari logo1](https://github.com/user-attachments/assets/0158b165-52df-483b-900e-c7d0be7317c3)
+
+
+# Sugari - Diabetes Management and Log App
 
 Sugari is a personalized digital health assistant designed to help individuals with diabetes effectively manage their blood sugar levels. The app provides tailored dietary and lifestyle advice, visualizes health data, and offers actionable insights through AI-driven analysis.
 
@@ -7,13 +11,13 @@ Sugari is a personalized digital health assistant designed to help individuals w
 - **User Authentication**: Secure sign-up and login with Supabase Authentication
 - **Blood Sugar Logging**: Easily record and track your blood glucose readings
 - **Personalized Insights**: Get tailored recommendations based on your health data
-- **Data Visualization**: View your blood glucose trends over time with intuitive charts
+- **Data Visualization**: View your blood glucose trends over time with intuitive and editable charts
 - **Quick Actions**: Quickly log new readings, food entries, and insulin doses
 
 ## Tech Stack
 
 - **Frontend**: React Native with Expo, TypeScript
-- **Backend**: Supabase (PostgreSQL database, authentication, and edge functions)
+- **Backend**: SQLLite
 - **State Management**: React Context API
 - **Forms**: react-hook-form with TypeScript
 - **Navigation**: React Navigation
@@ -29,25 +33,13 @@ Sugari is a personalized digital health assistant designed to help individuals w
    ```
    npm install
    ```
-5. Update Supabase credentials in `src/constants/index.ts`:
-   ```javascript
-   export const SUPABASE_URL = "YOUR_SUPABASE_URL";
-   export const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-   ```
-6. Start the development server:
+
+6. Start the development server (must have expo app)
    ```
    npx expo start
    ```
 
 ## Database Schema
-
-Sugari uses the following database tables:
-
-- **profiles**: User profile information
-- **blood_glucose**: Blood glucose readings
-- **food_entries**: Food and carbohydrate intake
-- **insulin_doses**: Insulin dosing records
-- **user_settings**: User preferences and settings
 
 ## Development Roadmap
 
@@ -60,7 +52,7 @@ Sugari uses the following database tables:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome 
 
 ## License
 
@@ -72,5 +64,4 @@ This project is licensed under the MIT License.
 
 - Node.js 14+
 - Expo CLI
-- Supabase account
-- OpenAI API key (for future AI features) 
+- React.js
