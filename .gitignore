@@ -47,3 +47,25 @@ yarn-error.*
 # Optional: Other common config/key files if you use them
 # config.js
 # secrets.json
+
+# Cursor IDE specific files
+.cursor/rules
+rules.mdc
+rules.mdc.json
+
+# Other standard ignores for React Native / Expo projects (you might already have these)
+# (These seem duplicated below, keeping the ones below)
+# node_modules/ # Already listed above
+# npm-debug.log # Already listed above
+# yarn-error.log # Already listed above
+# *.jks # Already listed above
+# *.p12 # Already listed above
+# *.key # Already listed above
+# *.mobileprovision # Already listed above
+# *.orig # Already listed above
+/ios/Pods/
+/ios/build/
+/android/build/
+/android/app/build/
+# .expo/ # Already listed above
+# dist/ # Already listed above
