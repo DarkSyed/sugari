@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES, APP_NAME } from '../../constants';
+import { COLORS, SIZES, APP_NAME, APP_VERSION } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
@@ -28,6 +28,16 @@ import {
   getUserSettings,
   resetDatabase
 } from '../../services/databaseFix';
+import * as Notifications from 'expo-notifications';
+
+// Configure notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const SettingsScreen: React.FC = () => {
   const { userSettings, updateSettings, isLoading, theme } = useApp();
@@ -48,8 +58,9 @@ const SettingsScreen: React.FC = () => {
   const [diabetesType, setDiabetesType] = useState('type1');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [notifications, setNotifications] = useState(false);
+  const [notifications, setNotifications] = useState(true);
   const [localSettings, setLocalSettings] = useState<Partial<UserSettings> | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<boolean | null>(null);
 
   // Update local state when settings change
   useEffect(() => {
@@ -62,6 +73,9 @@ const SettingsScreen: React.FC = () => {
       setDarkMode(userSettings.darkMode);
       setGlucoseUnit(userSettings.units || 'mg/dL');
     }
+    
+    // Check notification permissions
+    checkNotificationPermissions();
   }, [userSettings]);
 
   // Initialize local settings when userSettings changes or edit mode is entered
@@ -78,6 +92,45 @@ const SettingsScreen: React.FC = () => {
       });
     }
   }, [userSettings, isEditingProfile]);
+
+  const checkNotificationPermissions = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificationPermission(status === 'granted');
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+      setNotificationPermission(false);
+    }
+  };
+
+  const requestNotificationPermissions = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      setNotificationPermission(status === 'granted');
+      return status === 'granted';
+    } catch (error) {
+      console.error('Error requesting notification permissions:', error);
+      return false;
+    }
+  };
+
+  const scheduleTestNotification = async () => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Sugari Reminder",
+          body: "It's time to check your blood sugar!",
+          data: { type: 'blood_sugar_check' },
+        },
+        trigger: { seconds: 5 }, // For testing, send in 5 seconds
+      });
+      
+      Alert.alert('Notification Scheduled', 'You will receive a test notification in 5 seconds');
+    } catch (error) {
+      console.error('Error scheduling notification:', error);
+      Alert.alert('Error', 'Failed to schedule notification');
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -240,6 +293,10 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleEditProfile = () => {
+    navigation.navigate('Profile');
+  };
+
   const renderSettingSwitch = (
     title: string,
     description: string,
@@ -339,11 +396,14 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          {renderNavigationItem(
-            'person-outline',
-            'Edit Profile',
-            () => Alert.alert('Coming Soon', 'This feature will be available in a future update')
-          )}
+          <TouchableOpacity 
+            style={styles.settingsRow}
+            onPress={handleEditProfile}
+          >
+            <Ionicons name="person-outline" size={24} color={COLORS.text} />
+            <Text style={styles.settingsText}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.lightText} />
+          </TouchableOpacity>
           
           {renderNavigationItem(
             'lock-closed-outline',
@@ -459,7 +519,7 @@ const SettingsScreen: React.FC = () => {
             'About Sugari',
             () => Alert.alert(
               `About ${APP_NAME}`,
-              `${APP_NAME} v1.0.0\n\nA personalized digital health assistant for diabetes management. Track your glucose, receive insights, and improve your health.`,
+              `${APP_NAME} v${APP_VERSION}\n\nA personalized digital health assistant for diabetes management. Track your glucose, receive insights, and improve your health.`,
               [{ text: 'OK' }]
             )
           )}
@@ -467,7 +527,7 @@ const SettingsScreen: React.FC = () => {
 
         {renderDangerZone()}
 
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        <Text style={styles.versionText}>Version {APP_VERSION}</Text>
       </ScrollView>
     </Container>
   );
@@ -618,6 +678,18 @@ const styles = StyleSheet.create({
   dangerButtonSubtext: {
     color: COLORS.lightText,
     fontSize: 12,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  settingsText: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
   },
 });
 

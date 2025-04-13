@@ -11,7 +11,7 @@ export const APP_VERSION = "1.0.0";
 
 // Blood Sugar Related Constants
 export const NORMAL_SUGAR_MIN = 70; // mg/dL
-export const NORMAL_SUGAR_MAX = 180; // mg/dL
+export const NORMAL_SUGAR_MAX = 160; // mg/dL
 export const CRITICAL_SUGAR_LOW = 54; // mg/dL
 export const CRITICAL_SUGAR_HIGH = 250; // mg/dL
 

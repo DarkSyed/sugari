@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, A
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Swipeable } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, ROUTES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
@@ -13,7 +14,8 @@ import {
   getA1CReadings,
   getWeightMeasurements,
   getBloodPressureReadings,
-  deleteBloodSugarReading
+  deleteBloodSugarReading,
+  getRecentBloodSugarReadings
 } from '../../services/databaseFix';
 import { getAIPoweredInsights } from '../../services/aiService';
 import Container from '../../components/Container';
@@ -138,22 +140,33 @@ const DashboardScreen: React.FC = () => {
     }
   };
   
+  // Get the greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Get personalized greeting
+  const getPersonalizedGreeting = () => {
+    const greeting = getGreeting();
+    const name = userSettings?.firstName || 'there';
+    return `${greeting}, ${name}!`;
+  };
+
   // UI Components
   const renderHeader = () => (
     <View style={styles.header}>
       <View>
-        <Text style={styles.greeting}>Hello, {userSettings?.firstName || 'there'}!</Text>
+        <Text style={styles.greeting}>{getPersonalizedGreeting()}</Text>
         <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
       </View>
       <TouchableOpacity
         style={styles.profileButton}
         onPress={() => navigation.navigate(ROUTES.PROFILE)}
       >
-        <View style={styles.profileIcon}>
-          <Text style={styles.profileInitial}>
-            {userSettings?.firstName?.[0] || userSettings?.email?.[0] || 'U'}
-          </Text>
-        </View>
+        <Ionicons name="person-circle-outline" size={32} color={COLORS.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -400,22 +413,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  profileIcon: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitial: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    padding: 4,
   },
   sectionTitle: {
     fontSize: 18,

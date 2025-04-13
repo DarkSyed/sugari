@@ -52,6 +52,8 @@ yarn-error.*
 .cursor/rules
 rules.mdc
 rules.mdc.json
+rule.mdc
+rule.mdc.json
 
 # Other standard ignores for React Native / Expo projects (you might already have these)
 # (These seem duplicated below, keeping the ones below)
