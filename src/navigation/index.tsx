@@ -24,6 +24,10 @@ import AddA1CScreen from '../screens/main/AddA1CScreen';
 import AddWeightScreen from '../screens/main/AddWeightScreen';
 import AddBloodPressureScreen from '../screens/main/AddBloodPressureScreen';
 import BloodPressureLogScreen from '../screens/main/BloodPressureLogScreen';
+import ReportScreen from '../screens/main/ReportScreen';
+import RemindersScreen from '../screens/main/RemindersScreen';
+import AddReminderScreen from '../screens/main/AddReminderScreen';
+import FeatureRequestScreen from '../screens/main/FeatureRequestScreen';
 
 // Create navigators
 const Stack = createNativeStackNavigator();
@@ -50,6 +54,10 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
       <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
       <Stack.Screen name={ROUTES.ADD_SUGAR} component={AddSugarScreen} />
+      <Stack.Screen name={ROUTES.FEATURE_REQUESTS} component={FeatureRequestScreen} />
+      <Stack.Screen name={ROUTES.REMINDERS} component={RemindersScreen} />
+      <Stack.Screen name={ROUTES.REPORT} component={ReportScreen} />
+      <Stack.Screen name={ROUTES.ADD_REMINDER} component={AddReminderScreen} />
     </Stack.Navigator>
   );
 };

@@ -344,7 +344,6 @@ const AddFoodScreen: React.FC = () => {
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={onDateChange}
-                  maximumDate={new Date()}
                   style={{width: '100%'}}
                 />
                 <View style={styles.pickerButtonsContainer}>

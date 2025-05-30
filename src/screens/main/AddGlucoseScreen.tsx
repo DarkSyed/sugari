@@ -432,7 +432,6 @@ const AddGlucoseScreen: React.FC = () => {
                       display="spinner"
                       onChange={onDateChange}
                       style={dateTimePickerStyle}
-                      maximumDate={new Date()}
                     />
                     <View style={styles.pickerButtonsContainer}>
                       <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }} style={[styles.pickerButton, styles.cancelPickerButton]}>
@@ -451,7 +450,6 @@ const AddGlucoseScreen: React.FC = () => {
                       mode="date"
                       display="default"
                       onChange={onDateChange}
-                      maximumDate={new Date()}
                     />
                 )}
 

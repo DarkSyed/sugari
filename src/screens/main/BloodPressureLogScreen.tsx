@@ -216,13 +216,14 @@ const BloodPressureLogScreen: React.FC = () => {
         <View style={styles.listContainer}>
           <Text style={styles.sectionTitle}>Recent Readings</Text>
           {filteredReadings.length > 0 ? (
-            <FlatList
-              data={filteredReadings}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderItem}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-            />
+            <View style={{ flex: 1 }}>
+              <FlatList
+                data={filteredReadings}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderItem}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              />
+            </View>
           ) : (
             <View style={styles.emptyStateContainer}>
               <Text style={styles.emptyStateText}>No blood pressure readings found</Text>
@@ -351,9 +352,6 @@ const styles = StyleSheet.create({
   addReadingButtonText: {
     color: 'white',
     fontWeight: '500',
-  },
-  listContent: {
-    paddingBottom: SIZES.xxl,
   },
   readingCard: {
     marginBottom: SIZES.sm,

@@ -329,7 +329,6 @@ const AddSugarScreen: React.FC = () => {
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateChange}
-            maximumDate={new Date()}
             style={{width: '100%'}}
           />
           <View style={styles.pickerButtonsContainer}>

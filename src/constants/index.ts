@@ -74,6 +74,10 @@ export const ROUTES = {
   ANALYTICS: "Analytics",
   SETTINGS: "Settings",
   PROFILE: "Profile",
+  REPORT: "Report",
+  REMINDERS: "Reminders",
+  ADD_REMINDER: "AddReminder",
+  FEATURE_REQUESTS: "FeatureRequests",
 };
 
 // Form Validation Messages

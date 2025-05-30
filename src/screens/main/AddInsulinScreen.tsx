@@ -276,7 +276,6 @@ const AddInsulinScreen: React.FC = () => {
                       mode="date"
                       display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                       onChange={onDateChange}
-                      maximumDate={new Date()}
                       textColor={COLORS.text}
                     />
                     <View style={styles.pickerButtonsContainer}>

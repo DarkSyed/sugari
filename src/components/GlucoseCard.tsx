@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BloodSugarReading } from '../types';
 import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX, CRITICAL_SUGAR_LOW, CRITICAL_SUGAR_HIGH } from '../constants';
 import Card from './Card';
+import { useApp } from '../contexts/AppContext';
 
 interface GlucoseCardProps {
   reading: BloodSugarReading;
@@ -10,6 +11,8 @@ interface GlucoseCardProps {
 }
 
 const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
+  const { userSettings } = useApp();
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
@@ -21,16 +24,27 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
     });
   };
 
-  const getStatusColor = (value: number) => {
-    if (value <= CRITICAL_SUGAR_LOW) {
-      return COLORS.error;
-    } else if (value < NORMAL_SUGAR_MIN) {
-      return COLORS.warning;
-    } else if (value > CRITICAL_SUGAR_HIGH) {
-      return COLORS.error;
-    } else if (value > NORMAL_SUGAR_MAX) {
-      return COLORS.warning;
-    }
+  const getColorForValue = (glucoseValue: number) => {
+    // Get thresholds from user settings with fallbacks
+    const isFasting = reading.context === 'fasting' || reading.context === 'before_meal';
+    
+    const lowThreshold = isFasting 
+      ? (userSettings?.fastingLowThreshold || 70)
+      : (userSettings?.targetLowThreshold || 70);
+      
+    const highThreshold = isFasting
+      ? (userSettings?.fastingHighThreshold || 150)
+      : (userSettings?.targetHighThreshold || 180);
+    
+    // Calculate very low/high thresholds
+    const veryLowThreshold = lowThreshold - 15;
+    const veryHighThreshold = highThreshold + 70;
+    
+    // Return colors based on thresholds
+    if (glucoseValue < veryLowThreshold) return COLORS.danger;
+    if (glucoseValue < lowThreshold) return COLORS.warning;
+    if (glucoseValue > veryHighThreshold) return COLORS.danger;
+    if (glucoseValue > highThreshold) return COLORS.warning;
     return COLORS.success;
   };
 
@@ -56,7 +70,7 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
       <Card variant="elevated">
         <View style={styles.container}>
           <View style={styles.valueContainer}>
-            <Text style={[styles.valueText, { color: getStatusColor(reading.value) }]}>
+            <Text style={[styles.valueText, { color: getColorForValue(reading.value) }]}>
               {reading.value}
             </Text>
             <Text style={styles.unitText}>mg/dL</Text>
@@ -67,7 +81,7 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
               <View
                 style={[
                   styles.statusIndicator,
-                  { backgroundColor: getStatusColor(reading.value) },
+                  { backgroundColor: getColorForValue(reading.value) },
                 ]}
               />
               <Text style={styles.statusText}>{getStatusText(reading.value)}</Text>

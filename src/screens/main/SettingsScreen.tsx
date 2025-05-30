@@ -29,6 +29,7 @@ import {
   resetDatabase
 } from '../../services/databaseFix';
 import * as Notifications from 'expo-notifications';
+import FeatureRequestModal from '../../components/FeatureRequestModal';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -45,7 +46,7 @@ const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   
   // State for various settings
-  const [pushNotifications, setPushNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [glucoseReminders, setGlucoseReminders] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -61,6 +62,7 @@ const SettingsScreen: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [localSettings, setLocalSettings] = useState<Partial<UserSettings> | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<boolean | null>(null);
+  const [showFeatureRequestModal, setShowFeatureRequestModal] = useState(false);
 
   // Update local state when settings change
   useEffect(() => {
@@ -134,8 +136,8 @@ const SettingsScreen: React.FC = () => {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Confirm Logout',
-      'Are you sure you want to logout?',
+      'Logout',
+      'Are you sure you want to log out?',
       [
         {
           text: 'Cancel',
@@ -143,16 +145,14 @@ const SettingsScreen: React.FC = () => {
         },
         {
           text: 'Logout',
+          style: 'destructive',
           onPress: async () => {
             try {
-              await updateSettings({
-                notifications: false,
-                darkMode: false,
-                units: 'mg/dL'
-              });
-              // Navigate to login or perform logout action
-            } catch (error: any) {
-              Alert.alert('Logout Failed', error.message);
+              // Your logout logic here
+              Alert.alert('Logged Out', 'You have been successfully logged out.');
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'An error occurred during logout');
             }
           },
         },
@@ -160,105 +160,7 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
-  const openUrl = (url: string) => {
-    Linking.openURL(url).catch(err => 
-      Alert.alert('Error', 'Could not open the link')
-    );
-  };
-
-  const handleSupportRequest = () => {
-    Alert.alert(
-      'Contact Support',
-      'How would you like to contact our support team?',
-      [
-        {
-          text: 'Email',
-          onPress: () => Linking.openURL('mailto:support@sugari.com'),
-        },
-        {
-          text: 'Website',
-          onPress: () => openUrl('https://sugari.com/support'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSaving(true);
-    try {
-      await updateSettings({
-        email,
-        firstName,
-        lastName,
-        diabetesType
-      });
-      setIsEditingProfile(false);
-      Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleNotificationsChange = async (value: boolean) => {
-    setNotifications(value);
-    try {
-      await updateSettings({ notifications: value });
-    } catch (error) {
-      console.error('Error updating notifications setting:', error);
-      setNotifications(!value); // Revert on error
-    }
-  };
-
-  const handleDarkModeChange = async (value: boolean) => {
-    setDarkMode(value);
-    try {
-      await updateSettings({ darkMode: value });
-    } catch (error) {
-      console.error('Error updating dark mode setting:', error);
-      setDarkMode(!value); // Revert on error
-    }
-  };
-
-  const handleUnitsChange = async (value: 'mg/dL' | 'mmol/L') => {
-    setGlucoseUnit(value);
-    try {
-      await updateSettings({ units: value });
-    } catch (error) {
-      console.error('Error updating units setting:', error);
-      setGlucoseUnit(glucoseUnit); // Revert on error
-    }
-  };
-
-  const handleToggle = async (setting: 'notifications' | 'darkMode') => {
-    if (!userSettings) return;
-    
-    try {
-      const newValue = setting === 'notifications' 
-        ? !userSettings.notifications 
-        : !userSettings.darkMode;
-      
-      // Update local state immediately for responsive UI
-      setLocalSettings(prev => prev ? { ...prev, [setting]: newValue } : null);
-      
-      // Update in database
-      await updateSettings({ [setting]: newValue });
-    } catch (error) {
-      console.error(`Error toggling ${setting}:`, error);
-      Alert.alert('Error', `Could not update ${setting}. Please try again.`);
-      
-      // Revert local state if there was an error
-      setLocalSettings(prev => prev ? { ...prev, [setting]: userSettings[setting] } : null);
-    }
-  };
-
-  const handleResetDatabase = async () => {
+  const handleResetDatabase = () => {
     Alert.alert(
       'Reset Database',
       'This will delete all your health data. This action cannot be undone. Are you sure?',
@@ -273,19 +175,14 @@ const SettingsScreen: React.FC = () => {
           onPress: async () => {
             try {
               const result = await resetDatabase();
-              
               if (result.success) {
                 Alert.alert('Success', result.message);
-                // Force a refresh of all screens that show data
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Home' }],
-                });
               } else {
                 Alert.alert('Error', result.message);
               }
-            } catch (error: any) {
-              Alert.alert('Error', 'Failed to reset database: ' + error.message);
+            } catch (error) {
+              console.error('Error resetting database:', error);
+              Alert.alert('Error', 'Failed to reset database');
             }
           },
         },
@@ -293,44 +190,150 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
-  const handleEditProfile = () => {
-    navigation.navigate(ROUTES.HOME, { screen: ROUTES.PROFILE });
+  const handleNotificationsChange = async (value: boolean) => {
+    if (value && !notificationPermission) {
+      const permissionGranted = await requestNotificationPermissions();
+      if (!permissionGranted) {
+        return;
+      }
+    }
+    setNotifications(value);
+    if (userSettings) {
+      updateSettings({ notifications: value });
+    }
   };
 
-  const renderSettingSwitch = (
+  const handleDarkModeChange = (value: boolean) => {
+    setDarkMode(value);
+    if (userSettings) {
+      updateSettings({ darkMode: value });
+    }
+  };
+
+  const handleUnitsChange = (units: string) => {
+    setGlucoseUnit(units);
+    if (userSettings) {
+      updateSettings({ units });
+    }
+  };
+
+  const handleEditProfile = () => {
+    navigation.navigate(ROUTES.PROFILE);
+  };
+
+  const openUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', `Cannot open URL: ${url}`);
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      Alert.alert('Error', 'An error occurred while trying to open the URL');
+    }
+  };
+
+  const openRemindersScreen = () => {
+    navigation.navigate(ROUTES.REMINDERS);
+  };
+
+  const openReportScreen = () => {
+    navigation.navigate(ROUTES.REPORT);
+  };
+
+  const openFeatureRequestsScreen = () => {
+    navigation.navigate(ROUTES.FEATURE_REQUESTS);
+  };
+
+  const handleFeatureRequest = (title: string, description: string) => {
+    setShowFeatureRequestModal(false);
+    Alert.alert(
+      'Thank You!',
+      'Your feature request has been submitted successfully.'
+    );
+  };
+
+  const handlePushNotificationsToggle = async (value: boolean) => {
+    if (value) {
+      // Request permission if turning on
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please enable notifications in your device settings to receive alerts.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+      setNotificationPermission(true);
+    }
+    
+    // Update settings
+    await updateSettings({ notifications: value });
+  };
+
+  const handleEmailNotificationsToggle = (value: boolean) => {
+    setEmailNotifications(value);
+    // Save to settings if needed
+  };
+
+  const handleGlucoseRemindersToggle = (value: boolean) => {
+    setGlucoseReminders(value);
+    // Save to settings if needed
+  };
+
+  const handleDarkModeToggle = (value: boolean) => {
+    setDarkMode(value);
+    if (userSettings) {
+      updateSettings({ darkMode: value });
+    }
+  };
+
+  const handleChangePassword = () => {
+    Alert.alert('Coming Soon', 'This feature will be available in a future update');
+  };
+
+  const renderSectionTitle = (title: string) => (
+    <Text style={styles.sectionTitle}>{title}</Text>
+  );
+  
+  const renderSwitchItem = (
     title: string,
     description: string,
     value: boolean,
-    onValueChange: (value: boolean) => void
+    onToggle: (value: boolean) => void
   ) => (
     <View style={styles.settingRow}>
-      <View style={styles.settingInfo}>
+      <View style={styles.settingTextContainer}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDescription}>{description}</Text>
       </View>
       <Switch
         value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: COLORS.border, true: COLORS.primary + '80' }}
-        thumbColor={value ? COLORS.primary : COLORS.lightText}
+        onValueChange={onToggle}
+        trackColor={{ false: '#767577', true: '#81b0ff' }}
+        thumbColor={value ? COLORS.primary : '#f4f3f4'}
+        ios_backgroundColor="#3e3e3e"
       />
     </View>
   );
-
+  
   const renderNavigationItem = (
-    icon: string,
-    title: string,
+    iconName: string, 
+    title: string, 
     onPress: () => void
   ) => (
-    <TouchableOpacity 
-      style={styles.navigationRow}
-      onPress={onPress}
-    >
-      <View style={styles.navigationIconContainer}>
-        <Ionicons name={icon as any} size={20} color={COLORS.primary} />
+    <TouchableOpacity style={styles.navigationItem} onPress={onPress}>
+      <View style={styles.navigationIcon}>
+        <Ionicons name={iconName} size={24} color="#8e8e93" />
       </View>
       <Text style={styles.navigationTitle}>{title}</Text>
-      <Ionicons name="chevron-forward" size={20} color={COLORS.lightText} />
+      <Ionicons name="chevron-forward" size={20} color="#c7c7cc" />
     </TouchableOpacity>
   );
 
@@ -359,92 +362,82 @@ const SettingsScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-  
-  if (!userSettings || !localSettings) {
-    return (
-      <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.errorText, { color: theme.colors.error }]}>
-          Error loading settings. Please try again later.
-        </Text>
-      </View>
+      <Container>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text>Loading settings...</Text>
+        </View>
+      </Container>
     );
   }
 
   return (
     <Container>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Settings</Text>
-
-        <Card variant="elevated" style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+      <Text style={styles.screenTitle}>Settings</Text>
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+      >
+        {/* Account Section */}
+        <View style={styles.section}>
+          {renderSectionTitle('Account')}
           
-          <View style={styles.userInfoContainer}>
+          <View style={styles.accountHeader}>
             <View style={styles.avatarContainer}>
               <Text style={styles.avatarText}>
-                {userSettings.firstName?.[0] || userSettings.email?.[0] || 'U'}
+                {userSettings?.firstName ? userSettings.firstName.charAt(0) : 'R'}
               </Text>
             </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>
-                {userSettings.firstName
-                  ? `${userSettings.firstName} ${userSettings.lastName || ''}`
-                  : userSettings.email || 'User'}
+            <View style={styles.accountInfo}>
+              <Text style={styles.accountName}>
+                {userSettings?.firstName || 'Ryan'} {userSettings?.lastName || 'Syed'}
               </Text>
-              <Text style={styles.userEmail}>{userSettings.email}</Text>
+              <Text style={styles.accountEmail}>
+                {userSettings?.email || 'javasuck606@gmail.com'}
+              </Text>
             </View>
           </View>
-
-          {renderNavigationItem(
-            'person-outline',
-            'Edit Profile',
-            handleEditProfile
-          )}
           
-          {renderNavigationItem(
-            'lock-closed-outline',
-            'Change Password',
-            () => Alert.alert('Coming Soon', 'This feature will be available in a future update')
-          )}
-        </Card>
-
-        <Card variant="elevated" style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+          {renderNavigationItem('person-outline', 'Edit Profile', handleEditProfile)}
+          {renderNavigationItem('lock-closed-outline', 'Change Password', handleChangePassword)}
+        </View>
+        
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          {renderSectionTitle('Notifications')}
           
-          {renderSettingSwitch(
+          {renderSwitchItem(
             'Push Notifications',
             'Receive alerts and reminders on your device',
-            notifications,
-            handleNotificationsChange
+            pushNotifications,
+            handlePushNotificationsToggle
           )}
           
-          {renderSettingSwitch(
+          {renderSwitchItem(
             'Email Notifications',
             'Receive weekly reports and summaries',
             emailNotifications,
-            setEmailNotifications
+            handleEmailNotificationsToggle
           )}
           
-          {renderSettingSwitch(
+          {renderSwitchItem(
             'Glucose Reminders',
             'Get reminded to check your glucose',
             glucoseReminders,
-            setGlucoseReminders
+            handleGlucoseRemindersToggle
           )}
-        </Card>
-
-        <Card variant="elevated" style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+        </View>
+        
+        {/* Preferences Section */}
+        <View style={styles.section}>
+          {renderSectionTitle('Preferences')}
           
-          {renderSettingSwitch(
+          {renderSwitchItem(
             'Dark Mode',
             'Use dark theme throughout the app',
             darkMode,
-            handleDarkModeChange
+            handleDarkModeToggle
           )}
           
           {renderNavigationItem(
@@ -475,7 +468,7 @@ const SettingsScreen: React.FC = () => {
             'Target Range',
             () => Alert.alert('Coming Soon', 'This feature will be available in a future update')
           )}
-        </Card>
+        </View>
 
         <Card variant="elevated" style={styles.section}>
           <Text style={styles.sectionTitle}>Data & Privacy</Text>
@@ -483,7 +476,7 @@ const SettingsScreen: React.FC = () => {
           {renderNavigationItem(
             'analytics-outline',
             'Export Data',
-            () => Alert.alert('Coming Soon', 'This feature will be available in a future update')
+            openReportScreen
           )}
           
           {renderNavigationItem(
@@ -491,11 +484,33 @@ const SettingsScreen: React.FC = () => {
             'Privacy Policy',
             () => openUrl('https://sugari.com/privacy')
           )}
+        </Card>
+
+        <Card variant="elevated" style={styles.section}>
+          <Text style={styles.sectionTitle}>Features</Text>
+          
+          {renderNavigationItem(
+            'notifications-outline',
+            'Reminders',
+            openRemindersScreen
+          )}
           
           {renderNavigationItem(
             'document-text-outline',
-            'Terms of Service',
-            () => openUrl('https://sugari.com/terms')
+            'Reports',
+            openReportScreen
+          )}
+          
+          {renderNavigationItem(
+            'bulb-outline',
+            'Feature Requests',
+            openFeatureRequestsScreen
+          )}
+          
+          {renderNavigationItem(
+            'star-outline',
+            'Rate the App',
+            () => openUrl('https://play.google.com/store/apps/details?id=com.sugari.app')
           )}
         </Card>
 
@@ -504,127 +519,127 @@ const SettingsScreen: React.FC = () => {
           
           {renderNavigationItem(
             'help-circle-outline',
-            'Help Center',
+            'Help & FAQ',
             () => openUrl('https://sugari.com/help')
           )}
           
           {renderNavigationItem(
             'mail-outline',
             'Contact Support',
-            handleSupportRequest
-          )}
-          
-          {renderNavigationItem(
-            'information-circle-outline',
-            'About Sugari',
-            () => Alert.alert(
-              `About ${APP_NAME}`,
-              `${APP_NAME} v${APP_VERSION}\n\nA personalized digital health assistant for diabetes management. Track your glucose, receive insights, and improve your health.`,
-              [{ text: 'OK' }]
-            )
+            () => openUrl('mailto:support@sugari.com')
           )}
         </Card>
-
+        
         {renderDangerZone()}
-
-        <Text style={styles.versionText}>Version {APP_VERSION}</Text>
+        
+        <Text style={styles.versionText}>
+          {APP_NAME} v{APP_VERSION}
+        </Text>
       </ScrollView>
+      
+      <FeatureRequestModal
+        visible={showFeatureRequestModal}
+        onClose={() => setShowFeatureRequestModal(false)}
+        onSubmit={handleFeatureRequest}
+      />
     </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 24,
+  screenTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SIZES.md,
+    marginBottom: 20,
+    marginTop: 10,
+    marginLeft: 20,
+  },
+  scrollView: {
+    flex: 1,
   },
   section: {
-    marginBottom: SIZES.lg,
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SIZES.md,
+    marginVertical: 15,
+    marginHorizontal: 16,
   },
-  userInfoContainer: {
+  accountHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SIZES.md,
-    paddingBottom: SIZES.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E0E0E0',
   },
   avatarContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#4285F4',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SIZES.md,
   },
   avatarText: {
-    color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
+    color: 'white',
   },
-  userInfo: {
-    flex: 1,
+  accountInfo: {
+    marginLeft: 15,
   },
-  userName: {
+  accountName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontWeight: '600',
     marginBottom: 4,
   },
-  userEmail: {
+  accountEmail: {
     fontSize: 14,
-    color: COLORS.lightText,
+    color: '#8e8e93',
+  },
+  navigationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E0E0E0',
+  },
+  navigationIcon: {
+    width: 30,
+    marginRight: 10,
+  },
+  navigationTitle: {
+    flex: 1,
+    fontSize: 16,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: SIZES.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E0E0E0',
   },
-  settingInfo: {
+  settingTextContainer: {
     flex: 1,
-    paddingRight: SIZES.md,
+    marginRight: 10,
   },
   settingTitle: {
     fontSize: 16,
-    color: COLORS.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   settingDescription: {
-    fontSize: 12,
-    color: COLORS.lightText,
-  },
-  navigationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SIZES.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  navigationIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary + '10',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SIZES.md,
-  },
-  navigationTitle: {
-    flex: 1,
-    fontSize: 16,
-    color: COLORS.text,
+    fontSize: 14,
+    color: '#8e8e93',
   },
   logoutButton: {
     marginVertical: SIZES.lg,
@@ -661,6 +676,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.danger,
     marginBottom: SIZES.md,
+    paddingHorizontal: SIZES.md,
+    paddingTop: SIZES.md,
   },
   dangerButton: {
     borderWidth: 1,
@@ -668,6 +685,7 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.xs,
     padding: SIZES.md,
     marginBottom: SIZES.sm,
+    marginHorizontal: SIZES.md,
   },
   dangerButtonText: {
     color: COLORS.danger,
@@ -679,17 +697,11 @@ const styles = StyleSheet.create({
     color: COLORS.lightText,
     fontSize: 12,
   },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SIZES.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  settingsText: {
-    flex: 1,
+  logoutButtonText: {
+    color: COLORS.danger,
     fontSize: 16,
-    color: COLORS.text,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

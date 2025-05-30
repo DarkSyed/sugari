@@ -59,6 +59,13 @@ export interface UserSettings {
   notifications: boolean;
   darkMode: boolean;
   units: string;
+  targetLowThreshold?: number;
+  targetHighThreshold?: number;
+  fastingLowThreshold?: number;
+  fastingHighThreshold?: number;
+  weight?: number | null;
+  height?: number | null;
+  weightUnit?: string;
 }
 
 // AI Insight Type
@@ -183,4 +190,16 @@ export interface BloodPressureReading {
   diastolic: number;
   timestamp: number;
   notes?: string | null;
+}
+
+// Add Medication type to your types file
+export interface Medication {
+  id: number;
+  name: string;
+  type: 'pill' | 'injection';
+  dosage: string;
+  frequency: string;
+  notes?: string;
+  imagePath?: string;
+  timestamp: number;
 } 

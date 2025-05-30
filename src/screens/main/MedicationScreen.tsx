@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -17,15 +17,22 @@ import {
   Keyboard,
   InputAccessoryView
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import { Camera } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 import { COLORS, SIZES, ROUTES } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { InsulinDose } from '../../types';
-import { getInsulinDoses, addInsulinDose } from '../../services/databaseFix';
+import { 
+  getInsulinDoses, 
+  addInsulinDose, 
+  deleteInsulinDose,
+  updateInsulinDose
+} from '../../services/databaseFix';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -43,14 +50,20 @@ interface Medication {
 }
 
 const MedicationScreen: React.FC = () => {
-  const { theme } = useApp();
+  const { theme, userSettings } = useApp();
   const navigation = useNavigation<StackNavigationProp<any>>();
   const [medications, setMedications] = useState<InsulinDose[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [filteredMedications, setFilteredMedications] = useState<InsulinDose[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<'all' | 'pill' | 'insulin' | 'injection'>('all');
+  const [search, setSearch] = useState('');
   
-  // New medication entry state
+  // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  // New medication form state
   const [newMedication, setNewMedication] = useState<Medication>({
     name: '',
     type: 'pill',
@@ -61,34 +74,81 @@ const MedicationScreen: React.FC = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const inputAccessoryViewID = 'inputAccessoryViewMedicationScreen';
-
-  const fetchMedications = useCallback(async () => {
+  
+  // Camera ref
+  const cameraRef = useRef<Camera>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  
+  // Load data when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMedications();
+      return () => {}; // cleanup function
+    }, [])
+  );
+  
+  // Request camera permissions
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(status === 'granted');
+    })();
+  }, []);
+  
+  // Load medications from database
+  const loadMedications = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const insulinData = await getInsulinDoses();
-      setMedications(insulinData);
+      const data = await getInsulinDoses();
+      setMedications(data);
+      applyFilters(data, filterType, search);
     } catch (error) {
-      console.error('Error fetching medications:', error);
+      console.error('Error loading medications:', error);
+      Alert.alert('Error', 'Failed to load medications');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchMedications();
-  }, [fetchMedications]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchMedications();
   };
-
-  const handleAddMedication = () => {
-    // Reset form
+  
+  // Apply filters to medications
+  const applyFilters = (data: InsulinDose[], type: 'all' | 'pill' | 'insulin' | 'injection', searchText: string) => {
+    let filtered = data;
+    
+    // Filter by type
+    if (type !== 'all') {
+      filtered = filtered.filter(med => med.type === type);
+    }
+    
+    // Filter by search text
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter(med => 
+        med.name.toLowerCase().includes(searchLower) ||
+        med.dosage.toLowerCase().includes(searchLower) ||
+        (med.notes && med.notes.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    setFilteredMedications(filtered);
+  };
+  
+  // Handle search input
+  const handleSearch = (text: string) => {
+    setSearch(text);
+    applyFilters(medications, filterType, text);
+  };
+  
+  // Handle filter change
+  const handleFilterChange = (type: 'all' | 'pill' | 'insulin' | 'injection') => {
+    setFilterType(type);
+    applyFilters(medications, type, search);
+  };
+  
+  // Reset form
+  const resetForm = () => {
     setNewMedication({
       name: '',
       type: 'pill',
@@ -98,10 +158,9 @@ const MedicationScreen: React.FC = () => {
       notes: '',
     });
     setSelectedImage(null);
-    setShowAddModal(true);
   };
-
-  const handleSaveMedication = async () => {
+  
+  const handleAddMedication = async () => {
     if (!newMedication.name.trim() || !newMedication.dosage.trim()) {
       Alert.alert('Error', 'Please enter a name and dosage');
       return;
@@ -122,16 +181,8 @@ const MedicationScreen: React.FC = () => {
       }
 
       // Reset form and refresh data
-      setNewMedication({
-        name: '',
-        type: 'pill',
-        dosage: '',
-        unit: 'mg',
-        timestamp: Date.now(),
-        notes: '',
-      });
-      setShowAddModal(false);
-      fetchMedications();
+      resetForm();
+      await loadMedications();
     } catch (error) {
       console.error('Error saving medication:', error);
       Alert.alert('Error', 'Failed to save medication. Please try again.');
@@ -261,6 +312,67 @@ const MedicationScreen: React.FC = () => {
     }
   };
 
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync();
+        
+        const fileName = `medication_${Date.now()}.jpg`;
+        const destFolder = `${FileSystem.documentDirectory}medications/`;
+        
+        // Create directory if it doesn't exist
+        const dirInfo = await FileSystem.getInfoAsync(destFolder);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(destFolder, { intermediates: true });
+        }
+        
+        const destPath = `${destFolder}${fileName}`;
+        await FileSystem.copyAsync({
+          from: photo.uri,
+          to: destPath
+        });
+        
+        setNewMedication(prev => ({
+          ...prev,
+          photoUri: destPath
+        }));
+        
+        setIsCameraActive(false);
+      } catch (error) {
+        console.error('Error taking picture:', error);
+        Alert.alert('Error', 'Failed to take picture');
+      }
+    }
+  };
+
+  const handleDeleteMedication = async (id: number) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this medication?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteInsulinDose(id);
+              await loadMedications();
+            } catch (error) {
+              console.error('Error deleting medication:', error);
+              Alert.alert('Error', 'Failed to delete medication');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleImagePress = (imagePath: string) => {
+    setSelectedImage(imagePath);
+    setShowImageModal(true);
+  };
+
   const renderMedicationItem = ({ item }: { item: InsulinDose }) => (
     <Card variant="elevated" style={styles.medicationCard}>
       <View style={styles.medicationHeader}>
@@ -295,7 +407,7 @@ const MedicationScreen: React.FC = () => {
             <Text style={styles.cancelButton}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Add Medication</Text>
-          <TouchableOpacity onPress={handleSaveMedication} disabled={isSaving}>
+          <TouchableOpacity onPress={handleAddMedication} disabled={isSaving}>
             <Text style={styles.saveButton}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -447,7 +559,6 @@ const MedicationScreen: React.FC = () => {
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleDateChange}
-                  maximumDate={new Date()}
                   textColor={COLORS.text}
                 />
                 <View style={styles.pickerButtonsContainer}>
@@ -569,13 +680,39 @@ const MedicationScreen: React.FC = () => {
     </Modal>
   );
 
+  const renderImageViewerModal = () => (
+    <Modal
+      visible={showImageModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowImageModal(false)}
+    >
+      <View style={styles.imageViewerContainer}>
+        <TouchableOpacity
+          style={styles.imageViewerCloseButton}
+          onPress={() => setShowImageModal(false)}
+        >
+          <Ionicons name="close" size={28} color="white" />
+        </TouchableOpacity>
+        
+        {selectedImage && (
+          <Image
+            source={{ uri: selectedImage }}
+            style={styles.fullImage}
+            resizeMode="contain"
+          />
+        )}
+      </View>
+    </Modal>
+  );
+
   return (
     <Container scrollable={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Medication Log</Text>
         <Button 
           title="Add Medication" 
-          onPress={handleAddMedication}
+          onPress={() => setShowAddModal(true)}
           size="small"
         />
       </View>
@@ -607,11 +744,11 @@ const MedicationScreen: React.FC = () => {
       
       {medications.length > 0 ? (
         <FlatList
-          data={medications}
+          data={filteredMedications}
           renderItem={renderMedicationItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id?.toString() || ''}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={loading} onRefresh={loadMedications} />
           }
           contentContainerStyle={styles.listContainer}
         />
@@ -620,13 +757,14 @@ const MedicationScreen: React.FC = () => {
           <Text style={styles.emptyText}>No medications recorded yet</Text>
           <Button
             title="Add First Medication"
-            onPress={handleAddMedication}
+            onPress={() => setShowAddModal(true)}
             style={styles.addButton}
           />
         </View>
       )}
 
       {renderAddMedicationModal()}
+      {renderImageViewerModal()}
     </Container>
   );
 };
@@ -975,6 +1113,22 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 16,
     fontWeight: '500',
+  },
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });
 

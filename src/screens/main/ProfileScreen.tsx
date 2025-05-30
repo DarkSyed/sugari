@@ -19,6 +19,7 @@ import { useApp } from '../../contexts/AppContext';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { ROUTES } from '../../navigation/index';
 
 // Using KeyboardAwareScrollView instead of KeyboardAvoidingView + ScrollView
 // This is a more reliable approach for handling keyboards
@@ -116,16 +117,17 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleCancelEdit = () => {
-    Keyboard.dismiss();
-    // Reset to original values
-    if (userSettings) {
-      setFirstName(userSettings.firstName || '');
-      setLastName(userSettings.lastName || '');
-      setEmail(userSettings.email || '');
-      setDiabetesType(userSettings.diabetesType || '');
+    if (isEditing) {
+      setIsEditing(false);
+      resetForm();
+    } else {
+      const canGoBack = navigation.canGoBack();
+      if (canGoBack) {
+        navigation.goBack();
+      } else {
+        navigation.navigate(ROUTES.SETTINGS);
+      }
     }
-    setIsEditing(false);
-    setEmailError(null);
   };
 
   const handleSendTestEmail = () => {
@@ -324,6 +326,27 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity 
+        onPress={handleCancelEdit} 
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>
+        {isEditing ? 'Edit Profile' : 'Profile'}
+      </Text>
+      <View style={styles.headerRight}>
+        {!isEditing && (
+          <TouchableOpacity onPress={() => setIsEditing(true)}>
+            <Text style={styles.editText}>Edit</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAwareScrollView 
@@ -334,16 +357,7 @@ const ProfileScreen: React.FC = () => {
         enableResetScrollToCoords={false}
         extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       >
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Profile</Text>
-        <View style={styles.placeholder} />
-      </View>
+        {renderHeader()}
 
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
@@ -444,13 +458,18 @@ const styles = StyleSheet.create({
   backButton: {
     padding: SIZES.xs,
   },
-  title: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.text,
   },
-  placeholder: {
-    width: 24,
+  headerRight: {
+    padding: SIZES.xs,
+  },
+  editText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
   },
   profileHeader: {
     alignItems: 'center',

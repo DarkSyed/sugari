@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
-import { BloodSugarReading, FoodEntry, InsulinDose, UserSettings, A1CReading, WeightMeasurement, BloodPressureReading } from '../types';
+import { BloodSugarReading, FoodEntry, InsulinDose, UserSettings, A1CReading, WeightMeasurement, BloodPressureReading, Medication } from '../types';
 import { getStartOfWeek, getEndOfWeek } from '../utils/dateUtils';
+import * as FileSystem from 'expo-file-system';
 
 // Define types for SQLite operations
 type SQLTransaction = any;
@@ -92,6 +93,20 @@ export const initDatabase = async (): Promise<void> => {
           diastolic INTEGER NOT NULL,
           timestamp INTEGER NOT NULL,
           notes TEXT
+        )
+      `);
+      
+      // Create medications table
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS medications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          dosage TEXT NOT NULL,
+          frequency TEXT NOT NULL,
+          notes TEXT,
+          imagePath TEXT,
+          timestamp INTEGER NOT NULL
         )
       `);
       
@@ -232,23 +247,35 @@ export const addBloodSugarReading = async (reading: Omit<BloodSugarReading, 'id'
   }
 };
 
-export const updateBloodSugarReading = async (reading: BloodSugarReading): Promise<void> => {
+export const updateBloodSugarReading = async (
+  id: number, 
+  reading: Partial<BloodSugarReading>
+): Promise<void> => {
   try {
     const db = getDatabase();
     
-    // Use runAsync instead of transaction
-    await db.runAsync(
-      `UPDATE blood_sugar_readings 
-       SET value = ?, timestamp = ?, context = ?, notes = ? 
-       WHERE id = ?`,
-      [
-        reading.value,
-        reading.timestamp,
-        reading.context || null,
-        reading.notes || null,
-        reading.id
-      ]
-    );
+    // Create the SQL update statement dynamically based on provided fields
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    
+    Object.entries(reading).forEach(([key, value]) => {
+      if (key !== 'id') { // Skip the ID field
+        updateFields.push(`${key} = ?`);
+        values.push(value);
+      }
+    });
+    
+    // Add the WHERE clause parameter
+    values.push(id);
+    
+    const sql = `UPDATE blood_sugar_readings SET ${updateFields.join(', ')} WHERE id = ?`;
+    
+    console.log('Executing SQL:', sql, 'with values:', values);
+    
+    // Use runAsync instead of transaction which is causing the error
+    await db.runAsync(sql, values);
+    
+    console.log('Successfully updated reading with ID:', id);
   } catch (error) {
     console.error('Error updating blood sugar reading:', error);
     throw error;
@@ -551,35 +578,38 @@ export const updateBloodPressureReading = async (id: number, reading: Partial<Bl
   try {
     const db = getDatabase();
     const updates: string[] = [];
-    const args: any[] = [];
+    const values: any[] = [];
     
     if (reading.systolic !== undefined) {
       updates.push('systolic = ?');
-      args.push(reading.systolic);
+      values.push(reading.systolic);
     }
     if (reading.diastolic !== undefined) {
       updates.push('diastolic = ?');
-      args.push(reading.diastolic);
+      values.push(reading.diastolic);
     }
     if (reading.timestamp !== undefined) {
       updates.push('timestamp = ?');
-      args.push(reading.timestamp);
+      values.push(reading.timestamp);
     }
     if (reading.notes !== undefined) {
       updates.push('notes = ?');
-      args.push(reading.notes);
+      values.push(reading.notes);
     }
     
     if (updates.length === 0) {
       return;
     }
     
-    args.push(id);
+    values.push(id);
     
-    await db.runAsync(
-      `UPDATE blood_pressure_readings SET ${updates.join(', ')} WHERE id = ?`,
-      args
-    );
+    const sql = `UPDATE blood_pressure_readings SET ${updates.join(', ')} WHERE id = ?`;
+    console.log('Executing BP update SQL:', sql, values);
+    
+    // Use runAsync instead of transaction
+    await db.runAsync(sql, values);
+    
+    console.log('Successfully updated blood pressure reading with ID:', id);
   } catch (error) {
     console.error('Error updating blood pressure reading:', error);
     throw error;
@@ -647,6 +677,137 @@ export const getBloodPressureReadingsForTimeRange = async (startTime: number, en
   }
 };
 
+// Medication functions
+export const addMedication = async (medication: Omit<Medication, 'id'>): Promise<number> => {
+  try {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      'INSERT INTO medications (name, type, dosage, frequency, notes, imagePath, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        medication.name,
+        medication.type,
+        medication.dosage,
+        medication.frequency,
+        medication.notes || null,
+        medication.imagePath || null,
+        medication.timestamp
+      ]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Error adding medication:', error);
+    throw error;
+  }
+};
+
+export const getMedications = async (): Promise<Medication[]> => {
+  try {
+    const db = getDatabase();
+    const result = await db.getAllAsync<any>(
+      'SELECT * FROM medications ORDER BY timestamp DESC'
+    );
+    
+    const medications: Medication[] = result.map(row => ({
+      id: row.id,
+      name: row.name,
+      type: row.type as 'pill' | 'injection',
+      dosage: row.dosage,
+      frequency: row.frequency,
+      notes: row.notes,
+      imagePath: row.imagePath,
+      timestamp: row.timestamp
+    }));
+    
+    return medications;
+  } catch (error) {
+    console.error('Error getting medications:', error);
+    return [];
+  }
+};
+
+export const updateMedication = async (id: number, medication: Partial<Medication>): Promise<void> => {
+  try {
+    const db = getDatabase();
+    const updates: string[] = [];
+    const args: any[] = [];
+    
+    if (medication.name !== undefined) {
+      updates.push('name = ?');
+      args.push(medication.name);
+    }
+    if (medication.type !== undefined) {
+      updates.push('type = ?');
+      args.push(medication.type);
+    }
+    if (medication.dosage !== undefined) {
+      updates.push('dosage = ?');
+      args.push(medication.dosage);
+    }
+    if (medication.frequency !== undefined) {
+      updates.push('frequency = ?');
+      args.push(medication.frequency);
+    }
+    if (medication.notes !== undefined) {
+      updates.push('notes = ?');
+      args.push(medication.notes);
+    }
+    if (medication.imagePath !== undefined) {
+      updates.push('imagePath = ?');
+      args.push(medication.imagePath);
+    }
+    if (medication.timestamp !== undefined) {
+      updates.push('timestamp = ?');
+      args.push(medication.timestamp);
+    }
+    
+    if (updates.length === 0) {
+      return;
+    }
+    
+    args.push(id);
+    
+    await db.runAsync(
+      `UPDATE medications SET ${updates.join(', ')} WHERE id = ?`,
+      args
+    );
+  } catch (error) {
+    console.error('Error updating medication:', error);
+    throw error;
+  }
+};
+
+export const deleteMedication = async (id: number): Promise<void> => {
+  try {
+    const db = getDatabase();
+    
+    // Get the image path before deleting
+    const result = await db.getAllAsync<any>(
+      'SELECT imagePath FROM medications WHERE id = ?',
+      [id]
+    );
+    
+    // Delete the medication from the database
+    await db.runAsync('DELETE FROM medications WHERE id = ?', [id]);
+    
+    // If there was an image, delete the file too
+    const imagePath = result[0]?.imagePath;
+    if (imagePath) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(imagePath);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(imagePath);
+        }
+      } catch (fileError) {
+        console.warn('Error deleting medication image file:', fileError);
+        // Continue even if file deletion fails
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting medication:', error);
+    throw error;
+  }
+};
+
 /**
  * Reset the database by dropping all tables and reinitializing them
  */
@@ -663,6 +824,7 @@ export const resetDatabase = async (): Promise<{ success: boolean; message: stri
     await db.runAsync('DROP TABLE IF EXISTS a1c_readings');
     await db.runAsync('DROP TABLE IF EXISTS weight_measurements');
     await db.runAsync('DROP TABLE IF EXISTS blood_pressure_readings');
+    await db.runAsync('DROP TABLE IF EXISTS medications');
     
     // Reinitialize the database with empty tables
     await initDatabase();
