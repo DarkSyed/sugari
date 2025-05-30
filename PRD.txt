@@ -1,0 +1,183 @@
+# Overview
+SugariMobile is a React Native (Expo) mobile application designed for individuals managing diabetes. It provides a centralized platform to easily log and track key health metrics locally on the user's device, including blood glucose levels, food intake, insulin dosages, HbA1c, weight, and blood pressure. The goal is to empower users with better data management, facilitate trend monitoring, and improve communication with healthcare providers using data stored directly on their phone. It solves the problem of scattered or manual tracking methods by offering a user-friendly, digital solution utilizing a local **SQLite** database.
+
+# Core Features
+
+1.  **Blood Glucose Logging:**
+    *   **What:** Allows users to record blood sugar readings.
+    *   **Why:** Essential for monitoring glucose control and understanding the impact of food/medication.
+    *   **How:** Dedicated form with fields for value (mg/dL or mmol/L - *future setting*), timestamp (date/time picker), meal context (before/after meal, fasting, etc.), and optional notes. Saves data to a local **SQLite** `blood_sugar_readings` table.
+
+2.  **Food Intake Logging:**
+    *   **What:** Enables users to log meals and snacks.
+    *   **Why:** Helps users understand the relationship between carbohydrate intake and blood glucose levels.
+    *   **How:** Form with fields for food name/description, estimated carbohydrates (grams), meal type (breakfast, lunch, dinner, snack), timestamp, and optional notes. Saves to a local **SQLite** `food_entries` table.
+
+3.  **Insulin Dose Logging:**
+    *   **What:** Allows tracking of insulin injections.
+    *   **Why:** Critical for users on insulin therapy to manage doses and timing.
+    *   **How:** Form with fields for insulin units, insulin type (e.g., rapid, long-acting - potentially selectable list), timestamp, and optional notes. Saves to a local **SQLite** `insulin_doses` table.
+
+4.  **Medication Logging (Enhanced - Future):**
+    *   **What:** Expand logging to include both injection (Insulin) and pill-based medications.
+    *   **Why:** Provides a complete picture of medication adherence for various diabetes treatments.
+    *   **How:** Refactor/create a unified Medication logging screen. Add fields for Medication Name, Dosage (e.g., mg, units), Form (Pill/Injection), timestamp, and notes. Update local **SQLite** schema (`medications` table?). *This will fix/replace the potentially incomplete existing medication page.*
+
+5.  **HbA1c Logging:**
+    *   **What:** Record HbA1c test results.
+    *   **Why:** Tracks long-term blood glucose control.
+    *   **How:** Simple form for A1C value (%), timestamp, and optional notes. Saves to a local **SQLite** `a1c_readings` table.
+
+6.  **Weight Logging:**
+    *   **What:** Track user's weight over time.
+    *   **Why:** Weight management is often important in diabetes care.
+    *   **How:** Form for weight value (kg/lbs - *future setting*), timestamp, and optional notes. Saves to a local **SQLite** `weight_readings` table.
+
+7.  **Blood Pressure Logging:**
+    *   **What:** Record systolic and diastolic blood pressure readings.
+    *   **Why:** Monitors cardiovascular health, often linked with diabetes.
+    *   **How:** Form for systolic value, diastolic value, timestamp, and optional notes. Saves to a local **SQLite** `blood_pressure_readings` table.
+
+8.  **Data History View (SugarLog):**
+    *   **What:** Displays a chronological list of all logged entries.
+    *   **Why:** Allows users to review their historical data stored on the device.
+    *   **How:** Screen fetching data from various local **SQLite** tables, displaying entries in a scrollable list, potentially with filtering/sorting capabilities (*future enhancement*).
+
+9.  **User Profile & Settings (Future):**
+    *   **What:** A dedicated screen for managing user preferences and profile information stored locally.
+    *   **Why:** Enables customization and configuration for features like PDF export.
+    *   **How:** Screen with fields for display name, email address (for PDF export info), preferred units (mg/dL vs mmol/L, lbs vs kg - *future*), theme selection (Light/Dark/System), and potentially other preferences. Saves preferences locally (e.g., using AsyncStorage or a dedicated **SQLite** `settings` table).
+
+10. **Dark Mode Theme (Future):**
+    *   **What:** Provide an alternative dark color scheme for the app UI.
+    *   **Why:** Improves usability in low-light conditions and is a common user preference.
+    *   **How:** Implement a theming system (e.g., using React Context) that applies different color palettes based on the user's selection in Settings (stored locally). Requires defining dark theme colors in `constants` and updating component styles to use theme variables.
+
+11. **PDF Data Export (Future):**
+    *   **What:** Allow users to generate a PDF report of their logged data within a selected date range from the local database.
+    *   **Why:** Facilitates sharing data with healthcare providers.
+    *   **How:** Feature within the app (perhaps in Settings or SugarLog) to select a date range. Fetch relevant data from the local **SQLite** database. Use a PDF generation library (e.g., `react-native-pdf`) to create the report locally on the device. Allow the user to share the generated PDF using the native share sheet. The email address entered in the User Profile is informational for the doctor receiving the PDF.
+
+12. **AI-Powered Insights (Future - On-Device/API):**
+    *   **What:** Provide personalized insights and summaries based on the user's locally logged data.
+    *   **Why:** Can help users identify trends, understand correlations (e.g., food impact on glucose), and potentially offer educational tips (not medical advice).
+    *   **How:** Requires processing data from the local **SQLite** database. Insights could be generated:
+        *   **Option A (On-Device):** Using simpler algorithms or potentially an on-device ML model (more complex).
+        *   **Option B (API Call):** Sending anonymized, aggregated data to an external API (requires user consent and privacy considerations) that performs RAG processing using an LLM grounded in reliable medical sources. Results are displayed in the app. Requires careful prompt engineering and clear disclaimers that it's not medical advice. *RAG implementation becomes more complex without integrated backend data access.*
+
+# User Experience
+
+*   **User Personas:** (Same as before)
+*   **Key User Flows:**
+    1.  **App Setup:** Initial launch, potentially setting up local passcode/biometric lock (*future enhancement*). No cloud login required.
+    2.  **Data Logging:** Navigate from Dashboard/Menu -> Select Log Type (Glucose, Food, etc.) -> Fill Form -> Save Entry (locally).
+    3.  **View History:** Navigate to SugarLog -> Scroll/View Entries (from local DB).
+    4.  **(Future) Settings:** Navigate to Settings -> Update Profile (e.g., email for PDF info) -> Select Theme -> Save Settings (locally).
+    5.  **(Future) PDF Export:** Navigate to Export Feature -> Select Date Range -> Generate PDF (locally) -> Share PDF via native share sheet.
+    6.  **(Future) View Insights:** Navigate to Dashboard/Insights Screen -> View locally generated or API-fetched summaries/trends.
+*   **UI/UX Considerations:** (Largely the same, added local storage context)
+    *   Clean, intuitive interface with clear navigation.
+    *   Fix the existing non-functional buttons in the Settings screen.
+    *   Fix the existing non-functional buttons in the Medication screen and the Add medication Screen, fix the ability to add photos and make it possible to add pill and injection medications inputted data.
+    *   Fix the existing non-functional buttons in the Add medication screen like i just said above.
+    *   Allow the user to be able to press on anywhere else on the screen when they click add reading on the blood glucose log page and it will take it out of the log health data navigation bar at the bottom where it says blood glucose, insulin, food, A1C, weight, and blood pressure.
+    *   Make the navigation bar at the bottom where it says home sugar medication analysis and settings slightly bigger but exactly the same
+    *   if you double click the home button it should scroll you back to the top of the dashboard page
+    *   Consistent design across all logging screens (standardized headers, buttons, inputs).
+    *   Easy-to-use date and time pickers (platform-specific handling implemented).
+    *   Clear feedback on successful saves or errors (to local storage).
+    *   Legible fonts and good contrast ratios (consider accessibility).
+    *   Implementation of Dark Mode toggle via Settings.
+    *   Loading indicators during data saving/fetching (from local storage).
+    *   Instead of saying "Hello, there!" on the dashboard page it should say "Hello, User!" and change from User to whatever name is inputted in the settings page (fetched from local settings).
+
+# Technical Architecture
+
+*   **System Components:**
+    *   **Frontend:** React Native App (Expo Managed Workflow)
+        *   UI Screens (React Components)
+        *   Navigation (React Navigation)
+        *   State Management (React Context API for App state, potentially Theme)
+        *   Forms (React Hook Form for some screens, manual state for others)
+        *   **Local Database:** **SQLite** (using `expo-sqlite` or similar library)
+        *   Local Storage (AsyncStorage for simple preferences/flags)
+        *   Service Layer (Functions interacting with the local **SQLite** database)
+    *   **Backend:** **None (Data stored locally on device via SQLite)**
+    *   **(Future) AI RAG System:** (See Core Features #12 - On-Device or External API)
+*   **Data Models (Simplified - Local SQLite Tables):**
+    *   `blood_sugar_readings`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), value, timestamp, meal_context, notes }
+    *   `food_entries`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), name, carbs, timestamp, meal_type, notes }
+    *   `insulin_doses`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), units, type, timestamp, notes }
+    *   `a1c_readings`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), value, timestamp, notes }
+    *   `weight_readings`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), value, timestamp, notes }
+    *   `blood_pressure_readings`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), systolic, diastolic, timestamp, notes }
+    *   `(Future) settings`: { key (TEXT PRIMARY KEY), value (TEXT) } or separate table for profile info.
+    *   `(Future) medications`: { id (INTEGER PRIMARY KEY AUTOINCREMENT), name, dosage, form (pill/injection), timestamp, notes }
+*   **APIs and Integrations:**
+    *   `expo-sqlite`: For interacting with the local **SQLite** database.
+    *   `@react-native-community/datetimepicker`: For native date/time selection.
+    *   `(Future)` PDF Library (e.g., `react-native-pdf`).
+    *   `(Future)` External LLM API Client (if choosing Option B for AI Insights).
+*   **Infrastructure Requirements:**
+    *   Expo Application Services (EAS) for building and potentially submitting app store builds.
+    *   (Future) External API hosting if needed for AI insights.
+
+# Development Roadmap
+
+*   **Phase 1: Core Local Logging & Stability (MVP Focus)**
+    *   **Goal:** Ensure core logging features save reliably to the local **SQLite** database and the basic UI is functional.
+    *   **Scope:**
+        *   Set up **SQLite** database and tables using `expo-sqlite`.
+        *   Implement reliable saving/fetching for Glucose, Food, and Insulin logs to/from **SQLite**.
+        *   Ensure consistent header/back button behavior across MVP screens.
+        *   Ensure consistent Date/Time picker UI/UX (iOS/Android).
+        *   Implement basic input validation on MVP forms.
+        *   Basic SugarLog screen displaying chronological data fetched from **SQLite**.
+        *   **Fix existing non-functional buttons in the Settings screen stub.** (Basic navigation/placeholder fixes).
+*   **Phase 2: User Customization & Enhanced Local Logging**
+    *   **Goal:** Implement user settings stored locally, theme customization, and improve medication tracking locally.
+    *   **Scope:**
+        *   Build functional User Profile/Settings screen saving preferences locally (AsyncStorage or **SQLite**).
+        *   Implement Dark Mode theme and toggle in Settings (using locally stored preference).
+        *   Refactor/Build enhanced Medication logging screen (Pill/Injection distinction, medication name) saving to **SQLite**.
+        *   Implement basic PDF generation (from **SQLite** data) for a selected date range (allow user to share via native share sheet).
+*   **Phase 3: Data Utility & Insights (Local Focus)**
+    *   **Goal:** Provide data export capabilities and introduce insights based on local data.
+    *   **Scope:**
+        *   Refine PDF export formatting and data selection (from **SQLite**).
+        *   Develop and integrate AI Insights feature (evaluate on-device vs. external API approach based on local data).
+        *   Develop basic Dashboard/Analytics screen visualizations (using local **SQLite** data).
+        *   (Optional) Add unit preferences (mg/dL vs mmol/L, lbs vs kg) to Settings and apply throughout the app (using locally stored preference).
+
+# Logical Dependency Chain
+
+1.  **Foundation:** **SQLite** Database Setup (`expo-sqlite`), Core Data Models defined in DB schema, Basic Navigation Structure.
+2.  **Core Logging:** Implement individual logging forms (Glucose, Food, Insulin) ensuring they save correctly to **SQLite**. -> **(Highest Priority to get working reliably)**
+3.  **History View:** Implement SugarLog screen to fetch and display data saved in Step 2 from **SQLite**.
+4.  **UI Standardization:** Refine headers, buttons, pickers across screens built in Step 2 & 3.
+5.  **Settings Foundation:** Build the basic Settings screen UI, link navigation. -> **Fix existing buttons here.**
+6.  **User Profile Local Storage:** Implement saving profile data (email for PDF info, theme preference) locally (AsyncStorage or **SQLite**) from Settings screen.
+7.  **Dark Mode:** Implement theming based on preference saved in Step 6.
+8.  **Medication Enhancement:** Refactor/build new medication logging saving to **SQLite** based on core logging patterns (Step 2).
+9.  **PDF Generation:** Implement PDF creation logic, fetching data logged in Step 2 from **SQLite**. Depends on Settings (Step 6) for user email context.
+10. **AI Insights:** Requires stable logged data (Step 2) in **SQLite**. Evaluate on-device vs API approach.
+11. **Dashboard/Analytics:** Visualizations based on stable logged data (Step 2) from **SQLite**.
+
+*Focus on getting core local logging (Step 2) and history view (Step 3) fully functional and reliable first, then build out settings, customization, and advanced features.*
+
+# Risks and Mitigations
+
+*   **Technical Challenges:**
+    *   **Database Issues:** Stability/performance of **SQLite** operations, schema migrations. (Mitigation: Use `expo-sqlite` correctly, plan migrations carefully, test CRUD operations thoroughly, add error logging).
+    *   **AI Implementation:** Complexity of on-device ML or managing external API calls securely/privately. (Mitigation: Start with simpler rule-based insights or choose external API carefully with strong privacy focus, clear user consent, and RAG for accuracy).
+    *   **PDF Generation:** Performance on device, formatting complexity. (Mitigation: Choose efficient library, generate asynchronously if needed, start simple).
+    *   **Cross-Platform UI Consistency:** (Same as before).
+*   **Figuring out the MVP:** (Same as before - focus on reliable local logging).
+*   **Resource Constraints:** (Same as before).
+*   **Data Loss:** User data exists only on the device. (Mitigation: Clearly inform users data is local only, encourage device backups, potentially add manual data export/import feature in later phases).
+*   **Data Privacy/Security:** While local, still handle sensitive health data appropriately on device. (Mitigation: Use secure storage practices, consider device-level encryption features if available/needed).
+
+# Appendix
+*   (Optional) Link to UI mockups or design system.
+*   (Optional) Detailed **SQLite** schema diagram.
+*   (Optional) List of specific libraries chosen (e.g., charting library for analytics). 

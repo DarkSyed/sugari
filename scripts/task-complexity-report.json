@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-13T08:29:57.731Z",
+    "tasksAnalyzed": 5,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 6,
+      "taskTitle": "Fix Settings Screen and Implement User Profile",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the Settings Screen and User Profile implementation into subtasks covering UI repairs, profile data structure design, local storage implementation, dashboard integration, and navigation testing.",
+      "reasoning": "This task involves both bug fixing and new feature implementation. It requires working with UI components, local storage (either AsyncStorage or SQLite), and integrating with the Dashboard. The complexity is moderate as it touches multiple parts of the application but uses familiar React Native patterns."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement Dark Mode Theme",
+      "complexityScore": 6,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the Dark Mode Theme implementation into subtasks covering theme context creation, color palette definition, theme provider component, settings integration, component styling updates, and system theme detection.",
+      "reasoning": "This task requires architectural changes using React Context and affects the entire application's styling. It involves creating a theming system, updating all UI components, and implementing user preferences. The complexity is moderately high because it touches virtually every visual component in the app."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Fix and Enhance Medication Logging",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the Medication Logging enhancement into subtasks covering database schema updates, UI bug fixes, form implementation, photo attachment functionality, data service creation, and UI/UX consistency verification.",
+      "reasoning": "This task combines bug fixing with significant feature enhancement. It requires database schema work, form implementation with multiple field types, media handling for photos, and service layer development. The complexity is high due to the variety of technical areas involved."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement PDF Data Export",
+      "complexityScore": 8,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the PDF Export implementation into subtasks covering PDF library integration, date range selection UI, data query service, PDF template design, user profile integration, PDF generation logic, and native sharing implementation.",
+      "reasoning": "This task involves integrating a third-party library, designing data presentation templates, implementing complex queries across multiple data types, and working with native sharing APIs. The complexity is high because it requires coordinating multiple technical components and designing a good data presentation format."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "UI/UX Refinements and Navigation Improvements",
+      "complexityScore": 7,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the UI/UX refinements into subtasks covering navigation bar enhancements, scroll-to-top functionality, design consistency implementation, loading indicators, error handling system, form validation, and accessibility testing.",
+      "reasoning": "This task involves numerous small changes across the entire application. It requires attention to detail, understanding of React Native navigation, and UI/UX best practices. The complexity is high due to the breadth of changes and the need to maintain consistency across the app while touching many components."
+    }
+  ]
+}

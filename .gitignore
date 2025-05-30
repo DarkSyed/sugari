@@ -1,0 +1,63 @@
+# Environment variables
+# Ignore .env files in root and subdirectories
+*.env # This rule might be redundant if you have **/.env
+**/.env # This is the most effective rule
+# Ignore local environment overrides
+.env*.local
+
+# Optional: Ignore other common config/key files if you use them
+# config.js
+# secrets.json
+# *.pem
+# *.key
+
+# Optional: Ignore specific build artifacts or secrets if they exist elsewhere
+# For example, if you had a specific google-services.json for Android
+# android/app/google-services.json
+# ios/GoogleService-Info.plist
+
+.cursor/rules
+rules.mdc
+rules.mdc.json
+rule.mdc
+rule.mdc.json
+
+# Other standard ignores for React Native / Expo projects (you might already have these)
+node_modules/
+npm-debug.log
+yarn-error.log
+*.jks
+*.p12
+*.key
+*.mobileprovision
+*.orig
+/ios/Pods/
+/ios/build/
+/android/build/
+/android/app/build/
+.expo/
+dist/
+
+# Added by Claude Task Master
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+.env
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+# Task files
+tasks.json
+tasks/ 

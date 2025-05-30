@@ -1,0 +1,191 @@
+# Overview
+SugariMobile is a React Native (Expo) mobile application designed for individuals managing diabetes. It provides a centralized platform to easily log and track key health metrics, including blood glucose levels, food intake, insulin dosages, HbA1c, weight, and blood pressure. The goal is to empower users with better data management, facilitate trend monitoring, and improve communication with healthcare providers. It solves the problem of scattered or manual tracking methods by offering a user-friendly, digital solution integrated with a secure backend (Supabase).
+
+# Core Features
+
+1.  **Blood Glucose Logging:**
+    *   **What:** Allows users to record blood sugar readings.
+    *   **Why:** Essential for monitoring glucose control and understanding the impact of food/medication.
+    *   **How:** Dedicated form with fields for value (mg/dL or mmol/L - *future setting*), timestamp (date/time picker), meal context (before/after meal, fasting, etc.), and optional notes. Saves data to Supabase `blood_sugar_readings` table.
+
+2.  **Food Intake Logging:**
+    *   **What:** Enables users to log meals and snacks.
+    *   **Why:** Helps users understand the relationship between carbohydrate intake and blood glucose levels.
+    *   **How:** Form with fields for food name/description, estimated carbohydrates (grams), meal type (breakfast, lunch, dinner, snack), timestamp, and optional notes. Saves to Supabase `food_entries` table.
+
+3.  **Insulin Dose Logging:**
+    *   **What:** Allows tracking of insulin injections.
+    *   **Why:** Critical for users on insulin therapy to manage doses and timing.
+    *   **How:** Form with fields for insulin units, insulin type (e.g., rapid, long-acting - potentially selectable list), timestamp, and optional notes. Saves to Supabase `insulin_doses` table.
+
+4.  **Medication Logging (Enhanced - Future):**
+    *   **What:** Expand logging to include both injection (Insulin) and pill-based medications.
+    *   **Why:** Provides a complete picture of medication adherence for various diabetes treatments.
+    *   **How:** Refactor/create a unified Medication logging screen. Add fields for Medication Name, Dosage (e.g., mg, units), Form (Pill/Injection), timestamp, and notes. Update Supabase schema (`medications` table?). *This will fix/replace the potentially incomplete existing medication page.*
+
+5.  **HbA1c Logging:**
+    *   **What:** Record HbA1c test results.
+    *   **Why:** Tracks long-term blood glucose control.
+    *   **How:** Simple form for A1C value (%), timestamp, and optional notes. Saves to Supabase `a1c_readings` table.
+
+6.  **Weight Logging:**
+    *   **What:** Track user's weight over time.
+    *   **Why:** Weight management is often important in diabetes care.
+    *   **How:** Form for weight value (kg/lbs - *future setting*), timestamp, and optional notes. Saves to Supabase `weight_readings` table.
+
+7.  **Blood Pressure Logging:**
+    *   **What:** Record systolic and diastolic blood pressure readings.
+    *   **Why:** Monitors cardiovascular health, often linked with diabetes.
+    *   **How:** Form for systolic value, diastolic value, timestamp, and optional notes. Saves to Supabase `blood_pressure_readings` table.
+
+8.  **Data History View (SugarLog):**
+    *   **What:** Displays a chronological list of all logged entries.
+    *   **Why:** Allows users to review their historical data.
+    *   **How:** Screen fetching data from various Supabase tables, displaying entries in a scrollable list, potentially with filtering/sorting capabilities (*future enhancement*).
+
+9.  **User Profile & Settings (Future):**
+    *   **What:** A dedicated screen for managing user preferences and profile information.
+    *   **Why:** Enables customization and configuration for features like PDF export.
+    *   **How:** Screen with fields for display name, email address (for PDF export info), preferred units (mg/dL vs mmol/L, lbs vs kg - *future*), theme selection (Light/Dark/System), and potentially other preferences. Saves to a Supabase `user_profiles` table linked to the Auth user. *Will require fixing existing non-functional settings buttons.*
+
+10. **Dark Mode Theme (Future):**
+    *   **What:** Provide an alternative dark color scheme for the app UI.
+    *   **Why:** Improves usability in low-light conditions and is a common user preference.
+    *   **How:** Implement a theming system (e.g., using React Context) that applies different color palettes based on the user's selection in Settings. Requires defining dark theme colors in `constants` and updating component styles to use theme variables.
+
+11. **PDF Data Export (Future):**
+    *   **What:** Allow users to generate a PDF report of their logged data within a selected date range.
+    *   **Why:** Facilitates sharing data with healthcare providers.
+    *   **How:** Feature within the app (perhaps in Settings or SugarLog) to select a date range. Fetch relevant data from Supabase. Use a PDF generation library (e.g., `react-native-pdf` or a backend function) to create the report. Initially, allow the user to share the generated PDF using the native share sheet. The email address entered in the User Profile is informational for the doctor receiving the PDF.
+
+12. **AI-Powered Insights (Future):**
+    *   **What:** Provide personalized insights and summaries based on the user's logged data.
+    *   **Why:** Can help users identify trends, understand correlations (e.g., food impact on glucose), and potentially offer educational tips (not medical advice).
+    *   **How:** Implement a Retrieval-Augmented Generation (RAG) system. User data from Supabase is processed (potentially creating embeddings). When insights are requested, relevant data is retrieved and fed as context to a Large Language Model (LLM) along with prompts grounded in reliable medical information sources (to limit hallucination). Results are displayed in the app (e.g., on the Dashboard or a dedicated Insights screen). Requires careful prompt engineering and clear disclaimers that it's not medical advice.
+
+# User Experience
+
+*   **User Personas:**
+    *   **Primary:** Individuals diagnosed with Type 1 or Type 2 diabetes who need to regularly monitor and log health metrics. May range from newly diagnosed to experienced managers. Comfortable using mobile apps.
+    *   **Secondary:** Caregivers assisting individuals with diabetes; Healthcare providers receiving data reports.
+*   **Key User Flows:**
+    1.  **Onboarding/Login:** Sign up/Log in using Supabase Auth.
+    2.  **Data Logging:** Navigate from Dashboard/Menu -> Select Log Type (Glucose, Food, etc.) -> Fill Form -> Save Entry.
+    3.  **View History:** Navigate to SugarLog -> Scroll/View Entries.
+    4.  **(Future) Settings:** Navigate to Settings -> Update Profile (e.g., email) -> Select Theme -> Save Settings.
+    5.  **(Future) PDF Export:** Navigate to Export Feature -> Select Date Range -> Generate PDF -> Share PDF via native share sheet.
+    6.  **(Future) View Insights:** Navigate to Dashboard/Insights Screen -> View AI-generated summaries/trends.
+*   **UI/UX Considerations:**
+    *   Clean, intuitive interface with clear navigation.
+    *   Fix the existing non-functional buttons in the Settings screen.
+    *   Fix the existing non-functional buttons in the Medication screen and the Add medication Screen, fix the ability to add photos and make it possible to add pill and injection medications inputted data.
+    *   Fix the existing non-functional buttons in the Add medication screen like i just said above.
+    *   Allow the user to be able to press on anywhere else on the screen when they click add reading on the blood glucose log page and it will take it out of the log health data navigation bar at the bottom where it says blood glucose, insulin, food, A1C, weight, and blood pressure.
+    *   Make the navigation bar at the bottom where it says home sugar medication analysis and settings slightly bigger but exactly the same
+    *   if you double click the home button it should scroll you back to the top of the dashboard page
+    *   Consistent design across all logging screens (standardized headers, buttons, inputs).
+    *   Easy-to-use date and time pickers (platform-specific handling implemented).
+    *   Clear feedback on successful saves or errors.
+    *   Legible fonts and good contrast ratios (consider accessibility).
+    *   Implementation of Dark Mode toggle via Settings.
+    *   Loading indicators during data submission/fetching.
+    *   Instead of saying "Hello, there!" on the dashboard page it should say "Hello, User!" and change from User to whatever name is inputted in the settings page.
+
+# Technical Architecture
+
+*   **System Components:**
+    *   **Frontend:** React Native App (Expo Managed Workflow)
+        *   UI Screens (React Components)
+        *   Navigation (React Navigation)
+        *   State Management (React Context API for Auth, App state, potentially Theme)
+        *   Forms (React Hook Form for some screens, manual state for others)
+        *   Local Storage (AsyncStorage for tokens, potentially user preferences)
+        *   Service Layer (Functions interacting with Supabase - e.g., `databaseFix.ts`)
+    *   **Backend:** Supabase
+        *   Authentication (Email/Password, potentially others)
+        *   PostgreSQL Database (Tables: `users`, `blood_sugar_readings`, `food_entries`, `insulin_doses`, `a1c_readings`, `weight_readings`, `blood_pressure_readings`, `user_profiles` (Future), `medications` (Future))
+        *   Storage (Optional, if storing generated PDFs or other files)
+        *   Edge Functions (Optional, potentially for PDF generation or AI backend interaction)
+    *   **(Future) AI RAG System:**
+        *   Vector Database (e.g., integrated with Supabase)
+        *   LLM API (e.g., OpenAI, Anthropic)
+        *   Backend Service/Function to orchestrate RAG process.
+*   **Data Models (Simplified):**
+    *   `blood_sugar_readings`: { id, user_id, value, timestamp, meal_context, notes }
+    *   `food_entries`: { id, user_id, name, carbs, timestamp, meal_type, notes }
+    *   `insulin_doses`: { id, user_id, units, type, timestamp, notes }
+    *   `a1c_readings`: { id, user_id, value, timestamp, notes }
+    *   `weight_readings`: { id, user_id, value, timestamp, notes }
+    *   `blood_pressure_readings`: { id, user_id, systolic, diastolic, timestamp, notes }
+    *   `(Future) user_profiles`: { user_id, display_name, email_for_pdf, preferred_theme, preferred_units }
+    *   `(Future) medications`: { id, user_id, name, dosage, form (pill/injection), timestamp, notes }
+*   **APIs and Integrations:**
+    *   `supabase-js`: Primary SDK for interacting with Supabase Auth and Database.
+    *   `@react-native-community/datetimepicker`: For native date/time selection.
+    *   `(Future)` PDF Library (e.g., `react-native-pdf`, `pdf-lib` via backend function).
+    *   `(Future)` LLM API Client.
+*   **Infrastructure Requirements:**
+    *   Supabase Project Hosting.
+    *   Expo Application Services (EAS) for building and potentially submitting app store builds.
+    *   (Future) Hosting for AI backend service/functions if needed.
+
+# Development Roadmap
+
+*   **Phase 1: Core Stability & Refinement (MVP Focus)**
+    *   **Goal:** Ensure all existing logging features are robust, data saves reliably, and the basic UI is consistent.
+    *   **Scope:**
+        *   Verify and fix any outstanding database saving/fetching issues for all log types.
+        *   Ensure consistent header/back button behavior across all screens.
+        *   Ensure consistent Date/Time picker UI/UX (iOS/Android).
+        *   Implement basic input validation on all forms.
+        *   Functional User Authentication (Login/Signup).
+        *   Basic SugarLog screen displaying chronological data.
+        *   **Fix existing non-functional buttons in the Settings screen stub.**
+*   **Phase 2: User Customization & Enhanced Logging**
+    *   **Goal:** Implement user settings, theme customization, and improve medication tracking.
+    *   **Scope:**
+        *   Build functional User Profile/Settings screen.
+        *   Implement Dark Mode theme and toggle in Settings.
+        *   Store user preferences (theme, email for PDF) in Supabase `user_profiles` table.
+        *   Refactor/Build enhanced Medication logging screen (Pill/Injection distinction, medication name).
+        *   Implement basic PDF generation for a selected date range (allow user to share via native share sheet).
+*   **Phase 3: Data Utility & Insights**
+    *   **Goal:** Provide data export capabilities and introduce AI-driven insights.
+    *   **Scope:**
+        *   Refine PDF export formatting and data selection.
+        *   Develop and integrate AI Insights feature (RAG backend, UI display).
+        *   Develop basic Dashboard/Analytics screen visualizations.
+        *   (Optional) Implement direct email sending of PDF (requires backend setup).
+        *   (Optional) Add unit preferences (mg/dL vs mmol/L, lbs vs kg) to Settings and apply throughout the app.
+
+# Logical Dependency Chain
+
+1.  **Foundation:** Stable Supabase connection, Auth setup, Core Data Models defined in DB, Basic Navigation Structure.
+2.  **Core Logging:** Implement individual logging forms (Glucose, Food, Insulin, etc.) ensuring they save correctly to Supabase. -> **(Highest Priority to get working reliably)**
+3.  **History View:** Implement SugarLog screen to fetch and display data saved in Step 2.
+4.  **UI Standardization:** Refine headers, buttons, pickers across screens built in Step 2 & 3.
+5.  **Settings Foundation:** Build the basic Settings screen UI, link navigation. -> **Fix existing buttons here.**
+6.  **User Profile Backend:** Create `user_profiles` table, link to Auth, allow saving profile data (email, theme preference) from Settings screen.
+7.  **Dark Mode:** Implement theming based on preference saved in Step 6.
+8.  **Medication Enhancement:** Refactor/build new medication logging based on core logging patterns (Step 2).
+9.  **PDF Generation:** Implement PDF creation logic, fetching data logged in Step 2. Depends on Settings (Step 6) for user email context.
+10. **AI Insights:** Requires stable logged data (Step 2) and potentially user context (Step 6). Involves significant backend/API work.
+11. **Dashboard/Analytics:** Visualizations based on stable logged data (Step 2).
+
+*Focus on getting core logging (Step 2) and history view (Step 3) fully functional and reliable first, then build out settings, customization, and advanced features.*
+
+# Risks and Mitigations
+
+*   **Technical Challenges:**
+    *   **Database Issues:** Ongoing instability in saving/fetching data. (Mitigation: Implement thorough testing of Supabase queries, add detailed error logging, ensure correct RLS policies, potentially refactor service layer `databaseFix.ts`).
+    *   **AI Hallucinations/Accuracy:** AI providing incorrect or unsafe information. (Mitigation: Strictly use RAG grounded in reliable medical sources, clear disclaimers that AI is not medical advice, avoid definitive diagnoses/recommendations, potentially add confidence scores or source links).
+    *   **PDF Generation:** Complexity in formatting, handling large data sets. (Mitigation: Choose a robust library, start with simple table format, implement date range filtering strictly, potentially generate on backend).
+    *   **Cross-Platform UI Consistency:** Maintaining identical look/feel/functionality on iOS/Android. (Mitigation: Careful testing, use platform-agnostic components where possible, conditional styling/logic where necessary).
+*   **Figuring out the MVP:** Ensuring Phase 1 delivers a stable, usable core product before adding complexity. (Mitigation: Strictly adhere to Phase 1 scope defined in Roadmap, prioritize bug fixing in core logging over new features initially).
+*   **Resource Constraints:** Development time/effort required for advanced features like AI. (Mitigation: Phased approach, focus on delivering value incrementally, potentially deferring Phase 3 if needed).
+*   **Data Privacy/Security:** Handling sensitive health data appropriately. (Mitigation: Rely on Supabase security features, implement correct RLS policies, be mindful of HIPAA implications if applicable in the future - currently personal use).
+
+# Appendix
+*   (Optional) Link to UI mockups or design system.
+*   (Optional) Detailed Supabase schema diagram.
+*   (Optional) List of specific libraries chosen (e.g., charting library for analytics). 
