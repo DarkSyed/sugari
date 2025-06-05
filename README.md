@@ -8,7 +8,7 @@ Sugari is a personalized digital health assistant designed to help individuals w
 
 ## Features
 
-- **User Authentication**: Secure sign-up and login with Supabase Authentication
+- **User Authentication**: Secure sign-up and login  
 - **Blood Sugar Logging**: Easily record and track your blood glucose readings
 - **Personalized Insights**: Get tailored recommendations based on your health data
 - **Data Visualization**: View your blood glucose trends over time with intuitive and editable charts
