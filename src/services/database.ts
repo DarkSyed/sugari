@@ -267,7 +267,6 @@ export const updateBloodSugarReading = async (
     
     console.log('Executing SQL:', sql, 'with values:', values);
     
-    // Use runAsync instead of transaction which is causing the error
     await db.runAsync(sql, values);
     
     console.log('Successfully updated reading with ID:', id);

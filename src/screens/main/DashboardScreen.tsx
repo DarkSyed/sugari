@@ -160,7 +160,7 @@ const DashboardScreen: React.FC = () => {
       const latestReading = readings[0]; // Assuming readings are already sorted by date (newest first)
       navigation.navigate('AddGlucose', { 
         initialData: latestReading,
-        isEditing: true // This flag tells the AddGlucoseScreen we're editing, not adding
+        isEditing: true
       });
     } else {
       Alert.alert('No Reading', 'There is no reading to edit.');

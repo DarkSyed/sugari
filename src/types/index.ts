@@ -1,3 +1,5 @@
+import { initialWindowSafeAreaInsets } from "react-native-safe-area-context";
+
 // User related types
 export interface User {
   id: number;
@@ -105,7 +107,8 @@ export type BottomTabParamList = {
 export type MainStackParamList = {
   Dashboard: undefined;
   Profile: undefined;
-  AddGlucose: { readingId?: number; initialData?: BloodSugarReading } | undefined;
+  AddPressure: { readingId?: number, initialData?: BloodPressureReading } | undefined;
+  AddGlucose: { readingId?: number; initialData?: BloodSugarReading; isEditing?: boolean } | undefined;
   AddSugar: { readingId?: number; initialData?: BloodSugarReading } | undefined;
   AddFood: { entryId?: number; initialData?: FoodEntry } | undefined;
   AddInsulin: { doseId?: number; initialData?: InsulinDose } | undefined;

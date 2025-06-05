@@ -11,7 +11,6 @@ import SplashScreen from '../screens/SplashScreen';
 
 // Main Screens
 import DashboardScreen from '../screens/main/DashboardScreen';
-import AddSugarScreen from '../screens/main/AddSugarScreen';
 import AddGlucoseScreen from '../screens/main/AddGlucoseScreen';
 import AddFoodScreen from '../screens/main/AddFoodScreen';
 import AddInsulinScreen from '../screens/main/AddInsulinScreen';
@@ -53,7 +52,6 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_WEIGHT} component={AddWeightScreen} />
       <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
       <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
-      <Stack.Screen name={ROUTES.ADD_SUGAR} component={AddSugarScreen} />
       <Stack.Screen name={ROUTES.FEATURE_REQUESTS} component={FeatureRequestScreen} />
       <Stack.Screen name={ROUTES.REMINDERS} component={RemindersScreen} />
       <Stack.Screen name={ROUTES.REPORT} component={ReportScreen} />

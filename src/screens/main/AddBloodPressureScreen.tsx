@@ -10,22 +10,19 @@ import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { Ionicons } from '@expo/vector-icons';
-import { BloodPressureReading } from '../../types';
+import { BloodPressureReading, MainStackParamList } from '../../types';
 import Card from '../../components/Card';
 
-type RouteParams = {
-  readingId?: number;
-  initialData?: BloodPressureReading;
-};
+type RouteParams = RouteProp<MainStackParamList, 'AddPressure'>;
 
-const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteParams>, string> }> = ({ route }) => {
+const AddBloodPressureScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteParams>();
   const initialData = route?.params?.initialData;
   const isEditing = !!initialData;
   
   const [systolic, setSystolic] = useState(initialData ? initialData.systolic.toString() : '');
   const [diastolic, setDiastolic] = useState(initialData ? initialData.diastolic.toString() : '');
-  const [pulse, setPulse] = useState(initialData ? initialData.pulse ? initialData.pulse.toString() : '' : '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [timestamp, setTimestamp] = useState(initialData ? new Date(initialData.timestamp) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -61,7 +58,6 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
       const readingData = {
         systolic: systolicValue,
         diastolic: diastolicValue,
-        pulse: pulse ? parseInt(pulse, 10) : null,
         timestamp: timestamp.getTime(),
         notes: notes.trim() || null
       };
@@ -77,7 +73,6 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
       // Reset form and navigate directly to log screen
       setSystolic('');
       setDiastolic('');
-      setPulse('');
       setNotes('');
       setTimestamp(new Date());
       navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
@@ -206,7 +201,9 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
                 {/* Title Container */}
                 <View style={styles.headerTitleContainer}>
                    {/* Adjust title text as needed */}
-                  <Text style={styles.title}>Add Blood Pressure</Text>
+                  <Text style={styles.title}>
+                    {isEditing ? "Edit Blood Pressure" : "Add Blood Pressure"}
+                  </Text>
                 </View>
 
                 {/* Spacer */}
@@ -331,16 +328,6 @@ const AddBloodPressureScreen: React.FC<{ route?: RouteProp<Record<string, RouteP
                       </View>
                     </View>
                   )}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Pulse (bpm) (optional)</Text>
-                  <Input
-                    value={pulse}
-                    onChangeText={setPulse}
-                    placeholder="e.g., 72"
-                    keyboardType="number-pad"
-                  />
                 </View>
 
                 <View style={styles.inputContainer}>
