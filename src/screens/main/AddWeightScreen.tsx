@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS, SIZES } from '../../constants';
-import { addWeightMeasurement } from '../../services/databaseFix';
+import { addWeightMeasurement } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';

@@ -16,7 +16,7 @@ import {
   getBloodPressureReadings,
   deleteBloodSugarReading,
   getRecentBloodSugarReadings
-} from '../../services/databaseFix';
+} from '../../services/database';
 import { getAIPoweredInsights } from '../../services/aiService';
 import Container from '../../components/Container';
 import Card from '../../components/Card';

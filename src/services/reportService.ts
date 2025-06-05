@@ -7,7 +7,7 @@ import {
     getWeightMeasurements,
     getBloodPressureReadings,
     getUserSettings
-  } from './databaseFix';
+  } from './database';
   import { 
     BloodSugarReading, 
     InsulinDose, 

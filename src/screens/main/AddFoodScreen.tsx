@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SIZES, VALIDATION } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addFoodEntry } from '../../services/databaseFix';
+import { addFoodEntry } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';

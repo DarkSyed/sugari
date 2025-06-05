@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator }
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { COLORS, SIZES, ROUTES } from '../../constants';
-import { getBloodPressureReadings } from '../../services/databaseFix';
+import { getBloodPressureReadings } from '../../services/database';
 import { BloodPressureReading } from '../../types';
 import Container from '../../components/Container';
 import Card from '../../components/Card';

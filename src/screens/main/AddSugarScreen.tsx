@@ -26,7 +26,7 @@ import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
-import { addBloodSugarReading, updateBloodSugarReading } from '../../services/databaseFix';
+import { addBloodSugarReading, updateBloodSugarReading } from '../../services/database';
 import { formatDate, formatTime, dateToTimestamp } from '../../utils/dateUtils';
 
 type FormData = {

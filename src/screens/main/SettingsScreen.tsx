@@ -27,7 +27,7 @@ import {
   getBloodSugarReadings, 
   getUserSettings,
   resetDatabase
-} from '../../services/databaseFix';
+} from '../../services/database';
 import * as Notifications from 'expo-notifications';
 import FeatureRequestModal from '../../components/FeatureRequestModal';
 

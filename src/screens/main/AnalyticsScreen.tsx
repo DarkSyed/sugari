@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
 import { BloodSugarReading } from '../../types';
-import { getBloodSugarReadings, updateBloodSugarReading, deleteBloodSugarReading } from '../../services/databaseFix';
+import { getBloodSugarReadings, updateBloodSugarReading, deleteBloodSugarReading } from '../../services/database';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import GlucoseChart from '../../components/GlucoseChart';

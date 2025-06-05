@@ -32,7 +32,7 @@ import {
   addInsulinDose, 
   deleteInsulinDose,
   updateInsulinDose
-} from '../../services/databaseFix';
+} from '../../services/database';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
 import Button from '../../components/Button';

@@ -19,7 +19,7 @@ import Card from '../../components/Card';
 import {
   getBloodSugarReadings,
   deleteBloodSugarReading
-} from '../../services/databaseFix';
+} from '../../services/database';
 import { formatDate, formatTime } from '../../utils/dateUtils';
 import { BloodSugarReading } from '../../types';
 

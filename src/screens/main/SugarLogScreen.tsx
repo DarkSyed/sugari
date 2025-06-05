@@ -33,7 +33,7 @@ import {
   deleteA1CReading,
   deleteWeightMeasurement,
   deleteBloodPressureReading
-} from '../../services/databaseFix';
+} from '../../services/database';
 import { formatDate, formatTime, getStartOfDay, dateToTimestamp } from '../../utils/dateUtils';
 import { useApp } from '../../contexts/AppContext';
 import Container from '../../components/Container';

@@ -5,7 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useForm, Controller } from 'react-hook-form';
 import { COLORS, SIZES, ROUTES } from '../../constants';
-import { addBloodPressureReading, updateBloodPressureReading } from '../../services/databaseFix';
+import { addBloodPressureReading, updateBloodPressureReading } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';

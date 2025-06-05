@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, VALIDATION, INSULIN_TYPES } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addInsulinDose } from '../../services/databaseFix';
+import { addInsulinDose } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';

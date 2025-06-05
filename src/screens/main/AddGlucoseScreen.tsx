@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS, SIZES, VALIDATION, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX, MEAL_CONTEXTS } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { addBloodSugarReading, addInsulinDose, updateBloodSugarReading } from '../../services/databaseFix';
+import { addBloodSugarReading, addInsulinDose, updateBloodSugarReading } from '../../services/database';
 import Container from '../../components/Container';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
