@@ -696,6 +696,7 @@ const SugarLogScreen: React.FC = () => {
       <Modal
         visible={showQuickActions}
         transparent
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setShowQuickActions(false)}
       >

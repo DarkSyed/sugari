@@ -189,6 +189,7 @@ const AddFoodScreen: React.FC = () => {
       <Modal
         visible={showMealPicker}
         transparent
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setShowMealPicker(false)}
       >

@@ -279,6 +279,7 @@ const AddGlucoseScreen: React.FC = () => {
       <Modal
         visible={showMealContextPicker}
         transparent
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setShowMealContextPicker(false)}
       >
@@ -566,7 +567,7 @@ const AddGlucoseScreen: React.FC = () => {
                     disabled={isLoading}
                   />
                   <Button
-                    title={isEditing ? "Update Reading" : "Save Reading"}
+                    title={isEditing ? "Update" : "Save"}
                     onPress={handleSave}
                     loading={isLoading}
                     disabled={isLoading}

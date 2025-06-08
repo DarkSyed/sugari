@@ -15,7 +15,6 @@ import {
   getWeightMeasurements,
   getBloodPressureReadings,
   deleteBloodSugarReading,
-  getRecentBloodSugarReadings
 } from '../../services/database';
 import { getAIPoweredInsights } from '../../services/aiService';
 import Container from '../../components/Container';
@@ -151,8 +150,8 @@ const DashboardScreen: React.FC = () => {
   // Get personalized greeting
   const getPersonalizedGreeting = () => {
     const greeting = getGreeting();
-    const name = userSettings?.firstName || 'there';
-    return `${greeting}, ${name}!`;
+    const name = userSettings?.firstName || "";
+    return name ? `${greeting}, ${name}!` : `${greeting}!`;
   };
 
   const handleEditLatestReading = () => {
@@ -227,7 +226,7 @@ const DashboardScreen: React.FC = () => {
       >
         <Card variant="elevated">
           <View style={styles.latestReadingHeader}>
-            <Text style={styles.sectionTitle}>Latest Reading</Text>
+            <Text style={styles.sectionTitle}>Latest Glucose Reading</Text>
             <Text style={styles.timeSinceText}>{formatTimeSince(latestReading.timestamp)}</Text>
           </View>
           

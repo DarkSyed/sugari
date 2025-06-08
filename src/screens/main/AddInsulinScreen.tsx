@@ -145,6 +145,7 @@ const AddInsulinScreen: React.FC = () => {
       <Modal
         visible={showInsulinTypePicker}
         transparent
+        statusBarTranslucent={true}
         animationType="slide"
         onRequestClose={() => setShowInsulinTypePicker(false)}
       >
