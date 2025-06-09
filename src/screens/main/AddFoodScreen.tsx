@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,41 +11,44 @@ import {
   ScrollView,
   Keyboard,
   InputAccessoryView,
-  TouchableWithoutFeedback
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useForm, Controller } from 'react-hook-form';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { COLORS, SIZES, VALIDATION } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
-import { addFoodEntry } from '../../services/database';
-import Container from '../../components/Container';
-import Input from '../../components/Input';
-import Button from '../../components/Button';
-import Card from '../../components/Card';
-import { formatDate, formatTime } from '../../utils/dateUtils';
+  TouchableWithoutFeedback,
+} from "react-native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useForm, Controller } from "react-hook-form";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import { COLORS, SIZES, VALIDATION } from "../../constants";
+import { useAuth } from "../../contexts/AuthContext";
+import { addFoodEntry, updateFoodEntry } from "../../services/database";
+import Container from "../../components/Container";
+import Input from "../../components/Input";
+import Button from "../../components/Button";
+import Card from "../../components/Card";
+import { formatDate, formatTime } from "../../utils/dateUtils";
+import { MainStackParamList } from "../../types";
 
 type FormData = {
   name: string;
   carbs: string;
-  meal: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal_type: "breakfast" | "lunch" | "dinner" | "snack";
   notes: string;
 };
 
-// Define meal options similar to MEAL_CONTEXTS in constants
 const MEAL_OPTIONS = [
-  { label: 'Breakfast', value: 'breakfast' },
-  { label: 'Lunch', value: 'lunch' },
-  { label: 'Dinner', value: 'dinner' },
-  { label: 'Snack', value: 'snack' },
+  { label: "Breakfast", value: "breakfast" },
+  { label: "Lunch", value: "lunch" },
+  { label: "Dinner", value: "dinner" },
+  { label: "Snack", value: "snack" },
 ];
+
+type RouteParams = RouteProp<MainStackParamList, "AddFood">;
 
 const AddFoodScreen: React.FC = () => {
   const { authState } = useAuth();
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteParams>();
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -54,7 +57,8 @@ const AddFoodScreen: React.FC = () => {
   const [tempDate, setTempDate] = useState<Date | null>(null);
   const [tempTime, setTempTime] = useState<Date | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const inputAccessoryViewID = 'inputAccessoryViewFoodScreen';
+  const inputAccessoryViewID = "inputAccessoryViewFoodScreen";
+  const isEditing = route.params?.isEditing;
 
   const {
     control,
@@ -65,24 +69,27 @@ const AddFoodScreen: React.FC = () => {
     watch,
   } = useForm<FormData>({
     defaultValues: {
-      name: '',
-      carbs: '',
-      meal: 'breakfast',
-      notes: '',
+      name: "",
+      carbs: "",
+      meal_type: "breakfast",
+      notes: "",
     },
   });
 
-  const mealValue = watch('meal');
+  const name = watch("name");
+  const carbs = watch("carbs");
+  const mealValue = watch("meal_type");
+  const notes = watch("notes");
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => {
         setKeyboardVisible(true);
       }
     );
     const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
         setKeyboardVisible(false);
       }
@@ -94,31 +101,53 @@ const AddFoodScreen: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (route.params?.initialData) {
+      setValue("name", route.params.initialData.name);
+      setValue("carbs", route.params.initialData.carbs?.toString() || "");
+      setValue(
+        "meal_type",
+        (route.params.initialData.meal_type ||
+          "breakfast") as FormData["meal_type"]
+      );
+      setTimestamp(new Date(route.params.initialData.timestamp));
+    }
+  }, [route.params, setValue]);
+
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
-      await addFoodEntry({
+
+      const readingData = {
         name: data.name,
         carbs: parseFloat(data.carbs),
         timestamp: timestamp.getTime(),
+        meal_type: data.meal_type,
         notes: data.notes || null,
-      });
+      };
+
+      if (route.params?.initialData) {
+        await updateFoodEntry(route.params.initialData.id, readingData);
+        Alert.alert("Success", "Food entry updated successfully");
+      } else {
+        await addFoodEntry(readingData);
+        Alert.alert("Success", "Food entry reading added successfully");
+      }
 
       reset();
-      Alert.alert('Success', 'Food entry added successfully');
       navigation.goBack();
     } catch (error) {
-      console.error('Error saving food entry:', error);
-      Alert.alert('Error', 'Failed to save food entry. Please try again.');
+      console.error("Error saving food entry:", error);
+      Alert.alert("Error", "Failed to save food entry. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowDatePicker(false);
-      if (event.type === 'set' && selectedDate) {
+      if (event.type === "set" && selectedDate) {
         const currentTime = new Date(timestamp);
         selectedDate.setHours(currentTime.getHours());
         selectedDate.setMinutes(currentTime.getMinutes());
@@ -135,9 +164,9 @@ const AddFoodScreen: React.FC = () => {
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowTimePicker(false);
-      if (event.type === 'set' && selectedTime) {
+      if (event.type === "set" && selectedTime) {
         const newDate = new Date(timestamp);
         newDate.setHours(selectedTime.getHours());
         newDate.setMinutes(selectedTime.getMinutes());
@@ -187,15 +216,18 @@ const AddFoodScreen: React.FC = () => {
     setTempTime(null);
   };
 
-  const dateTimePickerStyle = Platform.OS === 'ios' ? {
-    alignSelf: 'center' as const,
-    marginBottom: SIZES.md,
-    width: '100%' as unknown as number
-  } : {};
+  const dateTimePickerStyle =
+    Platform.OS === "ios"
+      ? {
+          alignSelf: "center" as const,
+          marginBottom: SIZES.md,
+          width: "100%" as unknown as number,
+        }
+      : {};
 
   const getMealLabel = (value: string) => {
-    const meal = MEAL_OPTIONS.find(m => m.value === value);
-    return meal ? meal.label : 'Breakfast';
+    const meal = MEAL_OPTIONS.find((m) => m.value === value);
+    return meal ? meal.label : "Breakfast";
   };
 
   const renderMealContextModal = () => {
@@ -215,24 +247,25 @@ const AddFoodScreen: React.FC = () => {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.mealContextList}>
               {MEAL_OPTIONS.map((meal) => (
                 <TouchableOpacity
                   key={meal.value}
                   style={[
                     styles.mealContextItem,
-                    mealValue === meal.value && styles.selectedMealContext
+                    mealValue === meal.value && styles.selectedMealContext,
                   ]}
                   onPress={() => {
-                    setValue('meal', meal.value as any);
+                    setValue("meal_type", meal.value as any);
                     setShowMealPicker(false);
                   }}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.mealContextText,
-                      mealValue === meal.value && styles.selectedMealContextText
+                      mealValue === meal.value &&
+                        styles.selectedMealContextText,
                     ]}
                   >
                     {meal.label}
@@ -248,12 +281,12 @@ const AddFoodScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
           bounces={false}
@@ -268,10 +301,14 @@ const AddFoodScreen: React.FC = () => {
                   style={styles.backButton}
                   onPress={() => navigation.goBack()}
                 >
-                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
+                  <Ionicons
+                    name="arrow-back-outline"
+                    size={24}
+                    color={COLORS.primary}
+                  />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>Add Food</Text>
+                  <Text style={styles.title}>{isEditing ? "Edit Food" : "Add Food"}</Text>
                 </View>
                 <View style={styles.headerSpacer} />
               </View>
@@ -290,7 +327,7 @@ const AddFoodScreen: React.FC = () => {
                       onChangeText={onChange}
                       onBlur={onBlur}
                       error={errors.name?.message}
-                      touched={value !== ''}
+                      touched={value !== ""}
                     />
                   )}
                   name="name"
@@ -302,11 +339,13 @@ const AddFoodScreen: React.FC = () => {
                     required: VALIDATION.REQUIRED,
                     pattern: {
                       value: /^[0-9]+$/,
-                      message: 'Please enter a valid number',
+                      message: "Please enter a valid number",
                     },
                     validate: {
-                      min: value => parseFloat(value) > 0 || VALIDATION.CARBS_MIN,
-                      max: value => parseFloat(value) <= 500 || VALIDATION.CARBS_MAX,
+                      min: (value) =>
+                        parseFloat(value) > 0 || VALIDATION.CARBS_MIN,
+                      max: (value) =>
+                        parseFloat(value) <= 500 || VALIDATION.CARBS_MAX,
                     },
                   }}
                   render={({ field: { onChange, onBlur, value } }) => (
@@ -318,8 +357,10 @@ const AddFoodScreen: React.FC = () => {
                       onChangeText={onChange}
                       onBlur={onBlur}
                       error={errors.carbs?.message}
-                      touched={value !== ''}
-                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                      touched={value !== ""}
+                      inputAccessoryViewID={
+                        Platform.OS === "ios" ? inputAccessoryViewID : undefined
+                      }
                     />
                   )}
                   name="carbs"
@@ -334,7 +375,12 @@ const AddFoodScreen: React.FC = () => {
                     <Text style={styles.dateTimeText}>
                       {formatDate(timestamp)}
                     </Text>
-                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color={COLORS.primary}
+                      style={styles.dateTimeIcon}
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.dateTimeButton}
@@ -343,12 +389,17 @@ const AddFoodScreen: React.FC = () => {
                     <Text style={styles.dateTimeText}>
                       {formatTime(timestamp)}
                     </Text>
-                    <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                    <Ionicons
+                      name="time-outline"
+                      size={20}
+                      color={COLORS.primary}
+                      style={styles.dateTimeIcon}
+                    />
                   </TouchableOpacity>
                 </View>
 
                 {/* --- iOS Date Picker --- */}
-                {Platform.OS === 'ios' && showDatePicker && (
+                {Platform.OS === "ios" && showDatePicker && (
                   <View style={styles.iosPickerContainer}>
                     <DateTimePicker
                       value={tempDate || timestamp}
@@ -358,16 +409,18 @@ const AddFoodScreen: React.FC = () => {
                       style={dateTimePickerStyle}
                     />
                     <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => {
                           setShowDatePicker(false);
                           setTempDate(null);
                         }}
                         style={[styles.pickerButton, styles.cancelPickerButton]}
                       >
-                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        <Text style={styles.cancelPickerButtonText}>
+                          Cancel
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={confirmIosDate}
                         style={[styles.pickerButton, styles.okPickerButton]}
                       >
@@ -377,7 +430,7 @@ const AddFoodScreen: React.FC = () => {
                   </View>
                 )}
                 {/* --- Android Date Picker --- */}
-                {Platform.OS === 'android' && showDatePicker && (
+                {Platform.OS === "android" && showDatePicker && (
                   <DateTimePicker
                     value={timestamp}
                     mode="date"
@@ -387,7 +440,7 @@ const AddFoodScreen: React.FC = () => {
                 )}
 
                 {/* --- iOS Time Picker --- */}
-                {Platform.OS === 'ios' && showTimePicker && (
+                {Platform.OS === "ios" && showTimePicker && (
                   <View style={styles.iosPickerContainer}>
                     <DateTimePicker
                       value={tempTime || timestamp}
@@ -397,16 +450,18 @@ const AddFoodScreen: React.FC = () => {
                       style={dateTimePickerStyle}
                     />
                     <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => {
                           setShowTimePicker(false);
                           setTempTime(null);
                         }}
                         style={[styles.pickerButton, styles.cancelPickerButton]}
                       >
-                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        <Text style={styles.cancelPickerButtonText}>
+                          Cancel
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={confirmIosTime}
                         style={[styles.pickerButton, styles.okPickerButton]}
                       >
@@ -416,7 +471,7 @@ const AddFoodScreen: React.FC = () => {
                   </View>
                 )}
                 {/* --- Android Time Picker --- */}
-                {Platform.OS === 'android' && showTimePicker && (
+                {Platform.OS === "android" && showTimePicker && (
                   <DateTimePicker
                     value={timestamp}
                     mode="time"
@@ -427,14 +482,18 @@ const AddFoodScreen: React.FC = () => {
 
                 <View style={styles.mealContextContainer}>
                   <Text style={styles.label}>Meal</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.mealContextButton}
                     onPress={() => setShowMealPicker(true)}
                   >
                     <Text style={styles.mealContextButtonText}>
                       {getMealLabel(mealValue)}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color={COLORS.text} />
+                    <Ionicons
+                      name="chevron-down"
+                      size={20}
+                      color={COLORS.text}
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -465,7 +524,7 @@ const AddFoodScreen: React.FC = () => {
                     disabled={isLoading}
                   />
                   <Button
-                    title="Save Entry"
+                    title={isEditing ? "Update" : "Save"}
                     onPress={handleSubmit(onSubmit)}
                     loading={isLoading}
                     disabled={isLoading}
@@ -476,7 +535,7 @@ const AddFoodScreen: React.FC = () => {
             </View>
             {renderMealContextModal()}
 
-            {Platform.OS === 'ios' && (
+            {Platform.OS === "ios" && (
               <InputAccessoryView nativeID={inputAccessoryViewID}>
                 <View style={styles.keyboardAccessory}>
                   <TouchableOpacity
@@ -508,11 +567,11 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: SIZES.md,
-    width: '100%',
+    width: "100%",
   },
   backButton: {
     padding: SIZES.xs,
@@ -520,9 +579,9 @@ const styles = StyleSheet.create({
   headerTitleContainer: {},
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   headerSpacer: {
     width: 40,
@@ -532,20 +591,20 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: SIZES.xs,
     color: COLORS.text,
   },
   dateTimeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: SIZES.md,
   },
   dateTimeButton: {
-    width: '48.5%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "48.5%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     paddingVertical: SIZES.sm,
@@ -564,9 +623,9 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.md,
   },
   mealContextButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     padding: SIZES.sm,
@@ -581,7 +640,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
   buttonGroup: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: SIZES.md,
   },
   cancelButton: {
@@ -594,25 +653,25 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: SIZES.md,
     borderTopRightRadius: SIZES.md,
     padding: SIZES.md,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   mealContextList: {
@@ -623,7 +682,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.md,
     borderRadius: SIZES.xs,
     marginBottom: SIZES.xs,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   selectedMealContext: {
     backgroundColor: `${COLORS.primary}20`,
@@ -634,16 +693,16 @@ const styles = StyleSheet.create({
   },
   selectedMealContextText: {
     color: COLORS.primary,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   iosPickerContainer: {
     borderRadius: SIZES.sm,
     marginBottom: SIZES.md,
   },
   pickerButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     paddingTop: SIZES.sm,
   },
   pickerButton: {
@@ -653,7 +712,7 @@ const styles = StyleSheet.create({
     marginHorizontal: SIZES.sm,
   },
   cancelPickerButton: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
   },
   okPickerButton: {
     backgroundColor: COLORS.primary,
@@ -661,23 +720,23 @@ const styles = StyleSheet.create({
   cancelPickerButtonText: {
     color: COLORS.text,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   okPickerButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     fontSize: 16,
   },
   keyboardAccessory: {
     height: 44,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#d8d8d8',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    borderTopColor: "#d8d8d8",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
     paddingHorizontal: 16,
-    width: '100%',
+    width: "100%",
   },
   doneButton: {
     padding: 8,
@@ -685,8 +744,8 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: COLORS.primary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
-export default AddFoodScreen; 
+export default AddFoodScreen;

@@ -55,6 +55,7 @@ export const initDatabase = async (): Promise<void> => {
           name TEXT NOT NULL,
           carbs REAL,
           timestamp INTEGER NOT NULL,
+          meal_type TEXT NOT NULL,
           notes TEXT
         )
       `);
@@ -370,8 +371,8 @@ export const addFoodEntry = async (
   try {
     const db = await getDatabase();
     const result = await db.runAsync(
-      "INSERT INTO food_entries (name, carbs, timestamp, notes) VALUES (?, ?, ?, ?)",
-      [entry.name, entry.carbs || null, entry.timestamp, entry.notes || null]
+      "INSERT INTO food_entries (name, carbs, timestamp, meal_type, notes) VALUES (?, ?, ?, ?, ?)",
+      [entry.name, entry.carbs || null, entry.timestamp, entry.meal_type, entry.notes || null]
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -434,6 +435,7 @@ export const getFoodEntries = async (limit?: number): Promise<FoodEntry[]> => {
       name: row.name,
       carbs: row.carbs,
       timestamp: row.timestamp,
+      meal_type: row.meal_type,
       notes: row.notes,
     }));
 

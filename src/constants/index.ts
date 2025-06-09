@@ -58,7 +58,6 @@ export const ROUTES = {
   MEDICATION: "Medication",
   ADD_GLUCOSE: "AddGlucose",
   SUGAR_LOG: "SugarLog",
-  ADD_SUGAR: "AddSugar",
   FOOD_LOG: "FoodLog",
   ADD_FOOD: "AddFood",
   INSULIN_LOG: "InsulinLog",

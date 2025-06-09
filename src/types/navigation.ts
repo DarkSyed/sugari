@@ -20,7 +20,6 @@ export type DashboardStackParamList = {
 // Tab Navigator Param List
 export type TabParamList = {
   Home: NavigatorScreenParams<DashboardStackParamList>;
-  GlucoseLog: undefined;
   Analytics: undefined;
   Settings: undefined;
 };

@@ -32,6 +32,7 @@ export interface FoodEntry {
   name: string;
   carbs?: number | null;
   timestamp: number;
+  meal_type: string;
   notes?: string | null;
 }
 
@@ -107,11 +108,12 @@ export type BottomTabParamList = {
 export type MainStackParamList = {
   Dashboard: undefined;
   Profile: undefined;
-  AddPressure: { readingId?: number, initialData?: BloodPressureReading } | undefined;
+  AddPressure: { readingId?: number, initialData?: BloodPressureReading; isEditing: boolean } | undefined;
   AddGlucose: { readingId?: number; initialData?: BloodSugarReading; isEditing?: boolean } | undefined;
-  AddSugar: { readingId?: number; initialData?: BloodSugarReading } | undefined;
-  AddFood: { entryId?: number; initialData?: FoodEntry } | undefined;
-  AddInsulin: { doseId?: number; initialData?: InsulinDose } | undefined;
+  AddA1C: { readingId?: number, initialData?: A1CReading; isEditing?: boolean } | undefined;
+  AddWeight: { readingId?: number, initailData?: WeightMeasurement; isEditing?: boolean } | undefined;
+  AddFood: { entryId?: number; initialData?: FoodEntry; isEditing: boolean } | undefined;
+  AddInsulin: { doseId?: number; initialData?: InsulinDose; isEditing: boolean } | undefined;
   GlucoseDetails: { readingId: number };
   FoodDetails: { entryId: number };
   InsulinDetails: { doseId: number };

@@ -138,10 +138,8 @@ const AddGlucoseScreen: React.FC = () => {
 
       if (route.params?.initialData) {
         await updateBloodSugarReading(route.params.initialData.id, readingData);
-
         Alert.alert("Success", "Blood sugar reading updated successfully");
       } else {
-        // We're adding a new reading
         await addBloodSugarReading(readingData);
         Alert.alert("Success", "Blood sugar reading added successfully");
       }
@@ -352,7 +350,9 @@ const AddGlucoseScreen: React.FC = () => {
                   />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>{isEditing ? "Edit Blood Sugar" : "Add Blood Sugar" }</Text>
+                  <Text style={styles.title}>
+                    {isEditing ? "Edit Blood Sugar" : "Add Blood Sugar"}
+                  </Text>
                 </View>
                 <View style={styles.headerSpacer} />
               </View>
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SIZES.md,
     borderRadius: SIZES.xs,
     marginBottom: SIZES.xs,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   selectedMealContext: {
     backgroundColor: `${COLORS.primary}20`,

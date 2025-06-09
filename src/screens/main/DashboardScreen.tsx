@@ -24,9 +24,6 @@ import GlucoseChart from '../../components/GlucoseChart';
 import GlucoseCard from '../../components/GlucoseCard';
 import SugarCard from '../../components/SugarCard';
 
-// Define BloodGlucoseReading as an alias to BloodSugarReading since they have the same structure
-type BloodGlucoseReading = BloodSugarReading;
-
 // Type definitions
 type ReadingType = 'glucose' | 'sugar';
 type TimeRangeType = '24h' | '7d' | '30d' | 'all';

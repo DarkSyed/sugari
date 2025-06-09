@@ -1,82 +1,127 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, Modal, KeyboardAvoidingView, ScrollView, Keyboard, InputAccessoryView, TouchableWithoutFeedback } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useForm, Controller } from 'react-hook-form';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, VALIDATION, INSULIN_TYPES } from '../../constants';
-import { useAuth } from '../../contexts/AuthContext';
-import { addInsulinDose } from '../../services/database';
-import Container from '../../components/Container';
-import Input from '../../components/Input';
-import Button from '../../components/Button';
-import Card from '../../components/Card';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  Modal,
+  KeyboardAvoidingView,
+  ScrollView,
+  Keyboard,
+  InputAccessoryView,
+  TouchableWithoutFeedback,
+} from "react-native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useForm, Controller } from "react-hook-form";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES, VALIDATION, INSULIN_TYPES } from "../../constants";
+import { useAuth } from "../../contexts/AuthContext";
+import { addInsulinDose, updateInsulinDose } from "../../services/database";
+import Container from "../../components/Container";
+import Input from "../../components/Input";
+import Button from "../../components/Button";
+import Card from "../../components/Card";
+import { MainStackParamList } from "../../types";
 
 type FormData = {
   units: string;
-  insulinType: 'rapid' | 'long' | 'mixed' | 'other';
+  insulinType: "rapid" | "long" | "mixed" | "other";
   notes: string;
 };
 
 // Define insulin type options
 const INSULIN_TYPE_OPTIONS = [
-  { label: 'Rapid Acting', value: 'rapid' },
-  { label: 'Long Acting', value: 'long' },
-  { label: 'Mixed', value: 'mixed' },
-  { label: 'Other', value: 'other' },
+  { label: "Rapid Acting", value: "rapid" },
+  { label: "Long Acting", value: "long" },
+  { label: "Mixed", value: "mixed" },
+  { label: "Other", value: "other" },
 ];
+
+type RouteParams = RouteProp<MainStackParamList, "AddInsulin">;
 
 const AddInsulinScreen: React.FC = () => {
   const { authState } = useAuth();
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const route = useRoute<RouteParams>();
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showInsulinTypePicker, setShowInsulinTypePicker] = useState(false);
-  const inputAccessoryViewID = 'inputAccessoryViewInsulinScreen';
+  const inputAccessoryViewID = "inputAccessoryViewInsulinScreen";
+  const isEditing = route.params?.isEditing;
 
   const {
     control,
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
     setValue,
   } = useForm<FormData>({
     defaultValues: {
-      units: '',
-      insulinType: 'rapid',
-      notes: '',
+      units: "",
+      insulinType: "rapid",
+      notes: "",
     },
   });
+
+  const units = watch("units");
+  const insulinType = watch("insulinType");
+  const notes = watch("notes");
+
+  useEffect(() => {
+    if (route.params?.initialData) {
+      setValue("units", route.params.initialData.units.toString());
+      setValue(
+        "insulinType",
+        (route.params.initialData.type || "rapid") as FormData["insulinType"]
+      );
+      setValue("notes", route.params.initialData.notes || "");
+      setTimestamp(new Date(route.params.initialData.timestamp));
+    }
+  }, [route.params, setValue]);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
-      await addInsulinDose({
+      const readingData = {
         units: parseFloat(data.units),
         type: data.insulinType,
         timestamp: timestamp.getTime(),
         notes: data.notes || null,
-      });
+      };
 
-      // Reset form and navigate directly to log screen
+      if (route.params?.initialData) {
+        await updateInsulinDose(route.params.initialData.id, readingData);
+        Alert.alert("Success", "Insulin dose updated successfully!");
+      } else {
+        await addInsulinDose(readingData);
+        Alert.alert("Success", "Insulin dose added successfully!");
+      }
+
       reset();
-      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
+      navigation.navigate("SugarLog");
     } catch (error) {
-      console.error('Error saving insulin dose:', error);
-      Alert.alert('Error', 'Failed to save insulin dose. Please try again.');
+      console.error("Error saving insulin dose:", error);
+      Alert.alert("Error", "Failed to save insulin dose. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const dateTimePickerStyle = Platform.OS === 'ios' ? {
-    alignSelf: 'center' as const,
-    marginBottom: SIZES.md,
-    width: '100%' as unknown as number
-  } : {};
+  const dateTimePickerStyle =
+    Platform.OS === "ios"
+      ? {
+          alignSelf: "center" as const,
+          marginBottom: SIZES.md,
+          width: "100%" as unknown as number,
+        }
+      : {};
 
   const showDatepicker = () => {
     if (showDatePicker) {
@@ -97,47 +142,47 @@ const AddInsulinScreen: React.FC = () => {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    if (event.type === 'set' && selectedDate) {
+    if (event.type === "set" && selectedDate) {
       const currentTime = new Date(timestamp);
       selectedDate.setHours(currentTime.getHours());
       selectedDate.setMinutes(currentTime.getMinutes());
       setTimestamp(selectedDate);
       setShowDatePicker(false);
-    } else if (event.type === 'dismissed') {
+    } else if (event.type === "dismissed") {
       setShowDatePicker(false);
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    if (event.type === 'set' && selectedTime) {
+    if (event.type === "set" && selectedTime) {
       const newDate = new Date(timestamp);
       newDate.setHours(selectedTime.getHours());
       newDate.setMinutes(selectedTime.getMinutes());
       setTimestamp(newDate);
       setShowTimePicker(false);
-    } else if (event.type === 'dismissed') {
+    } else if (event.type === "dismissed") {
       setShowTimePicker(false);
     }
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getInsulinTypeLabel = (value: string) => {
-    const insulinType = INSULIN_TYPE_OPTIONS.find(t => t.value === value);
-    return insulinType ? insulinType.label : 'Rapid Acting';
+    const insulinType = INSULIN_TYPE_OPTIONS.find((t) => t.value === value);
+    return insulinType ? insulinType.label : "Rapid Acting";
   };
 
   const renderInsulinTypeModal = () => {
@@ -157,24 +202,26 @@ const AddInsulinScreen: React.FC = () => {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.insulinTypeList}>
               {INSULIN_TYPE_OPTIONS.map((insulinType) => (
                 <TouchableOpacity
                   key={insulinType.value}
                   style={[
                     styles.insulinTypeItem,
-                    control._formValues.insulinType === insulinType.value && styles.selectedInsulinType
+                    control._formValues.insulinType === insulinType.value &&
+                      styles.selectedInsulinType,
                   ]}
                   onPress={() => {
-                    setValue('insulinType', insulinType.value as any);
+                    setValue("insulinType", insulinType.value as any);
                     setShowInsulinTypePicker(false);
                   }}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.insulinTypeText,
-                      control._formValues.insulinType === insulinType.value && styles.selectedInsulinTypeText
+                      control._formValues.insulinType === insulinType.value &&
+                        styles.selectedInsulinTypeText,
                     ]}
                   >
                     {insulinType.label}
@@ -191,9 +238,9 @@ const AddInsulinScreen: React.FC = () => {
   return (
     <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
@@ -209,10 +256,16 @@ const AddInsulinScreen: React.FC = () => {
                   style={styles.backButton}
                   onPress={() => navigation.goBack()}
                 >
-                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
+                  <Ionicons
+                    name="arrow-back-outline"
+                    size={24}
+                    color={COLORS.primary}
+                  />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>Add Insulin Dose</Text>
+                  <Text style={styles.title}>
+                    {isEditing ? "Edit Insulin Dose" : "Add Insulin Dose"}
+                  </Text>
                 </View>
                 <View style={styles.headerSpacer} />
               </View>
@@ -224,11 +277,13 @@ const AddInsulinScreen: React.FC = () => {
                     required: VALIDATION.REQUIRED,
                     pattern: {
                       value: /^[0-9]*\.?[0-9]+$/,
-                      message: 'Please enter a valid number',
+                      message: "Please enter a valid number",
                     },
                     validate: {
-                      min: value => parseFloat(value) > 0 || VALIDATION.INSULIN_MIN,
-                      max: value => parseFloat(value) <= 100 || VALIDATION.INSULIN_MAX,
+                      min: (value) =>
+                        parseFloat(value) > 0 || VALIDATION.INSULIN_MIN,
+                      max: (value) =>
+                        parseFloat(value) <= 100 || VALIDATION.INSULIN_MAX,
                     },
                   }}
                   render={({ field: { onChange, onBlur, value } }) => (
@@ -240,14 +295,18 @@ const AddInsulinScreen: React.FC = () => {
                       onChangeText={onChange}
                       onBlur={onBlur}
                       error={errors.units?.message}
-                      touched={value !== ''}
-                      inputAccessoryViewID={Platform.OS === 'ios' ? inputAccessoryViewID : undefined}
+                      touched={value !== ""}
+                      inputAccessoryViewID={
+                        Platform.OS === "ios" ? inputAccessoryViewID : undefined
+                      }
                     />
                   )}
                   name="units"
                 />
 
-                <Text style={styles.label}>When did you take this insulin?</Text>
+                <Text style={styles.label}>
+                  When did you take this insulin?
+                </Text>
                 <View style={styles.dateTimeContainer}>
                   <TouchableOpacity
                     style={styles.dateTimeButton}
@@ -256,7 +315,12 @@ const AddInsulinScreen: React.FC = () => {
                     <Text style={styles.dateTimeText}>
                       {formatDate(timestamp)}
                     </Text>
-                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color={COLORS.primary}
+                      style={styles.dateTimeIcon}
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.dateTimeButton}
@@ -265,7 +329,12 @@ const AddInsulinScreen: React.FC = () => {
                     <Text style={styles.dateTimeText}>
                       {formatTime(timestamp)}
                     </Text>
-                    <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
+                    <Ionicons
+                      name="time-outline"
+                      size={20}
+                      color={COLORS.primary}
+                      style={styles.dateTimeIcon}
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -275,19 +344,21 @@ const AddInsulinScreen: React.FC = () => {
                       testID="dateTimePicker"
                       value={timestamp}
                       mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
                       onChange={onDateChange}
                       textColor={COLORS.text}
                     />
                     <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity 
-                        style={[styles.pickerButton, styles.cancelPickerButton]} 
+                      <TouchableOpacity
+                        style={[styles.pickerButton, styles.cancelPickerButton]}
                         onPress={() => setShowDatePicker(false)}
                       >
-                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        <Text style={styles.cancelPickerButtonText}>
+                          Cancel
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.pickerButton, styles.okPickerButton]} 
+                      <TouchableOpacity
+                        style={[styles.pickerButton, styles.okPickerButton]}
                         onPress={() => {
                           // Just close the picker as the onChange event already updates the value
                           setShowDatePicker(false);
@@ -305,20 +376,22 @@ const AddInsulinScreen: React.FC = () => {
                       testID="timeTimePicker"
                       value={timestamp}
                       mode="time"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
                       onChange={onTimeChange}
                       is24Hour={false}
                       textColor={COLORS.text}
                     />
                     <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity 
-                        style={[styles.pickerButton, styles.cancelPickerButton]} 
+                      <TouchableOpacity
+                        style={[styles.pickerButton, styles.cancelPickerButton]}
                         onPress={() => setShowTimePicker(false)}
                       >
-                        <Text style={styles.cancelPickerButtonText}>Cancel</Text>
+                        <Text style={styles.cancelPickerButtonText}>
+                          Cancel
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.pickerButton, styles.okPickerButton]} 
+                      <TouchableOpacity
+                        style={[styles.pickerButton, styles.okPickerButton]}
                         onPress={() => {
                           // Just close the picker as the onChange event already updates the value
                           setShowTimePicker(false);
@@ -334,14 +407,18 @@ const AddInsulinScreen: React.FC = () => {
                 <Controller
                   control={control}
                   render={({ field: { value } }) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.insulinTypeButton}
                       onPress={() => setShowInsulinTypePicker(true)}
                     >
                       <Text style={styles.insulinTypeButtonText}>
                         {getInsulinTypeLabel(value)}
                       </Text>
-                      <Ionicons name="chevron-down" size={16} color={COLORS.text} />
+                      <Ionicons
+                        name="chevron-down"
+                        size={16}
+                        color={COLORS.text}
+                      />
                     </TouchableOpacity>
                   )}
                   name="insulinType"
@@ -372,7 +449,7 @@ const AddInsulinScreen: React.FC = () => {
                     style={styles.cancelButton}
                   />
                   <Button
-                    title="Save Dose"
+                    title={isEditing ? "Update" : "Save"}
                     onPress={handleSubmit(onSubmit)}
                     loading={isLoading}
                     disabled={isLoading}
@@ -387,7 +464,7 @@ const AddInsulinScreen: React.FC = () => {
 
       {renderInsulinTypeModal()}
 
-      {Platform.OS === 'ios' && (
+      {Platform.OS === "ios" && (
         <InputAccessoryView nativeID={inputAccessoryViewID}>
           <View style={styles.keyboardAccessory}>
             <TouchableOpacity
@@ -409,11 +486,11 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: SIZES.md,
-    width: '100%',
+    width: "100%",
   },
   backButton: {
     padding: SIZES.xs,
@@ -423,9 +500,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   headerSpacer: {
     width: 40,
@@ -437,16 +514,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: SIZES.xs,
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   dateTimeContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: SIZES.md,
   },
   dateTimeButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     padding: SIZES.sm,
@@ -464,11 +541,11 @@ const styles = StyleSheet.create({
   },
   notesInput: {
     height: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: SIZES.md,
   },
   cancelButton: {
@@ -480,8 +557,8 @@ const styles = StyleSheet.create({
     marginLeft: SIZES.sm,
   },
   pickerButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 8,
     marginBottom: 8,
   },
@@ -495,19 +572,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   cancelPickerButton: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
   },
   okPickerButtonText: {
-    color: 'white',
-    fontWeight: '500',
+    color: "white",
+    fontWeight: "500",
   },
   cancelPickerButtonText: {
     color: COLORS.text,
   },
   insulinTypeButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.xs,
     borderWidth: 1,
@@ -521,25 +598,25 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: COLORS.cardBackground,
+    backgroundColor: "white",
     borderTopLeftRadius: SIZES.md,
     borderTopRightRadius: SIZES.md,
-    padding: SIZES.lg,
-    maxHeight: '70%',
+    padding: SIZES.md,
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   insulinTypeList: {
@@ -547,11 +624,13 @@ const styles = StyleSheet.create({
   },
   insulinTypeItem: {
     paddingVertical: SIZES.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: SIZES.md,
+    borderRadius: SIZES.xs,
+    marginBottom: SIZES.xs,
+    backgroundColor: "white",
   },
   selectedInsulinType: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: `${COLORS.primary}20`,
   },
   insulinTypeText: {
     fontSize: 16,
@@ -559,7 +638,7 @@ const styles = StyleSheet.create({
   },
   selectedInsulinTypeText: {
     color: COLORS.primary,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   scrollViewContent: {
     flexGrow: 1,
@@ -567,14 +646,14 @@ const styles = StyleSheet.create({
   },
   keyboardAccessory: {
     height: 44,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#d8d8d8',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    borderTopColor: "#d8d8d8",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
     paddingHorizontal: 16,
-    width: '100%',
+    width: "100%",
   },
   doneButton: {
     padding: 8,
@@ -582,8 +661,8 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: COLORS.primary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
-export default AddInsulinScreen; 
+export default AddInsulinScreen;
