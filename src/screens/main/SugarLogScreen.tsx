@@ -14,6 +14,8 @@ import {
   Alert,
   StyleProp,
   TextStyle,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -885,80 +887,91 @@ const SugarLogScreen: React.FC = () => {
   };
 
   return (
-    <Container scrollable={false}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Blood Glucose Log</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddReading}>
-          <Ionicons name="add-circle" size={24} color="white" />
-          <Text style={styles.addButtonText}>Add Reading</Text>
-        </TouchableOpacity>
-      </View>
-
-      {renderTimeRangeSelector()}
-
-      {!isLoading && selectedFilter === "blood_sugar" && renderStatCard()}
-
-      <View style={styles.filtersContainer}>
-        <View style={styles.tagsContainer}>
-          <Text style={styles.sectionTitle}>Tags</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScrollContent}
-          >
-            {renderFilterChip("All", "all")}
-            {renderFilterChip("Blood Sugar", "blood_sugar")}
-            {renderFilterChip("Insulin", "insulin")}
-            {renderFilterChip("Food", "food")}
-            {renderFilterChip("Weight", "weight")}
-            {renderFilterChip("A1C", "a1c")}
-            {renderFilterChip("Blood Pressure", "bp")}
-          </ScrollView>
-        </View>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Ionicons
-          name="search"
-          size={20}
-          color={COLORS.lightText}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search entries"
-          placeholderTextColor={COLORS.lightText}
-          value={searchText}
-          onChangeText={handleSearch}
-        />
-        {searchText ? (
-          <TouchableOpacity onPress={() => setSearchText("")}>
-            <Ionicons name="close-circle" size={20} color={COLORS.lightText} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.background}
+        translucent={false}
+      />
+      <Container scrollable={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Blood Glucose Log</Text>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddReading}>
+            <Ionicons name="add-circle" size={24} color="white" />
+            <Text style={styles.addButtonText}>Add Reading</Text>
           </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-      ) : filteredEntries.length === 0 ? (
-        renderEmptyList()
-      ) : (
-        <FlatList
-          data={filteredEntries}
-          renderItem={renderItem}
-          keyExtractor={(item) => `${item.type}-${item.id}`}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        />
-      )}
 
-      {renderQuickActionsModal()}
-    </Container>
+        {renderTimeRangeSelector()}
+
+        {!isLoading && selectedFilter === "blood_sugar" && renderStatCard()}
+
+        <View style={styles.filtersContainer}>
+          <View style={styles.tagsContainer}>
+            <Text style={styles.sectionTitle}>Tags</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollContent}
+            >
+              {renderFilterChip("All", "all")}
+              {renderFilterChip("Blood Sugar", "blood_sugar")}
+              {renderFilterChip("Insulin", "insulin")}
+              {renderFilterChip("Food", "food")}
+              {renderFilterChip("Weight", "weight")}
+              {renderFilterChip("A1C", "a1c")}
+              {renderFilterChip("Blood Pressure", "bp")}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={COLORS.lightText}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search entries"
+            placeholderTextColor={COLORS.lightText}
+            value={searchText}
+            onChangeText={handleSearch}
+          />
+          {searchText ? (
+            <TouchableOpacity onPress={() => setSearchText("")}>
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={COLORS.lightText}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : filteredEntries.length === 0 ? (
+          renderEmptyList()
+        ) : (
+          <FlatList
+            data={filteredEntries}
+            renderItem={renderItem}
+            keyExtractor={(item) => `${item.type}-${item.id}`}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
+
+        {renderQuickActionsModal()}
+      </Container>
+    </SafeAreaView>
   );
 };
 
@@ -969,10 +982,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: SIZES.md,
   },
+  container: {
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  content: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.md,
+  },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     color: COLORS.text,
+    flex: 1,
   },
   addButton: {
     backgroundColor: COLORS.primary,
@@ -981,11 +1007,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    justifyContent: "center",
-    position: "absolute",
-    top: 5,
-    right: 5,
-    zIndex: 100,
+    marginLeft: SIZES.sm,
   },
   addButtonText: {
     color: "white",
