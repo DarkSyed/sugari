@@ -54,7 +54,6 @@ export const ROUTES = {
   FORGOT_PASSWORD: "ForgotPassword",
   HOME: "Home",
   DASHBOARD: "Dashboard",
-  GLUCOSE_LOG: "GlucoseLog",
   MEDICATION: "Medication",
   ADD_GLUCOSE: "AddGlucose",
   SUGAR_LOG: "SugarLog",
@@ -87,6 +86,8 @@ export const VALIDATION = {
   CARBS_MAX: "Carbs must be less than 500g",
   INSULIN_MIN: "Insulin must be greater than 0 units",
   INSULIN_MAX: "Insulin must be less than 100 units",
+  A1C_MIN: "A1C value must be 3% or higher",
+  A1C_MAX: "A1C value must be 20% or lower",
 };
 
 export const BLOOD_SUGAR_LEVELS = {

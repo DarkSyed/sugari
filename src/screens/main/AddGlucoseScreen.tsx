@@ -9,7 +9,6 @@ import {
   Modal,
   Keyboard,
   KeyboardAvoidingView,
-  Dimensions,
   ScrollView,
   InputAccessoryView,
   TouchableWithoutFeedback,
@@ -17,8 +16,6 @@ import {
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useForm, Controller } from "react-hook-form";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import {
   COLORS,
   SIZES,
@@ -30,7 +27,6 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import {
   addBloodSugarReading,
-  addInsulinDose,
   updateBloodSugarReading,
 } from "../../services/database";
 import Container from "../../components/Container";
@@ -38,16 +34,16 @@ import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
 import { Ionicons } from "@expo/vector-icons";
-import { ROUTES } from "../../constants";
 import { useApp } from "../../contexts/AppContext";
-import { formatDate, formatTime } from "../../utils/dateUtils";
-import { BloodSugarReading, MainStackParamList } from "../../types";
+import { MainStackParamList } from "../../types";
+import DateTimeField from "../../components/DateTimeField";
+
+const inputAccessoryViewID = "inputAccessoryViewGlucoseScreen";
 
 type FormData = {
   value: string;
   mealContext: "before_meal" | "after_meal" | "fasting" | "bedtime" | "other";
   notes: string;
-  insulinType?: string;
 };
 
 type RouteParams = RouteProp<MainStackParamList, "AddGlucose">;
@@ -58,14 +54,9 @@ const AddGlucoseScreen: React.FC = () => {
   const route = useRoute<RouteParams>();
   const { settings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
-  const [timestamp, setTimestamp] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [showMealContextPicker, setShowMealContextPicker] = useState(false);
-  const [tempDate, setTempDate] = useState<Date | null>(null);
-  const [tempTime, setTempTime] = useState<Date | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const inputAccessoryViewID = "inputAccessoryViewGlucoseScreen";
+  const [timestamp, setTimestamp] = useState(new Date());
   const isEditing = route.params?.isEditing;
 
   const {
@@ -73,8 +64,8 @@ const AddGlucoseScreen: React.FC = () => {
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
     setValue,
+    getValues,
   } = useForm<FormData>({
     defaultValues: {
       value: "",
@@ -83,24 +74,15 @@ const AddGlucoseScreen: React.FC = () => {
     },
   });
 
-  const mealContext = watch("mealContext");
-  const value = watch("value");
-  const notes = watch("notes");
-
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => {
-        setKeyboardVisible(true);
-      }
+      () => setKeyboardVisible(true)
     );
     const keyboardDidHideListener = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => {
-        setKeyboardVisible(false);
-      }
+      () => setKeyboardVisible(false)
     );
-
     return () => {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
@@ -120,20 +102,14 @@ const AddGlucoseScreen: React.FC = () => {
     }
   }, [route.params, setValue]);
 
-  const handleSave = async () => {
-    if (!value) {
-      Alert.alert("Error", "Please enter a blood sugar value");
-      return;
-    }
-
+  const handleSave = async (data: FormData) => {
     try {
       setIsLoading(true);
-
       const readingData = {
-        value: parseFloat(value),
+        value: parseFloat(data.value),
         timestamp: timestamp.getTime(),
-        context: mealContext,
-        notes: notes,
+        context: data.mealContext,
+        notes: data.notes.trim(),
       };
 
       if (route.params?.initialData) {
@@ -142,6 +118,7 @@ const AddGlucoseScreen: React.FC = () => {
       } else {
         await addBloodSugarReading(readingData);
         Alert.alert("Success", "Blood sugar reading added successfully");
+        reset();
       }
 
       navigation.goBack();
@@ -153,117 +130,11 @@ const AddGlucoseScreen: React.FC = () => {
     }
   };
 
-  const handleCancel = () => {
-    navigation.goBack();
-  };
-
-  const dateTimePickerStyle =
-    Platform.OS === "ios"
-      ? {
-          alignSelf: "center" as const,
-          marginBottom: SIZES.md,
-          width: "100%" as unknown as number,
-        }
-      : {};
-
-  const showDatepicker = () => {
-    if (showDatePicker) {
-      setShowDatePicker(false);
-    } else {
-      setShowTimePicker(false);
-      setShowDatePicker(true);
-    }
-  };
-
-  const showTimepicker = () => {
-    if (showTimePicker) {
-      setShowTimePicker(false);
-    } else {
-      setShowDatePicker(false);
-      setShowTimePicker(true);
-    }
-  };
-
-  const confirmIosDate = () => {
-    if (tempDate) {
-      setTimestamp(tempDate);
-    }
-    setShowDatePicker(false);
-    setTempDate(null);
-  };
-
-  const confirmIosTime = () => {
-    if (tempTime) {
-      setTimestamp(tempTime);
-    }
-    setShowTimePicker(false);
-    setTempTime(null);
-  };
-
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === "android") {
-      setShowDatePicker(false);
-      if (event.type === "set" && selectedDate) {
-        const currentTime = new Date(timestamp);
-        selectedDate.setHours(currentTime.getHours());
-        selectedDate.setMinutes(currentTime.getMinutes());
-        setTimestamp(selectedDate);
-      }
-    } else {
-      if (selectedDate) {
-        const currentTime = new Date(timestamp);
-        selectedDate.setHours(currentTime.getHours());
-        selectedDate.setMinutes(currentTime.getMinutes());
-        setTempDate(selectedDate);
-      }
-    }
-  };
-
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === "android") {
-      setShowTimePicker(false);
-      if (event.type === "set" && selectedTime) {
-        const newDate = new Date(timestamp);
-        newDate.setHours(selectedTime.getHours());
-        newDate.setMinutes(selectedTime.getMinutes());
-        setTimestamp(newDate);
-      }
-    } else {
-      if (selectedTime) {
-        const newDate = new Date(timestamp);
-        newDate.setHours(selectedTime.getHours());
-        newDate.setMinutes(selectedTime.getMinutes());
-        setTempTime(newDate);
-      }
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const getStatusColor = (value: string) => {
     const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-      return COLORS.text;
-    }
-
-    if (numValue < NORMAL_SUGAR_MIN) {
-      return COLORS.warning;
-    } else if (numValue > NORMAL_SUGAR_MAX) {
-      return COLORS.danger;
-    }
+    if (isNaN(numValue)) return COLORS.text;
+    if (numValue < NORMAL_SUGAR_MIN) return COLORS.warning;
+    if (numValue > NORMAL_SUGAR_MAX) return COLORS.danger;
     return COLORS.success;
   };
 
@@ -272,54 +143,52 @@ const AddGlucoseScreen: React.FC = () => {
     return context ? context.label : "Before Meal";
   };
 
-  const renderMealContextModal = () => {
-    return (
-      <Modal
-        visible={showMealContextPicker}
-        transparent
-        statusBarTranslucent={true}
-        animationType="slide"
-        onRequestClose={() => setShowMealContextPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Meal Context</Text>
-              <TouchableOpacity onPress={() => setShowMealContextPicker(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.mealContextList}>
-              {MEAL_CONTEXTS.map((context) => (
-                <TouchableOpacity
-                  key={context.value}
+  const renderMealContextModal = () => (
+    <Modal
+      visible={showMealContextPicker}
+      transparent
+      statusBarTranslucent
+      animationType="slide"
+      onRequestClose={() => setShowMealContextPicker(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Meal Context</Text>
+            <TouchableOpacity onPress={() => setShowMealContextPicker(false)}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.mealContextList}>
+            {MEAL_CONTEXTS.map((context) => (
+              <TouchableOpacity
+                key={context.value}
+                style={[
+                  styles.mealContextItem,
+                  getValues().mealContext === context.value &&
+                    styles.selectedMealContext,
+                ]}
+                onPress={() => {
+                  setValue("mealContext", context.value as FormData["mealContext"]);
+                  setShowMealContextPicker(false);
+                }}
+              >
+                <Text
                   style={[
-                    styles.mealContextItem,
-                    mealContext === context.value && styles.selectedMealContext,
+                    styles.mealContextText,
+                    getValues().mealContext === context.value &&
+                      styles.selectedMealContextText,
                   ]}
-                  onPress={() => {
-                    setValue("mealContext", context.value as any);
-                    setShowMealContextPicker(false);
-                  }}
                 >
-                  <Text
-                    style={[
-                      styles.mealContextText,
-                      mealContext === context.value &&
-                        styles.selectedMealContextText,
-                    ]}
-                  >
-                    {context.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  {context.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-      </Modal>
-    );
-  };
+      </View>
+    </Modal>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -332,7 +201,6 @@ const AddGlucoseScreen: React.FC = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
           bounces={false}
-          alwaysBounceVertical={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -398,9 +266,8 @@ const AddGlucoseScreen: React.FC = () => {
                             { color: getStatusColor(value) },
                           ]}
                           numberOfLines={1}
-                          ellipsizeMode="tail"
                         >
-                          {value ? value : "---"}
+                          {value || "---"}
                         </Text>
                         <Text style={styles.unitText}>mg/dL</Text>
                       </View>
@@ -409,119 +276,11 @@ const AddGlucoseScreen: React.FC = () => {
                   name="value"
                 />
 
-                <Text style={styles.label}>When was this reading taken?</Text>
-                <View style={styles.dateTimeContainer}>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={showDatepicker}
-                  >
-                    <Text style={styles.dateTimeText}>
-                      {formatDate(timestamp)}
-                    </Text>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={20}
-                      color={COLORS.primary}
-                      style={styles.dateTimeIcon}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={showTimepicker}
-                  >
-                    <Text style={styles.dateTimeText}>
-                      {formatTime(timestamp)}
-                    </Text>
-                    <Ionicons
-                      name="time-outline"
-                      size={20}
-                      color={COLORS.primary}
-                      style={styles.dateTimeIcon}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* --- iOS Date Picker --- */}
-                {Platform.OS === "ios" && showDatePicker && (
-                  <View style={styles.iosPickerContainer}>
-                    <DateTimePicker
-                      value={tempDate || timestamp}
-                      mode="date"
-                      display="spinner"
-                      onChange={onDateChange}
-                      style={dateTimePickerStyle}
-                    />
-                    <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setShowDatePicker(false);
-                          setTempDate(null);
-                        }}
-                        style={[styles.pickerButton, styles.cancelPickerButton]}
-                      >
-                        <Text style={styles.cancelPickerButtonText}>
-                          Cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={confirmIosDate}
-                        style={[styles.pickerButton, styles.okPickerButton]}
-                      >
-                        <Text style={styles.okPickerButtonText}>OK</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                {/* --- Android Date Picker --- */}
-                {Platform.OS === "android" && showDatePicker && (
-                  <DateTimePicker
-                    value={timestamp}
-                    mode="date"
-                    display="default"
-                    onChange={onDateChange}
-                  />
-                )}
-
-                {/* --- iOS Time Picker --- */}
-                {Platform.OS === "ios" && showTimePicker && (
-                  <View style={styles.iosPickerContainer}>
-                    <DateTimePicker
-                      value={tempTime || timestamp}
-                      mode="time"
-                      display="spinner"
-                      onChange={onTimeChange}
-                      style={dateTimePickerStyle}
-                    />
-                    <View style={styles.pickerButtonsContainer}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setShowTimePicker(false);
-                          setTempTime(null);
-                        }}
-                        style={[styles.pickerButton, styles.cancelPickerButton]}
-                      >
-                        <Text style={styles.cancelPickerButtonText}>
-                          Cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={confirmIosTime}
-                        style={[styles.pickerButton, styles.okPickerButton]}
-                      >
-                        <Text style={styles.okPickerButtonText}>OK</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                {/* --- Android Time Picker --- */}
-                {Platform.OS === "android" && showTimePicker && (
-                  <DateTimePicker
-                    value={timestamp}
-                    mode="time"
-                    display="default"
-                    onChange={onTimeChange}
-                  />
-                )}
+                <DateTimeField
+                  label={"Date & Time"}
+                  timestamp={timestamp}
+                  onChange={setTimestamp}
+                />
 
                 <View style={styles.mealContextContainer}>
                   <Text style={styles.label}>Meal Context</Text>
@@ -530,7 +289,7 @@ const AddGlucoseScreen: React.FC = () => {
                     onPress={() => setShowMealContextPicker(true)}
                   >
                     <Text style={styles.mealContextButtonText}>
-                      {getMealContextLabel(mealContext)}
+                      {getMealContextLabel(getValues().mealContext)}
                     </Text>
                     <Ionicons
                       name="chevron-down"
@@ -542,6 +301,7 @@ const AddGlucoseScreen: React.FC = () => {
 
                 <Controller
                   control={control}
+                  name="notes"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
                       label="Notes (optional)"
@@ -555,20 +315,19 @@ const AddGlucoseScreen: React.FC = () => {
                       style={styles.notesInput}
                     />
                   )}
-                  name="notes"
                 />
 
                 <View style={styles.buttonGroup}>
                   <Button
                     title="Cancel"
                     variant="outline"
-                    onPress={handleCancel}
+                    onPress={() => navigation.goBack()}
                     style={styles.cancelButton}
                     disabled={isLoading}
                   />
                   <Button
                     title={isEditing ? "Update" : "Save"}
-                    onPress={handleSave}
+                    onPress={handleSubmit(handleSave)}
                     loading={isLoading}
                     disabled={isLoading}
                     style={styles.saveButton}
@@ -577,7 +336,6 @@ const AddGlucoseScreen: React.FC = () => {
               </Card>
             </View>
             {renderMealContextModal()}
-
             {Platform.OS === "ios" && (
               <InputAccessoryView nativeID={inputAccessoryViewID}>
                 <View style={styles.keyboardAccessory}>
@@ -682,30 +440,6 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.xs,
     color: COLORS.text,
   },
-  dateTimeContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: SIZES.md,
-  },
-  dateTimeButton: {
-    width: "48.5%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  dateTimeIcon: {
-    marginLeft: SIZES.xs,
-  },
-  dateTimeText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
   mealContextContainer: {
     marginBottom: SIZES.md,
   },
@@ -782,34 +516,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: "bold",
   },
-  pickerButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: SIZES.sm,
-  },
-  pickerButton: {
-    paddingVertical: SIZES.xs + 2,
-    paddingHorizontal: SIZES.lg,
-    borderRadius: 20,
-    marginHorizontal: SIZES.sm,
-  },
-  cancelPickerButton: {
-    backgroundColor: "#E0E0E0",
-  },
-  okPickerButton: {
-    backgroundColor: COLORS.primary,
-  },
-  cancelPickerButtonText: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  okPickerButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
   keyboardAccessory: {
     height: 44,
     backgroundColor: "#f8f8f8",
@@ -828,10 +534,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 16,
     fontWeight: "600",
-  },
-  iosPickerContainer: {
-    borderRadius: SIZES.sm,
-    marginBottom: SIZES.md,
   },
 });
 

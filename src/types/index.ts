@@ -100,7 +100,6 @@ export type RootStackParamList = {
 
 export type BottomTabParamList = {
   Home: undefined;
-  GlucoseLog: undefined;
   Analytics: undefined;
   Settings: undefined;
 };

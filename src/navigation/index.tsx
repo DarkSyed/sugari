@@ -44,7 +44,7 @@ const DashboardStack = () => {
     >
       <Stack.Screen name={ROUTES.DASHBOARD} component={DashboardScreen} />
       <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
-      <Stack.Screen name={ROUTES.GLUCOSE_LOG} component={SugarLogScreen} />
+      <Stack.Screen name={ROUTES.SUGAR_LOG} component={SugarLogScreen} />
       <Stack.Screen name={ROUTES.ADD_GLUCOSE} component={AddGlucoseScreen} />
       <Stack.Screen name={ROUTES.ADD_FOOD} component={AddFoodScreen} />
       <Stack.Screen name={ROUTES.ADD_INSULIN} component={AddInsulinScreen} />

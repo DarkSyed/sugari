@@ -357,7 +357,7 @@ const DashboardScreen: React.FC = () => {
       <View style={styles.recentReadingsContainer}>
         <View style={styles.recentReadingsHeader}>
           <Text style={styles.sectionTitle}>Recent Blood Glucose Readings</Text>
-          <TouchableOpacity onPress={() => navigateTo('Home', ROUTES.GLUCOSE_LOG)}>
+          <TouchableOpacity onPress={() => navigateTo('Home', ROUTES.SUGAR_LOG)}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>
