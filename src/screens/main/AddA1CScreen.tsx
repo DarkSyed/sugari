@@ -20,7 +20,7 @@ import Input from "../../components/Input";
 import Button from "../../components/Button";
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../../components/Card";
-import { MainStackParamList } from "../../types";
+import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
 import { useForm, Controller } from "react-hook-form";
 
@@ -29,13 +29,14 @@ type FormData = {
   notes: string;
 };
 
-type RouteParams = RouteProp<MainStackParamList, "AddA1C">;
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_A1C>;
 
 const AddA1CScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
   const [timestamp, setTimestamp] = useState(new Date());
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const isEditing = route.params?.isEditing;
 
   const {
@@ -52,18 +53,26 @@ const AddA1CScreen: React.FC = () => {
   });
 
   useEffect(() => {
-    if (route.params?.initialData) {
-      setValue("a1c", route.params.initialData.value.toString());
-      setValue("notes", route.params.initialData.notes || "");
-      setTimestamp(new Date(route.params.initialData.timestamp));
+    const initialData = route.params?.initialData;
+    if (initialData) {
+      setValue("a1c", initialData.value.toString());
+      setValue("notes", initialData.notes || "");
+      setTimestamp(new Date(initialData.timestamp));
     }
   }, [route.params, setValue]);
 
   const onSubmit = async (data: FormData) => {
     try {
-      setIsSubmitting(true);
+      setIsLoading(true);
+
+      const valueNumber = parseFloat(data.a1c);
+      if (isNaN(valueNumber) || !isFinite(valueNumber)) {
+        Alert.alert("Error", "Please enter a valid number for A1C");
+        return;
+      }
+
       const readingData = {
-        value: parseFloat(data.a1c),
+        value: valueNumber,
         timestamp: timestamp.getTime(),
         notes: data.notes.trim(),
       };
@@ -77,12 +86,17 @@ const AddA1CScreen: React.FC = () => {
         reset();
       }
 
-      navigation.navigate("SugarLog");
+      navigation.navigate(ROUTES.SUGAR_LOG, {});
     } catch (error) {
       console.error("Error saving A1C reading:", error);
-      Alert.alert("Error", "Failed to save A1C reading. Please try again.");
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save A1C reading. Please try again."
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
@@ -90,38 +104,43 @@ const AddA1CScreen: React.FC = () => {
     <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.select({ ios: 90, android: 0, default: 0 })}
-        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.select({
+          ios: 90,
+          android: 0,
+          default: 0,
+        })}
+        className="flex-1"
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
             bounces={false}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.container}>
-              <View style={styles.header}>
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Return to previous screen"
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name="arrow-back-outline"
                     size={24}
-                    color={COLORS.primary}
+                    color="#2563eb"
                   />
                 </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>
-                    {isEditing ? "Edit A1C Reading" : "Add A1C Reading"}
-                  </Text>
-                </View>
-                <View style={styles.headerSpacer} />
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing ? "Edit A1C Reading" : "Add A1C Reading"}
+                </Text>
+                <View className="w-10" />
               </View>
 
-              <Card variant="elevated" style={styles.inputCard}>
+              <Card variant="elevated" className="p-4">
                 <Controller
                   control={control}
                   rules={{
@@ -147,6 +166,7 @@ const AddA1CScreen: React.FC = () => {
                       onBlur={onBlur}
                       error={errors.a1c?.message}
                       touched={value !== ""}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                   name="a1c"
@@ -163,33 +183,33 @@ const AddA1CScreen: React.FC = () => {
                   name="notes"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Notes (optional)"
+                      label="Notes (Optional)"
                       placeholder="Add any notes about this reading"
                       multiline
                       numberOfLines={3}
-                      textAlignVertical="top"
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      style={styles.notesInput}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                 />
 
-                <View style={styles.buttonGroup}>
+                <View className="flex-row justify-between mt-4">
                   <Button
                     title="Cancel"
                     variant="outline"
                     onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
-                    disabled={isSubmitting}
+                    className="flex-1 mr-2"
+                    disabled={isLoading}
                   />
                   <Button
                     title={isEditing ? "Update" : "Save"}
                     onPress={handleSubmit(onSubmit)}
-                    loading={isSubmitting}
-                    disabled={isSubmitting}
-                    style={styles.saveButton}
+                    loading={isLoading}
+                    disabled={isLoading}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
@@ -200,72 +220,5 @@ const AddA1CScreen: React.FC = () => {
     </Container>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: SIZES.xl,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: SIZES.md,
-    width: "100%",
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {},
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  inputContainer: {
-    marginBottom: SIZES.md,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: COLORS.text,
-    marginBottom: SIZES.xs,
-  },
-  input: {
-    fontSize: 18,
-  },
-  notesInput: {
-    height: 100,
-  },
-  footer: {
-    marginTop: "auto",
-    marginBottom: SIZES.lg,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-  },
-  buttonGroup: {
-    flexDirection: "row",
-    marginTop: SIZES.md,
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: SIZES.sm,
-  },
-});
 
 export default AddA1CScreen;

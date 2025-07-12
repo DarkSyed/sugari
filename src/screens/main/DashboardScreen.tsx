@@ -4,9 +4,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, ROUTES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
+import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../../constants';
 import { useApp } from '../../contexts/AppContext';
-import { BloodSugarReading, FoodEntry, InsulinDose } from '../../types';
+import { BloodSugarReading, FoodEntry, InsulinDose, ROUTES } from '../../types';
 import { 
   getBloodSugarReadings, 
   getFoodEntries, 
@@ -23,6 +23,7 @@ import Button from '../../components/Button';
 import GlucoseChart from '../../components/GlucoseChart';
 import GlucoseCard from '../../components/GlucoseCard';
 import SugarCard from '../../components/SugarCard';
+import CGMSelection from '../../components/CGMSelection';
 
 // Type definitions
 type ReadingType = 'glucose' | 'sugar';
@@ -47,6 +48,7 @@ const DashboardScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [readingType, setReadingType] = useState<ReadingType>('sugar');
   const [showLatestReading, setShowLatestReading] = useState(true);
+  const [isCGMModalVisible, setCGMModalVisible] = useState(false);
 
   // Quick actions configuration
   const quickActions: QuickActionItem[] = [
@@ -55,7 +57,7 @@ const DashboardScreen: React.FC = () => {
     { icon: '💉', text: 'Log Insulin', color: '#F39C12', route: 'Home', screen: ROUTES.ADD_INSULIN },
     { icon: '🔬', text: 'A1C', color: '#E74C3C', route: 'Home', screen: ROUTES.ADD_A1C },
     { icon: '⚖️', text: 'Weight', color: '#3498DB', route: 'Home', screen: ROUTES.ADD_WEIGHT },
-    { icon: '❤️', text: 'BP', color: '#16A085', route: 'Home', screen: ROUTES.BP_LOG }
+    { icon: '❤️', text: 'BP', color: '#16A085', route: 'Home', screen: ROUTES.BP_LOG },
   ];
 
   // Data fetching
@@ -321,7 +323,13 @@ const DashboardScreen: React.FC = () => {
             <TouchableOpacity
               key={index}
               style={styles.quickActionButton}
-              onPress={() => navigateTo(action.route, action.screen)}
+              onPress={() => {
+                if (action.text === "Connect CGM") {
+                  setCGMModalVisible(true);
+                } else {
+                navigateTo(action.route, action.screen)
+              }
+            }}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
                 <Text style={styles.quickActionIconText}>{action.icon}</Text>
@@ -335,7 +343,13 @@ const DashboardScreen: React.FC = () => {
             <TouchableOpacity
               key={index + 3}
               style={styles.quickActionButton}
-              onPress={() => navigateTo(action.route, action.screen)}
+              onPress={() => {
+                if (action.text === "Connect CGM") {
+                  setCGMModalVisible(true);
+                } else {
+                navigateTo(action.route, action.screen)
+              }
+            }}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
                 <Text style={styles.quickActionIconText}>{action.icon}</Text>
@@ -396,6 +410,7 @@ const DashboardScreen: React.FC = () => {
         {renderQuickActions()}
         {renderRecentReadings()}
       </ScrollView>
+      <CGMSelection visible={isCGMModalVisible} onClose={() => setCGMModalVisible(false)} />
     </Container>
   );
 };

@@ -23,11 +23,10 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   COLORS,
   SIZES,
-  ROUTES,
   NORMAL_SUGAR_MIN,
   NORMAL_SUGAR_MAX,
 } from "../../constants";
-import { BloodSugarReading, FoodEntry, InsulinDose } from "../../types";
+import { BloodSugarReading, FoodEntry, InsulinDose, ROUTES } from "../../types";
 import {
   getBloodSugarReadings,
   getFoodEntries,

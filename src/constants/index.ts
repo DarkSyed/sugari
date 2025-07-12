@@ -46,34 +46,6 @@ export const SIZES = {
   headerHeight: 60,
 };
 
-// Navigation Constants
-export const ROUTES = {
-  SPLASH: "Splash",
-  LOGIN: "Login",
-  REGISTER: "Register",
-  FORGOT_PASSWORD: "ForgotPassword",
-  HOME: "Home",
-  DASHBOARD: "Dashboard",
-  MEDICATION: "Medication",
-  ADD_GLUCOSE: "AddGlucose",
-  SUGAR_LOG: "SugarLog",
-  FOOD_LOG: "FoodLog",
-  ADD_FOOD: "AddFood",
-  INSULIN_LOG: "InsulinLog",
-  ADD_INSULIN: "AddInsulin",
-  ADD_A1C: "AddA1C",
-  ADD_WEIGHT: "AddWeight",
-  ADD_BP: "AddBloodPressure",
-  BP_LOG: "BloodPressureLog",
-  ANALYTICS: "Analytics",
-  SETTINGS: "Settings",
-  PROFILE: "Profile",
-  REPORT: "Report",
-  REMINDERS: "Reminders",
-  ADD_REMINDER: "AddReminder",
-  FEATURE_REQUESTS: "FeatureRequests",
-};
-
 // Form Validation Messages
 export const VALIDATION = {
   REQUIRED: "This field is required",
@@ -124,3 +96,10 @@ export const UNITS = [
   { label: 'mg/dL', value: 'mg/dL' },
   { label: 'mmol/L', value: 'mmol/L' },
 ]; 
+
+export const MEAL_OPTIONS = [
+  { label: "Breakfast", value: "breakfast" },
+  { label: "Lunch", value: "lunch" },
+  { label: "Dinner", value: "dinner" },
+  { label: "Snack", value: "snack" },
+];

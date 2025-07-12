@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Alert,
   TouchableOpacity,
   Platform,
@@ -18,13 +17,11 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { useForm, Controller } from "react-hook-form";
 import {
   COLORS,
-  SIZES,
   VALIDATION,
   NORMAL_SUGAR_MIN,
   NORMAL_SUGAR_MAX,
   MEAL_CONTEXTS,
 } from "../../constants";
-import { useAuth } from "../../contexts/AuthContext";
 import {
   addBloodSugarReading,
   updateBloodSugarReading,
@@ -34,8 +31,7 @@ import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
 import { Ionicons } from "@expo/vector-icons";
-import { useApp } from "../../contexts/AppContext";
-import { MainStackParamList } from "../../types";
+import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
 
 const inputAccessoryViewID = "inputAccessoryViewGlucoseScreen";
@@ -46,13 +42,12 @@ type FormData = {
   notes: string;
 };
 
-type RouteParams = RouteProp<MainStackParamList, "AddGlucose">;
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_GLUCOSE>;
 
 const AddGlucoseScreen: React.FC = () => {
-  const { authState } = useAuth();
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const { settings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [showMealContextPicker, setShowMealContextPicker] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -90,23 +85,30 @@ const AddGlucoseScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (route.params?.initialData) {
-      setValue("value", route.params.initialData.value.toString());
+    const initialData = route.params?.initialData;
+    if (initialData) {
+      setValue("value", initialData.value.toString());
       setValue(
         "mealContext",
-        (route.params.initialData.context ||
-          "before_meal") as FormData["mealContext"]
+        (initialData.context || "before_meal") as FormData["mealContext"]
       );
-      setValue("notes", route.params.initialData.notes || "");
-      setTimestamp(new Date(route.params.initialData.timestamp));
+      setValue("notes", initialData.notes || "");
+      setTimestamp(new Date(initialData.timestamp));
     }
   }, [route.params, setValue]);
 
-  const handleSave = async (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     try {
       setIsLoading(true);
+
+      const valueNumber = parseFloat(data.value);
+      if (isNaN(valueNumber) || !isFinite(valueNumber)) {
+        Alert.alert("Error", "Please enter a valid number for blood glucose");
+        return;
+      }
+
       const readingData = {
-        value: parseFloat(data.value),
+        value: valueNumber,
         timestamp: timestamp.getTime(),
         context: data.mealContext,
         notes: data.notes.trim(),
@@ -124,7 +126,12 @@ const AddGlucoseScreen: React.FC = () => {
       navigation.goBack();
     } catch (error) {
       console.error("Error saving blood sugar reading:", error);
-      Alert.alert("Error", "Failed to save blood sugar reading");
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save blood sugar reading"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +140,7 @@ const AddGlucoseScreen: React.FC = () => {
   const getStatusColor = (value: string) => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return COLORS.text;
-    if (numValue < NORMAL_SUGAR_MIN) return COLORS.warning;
+    if (numValue < NORMAL_SUGAR_MIN) return COLORS.danger;
     if (numValue > NORMAL_SUGAR_MAX) return COLORS.danger;
     return COLORS.success;
   };
@@ -143,89 +150,108 @@ const AddGlucoseScreen: React.FC = () => {
     return context ? context.label : "Before Meal";
   };
 
-  const renderMealContextModal = () => (
-    <Modal
-      visible={showMealContextPicker}
-      transparent
-      statusBarTranslucent
-      animationType="slide"
-      onRequestClose={() => setShowMealContextPicker(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Meal Context</Text>
-            <TouchableOpacity onPress={() => setShowMealContextPicker(false)}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.mealContextList}>
-            {MEAL_CONTEXTS.map((context) => (
+  const renderMealContextModal = () => {
+    const currentMealContext = getValues().mealContext;
+
+    return (
+      <Modal
+        visible={showMealContextPicker}
+        transparent
+        statusBarTranslucent
+        animationType="slide"
+        onRequestClose={() => setShowMealContextPicker(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-xl p-4 max-h-[70%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-grey-800">
+                Select Meal Context
+              </Text>
               <TouchableOpacity
-                key={context.value}
-                style={[
-                  styles.mealContextItem,
-                  getValues().mealContext === context.value &&
-                    styles.selectedMealContext,
-                ]}
-                onPress={() => {
-                  setValue("mealContext", context.value as FormData["mealContext"]);
-                  setShowMealContextPicker(false);
-                }}
+                onPress={() => setShowMealContextPicker(false)}
+                accessibilityLabel="Close meal context picker"
+                accessibilityRole="button"
               >
-                <Text
-                  style={[
-                    styles.mealContextText,
-                    getValues().mealContext === context.value &&
-                      styles.selectedMealContextText,
-                  ]}
-                >
-                  {context.label}
-                </Text>
+                <Ionicons name="close" size={24} color="#111827" />
               </TouchableOpacity>
-            ))}
+            </View>
+            <View className="mb-4">
+              {MEAL_CONTEXTS.map((context) => {
+                const isSelected = currentMealContext === context.value;
+                return (
+                  <TouchableOpacity
+                    key={context.value}
+                    className={`py-2 px-4 rounded mb-1 ${
+                      isSelected ? "bg-primary/10" : "bg-white"
+                    }`}
+                    onPress={() => {
+                      setValue(
+                        "mealContext",
+                        context.value as FormData["mealContext"]
+                      );
+                      setShowMealContextPicker(false);
+                    }}
+                    accessibilityLabel={context.label}
+                    accessibilityHint={
+                      isSelected ? "Currently selected" : "Tap to select"
+                    }
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text
+                      className={`text-base ${
+                        isSelected ? "text-primary font-bold" : "text-gray-800"
+                      }`}
+                    >
+                      {context.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      className="flex-1"
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           bounces={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Container keyboardAvoiding={false}>
-            <View style={styles.container}>
-              <View style={styles.header}>
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Returns to previous screen"
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name="arrow-back-outline"
                     size={24}
-                    color={COLORS.primary}
+                    color="#2563eb"
                   />
                 </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>
-                    {isEditing ? "Edit Blood Sugar" : "Add Blood Sugar"}
-                  </Text>
-                </View>
-                <View style={styles.headerSpacer} />
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing ? "Edit Blood Sugar" : "Add Blood Sugar"}
+                </Text>
+                <View className="w-10" />
               </View>
 
-              <Card variant="elevated" style={styles.inputCard}>
+              <Card variant="elevated" className="p-4">
                 <Controller
                   control={control}
                   rules={{
@@ -242,34 +268,35 @@ const AddGlucoseScreen: React.FC = () => {
                     },
                   }}
                   render={({ field: { onChange, onBlur, value } }) => (
-                    <View style={styles.glucoseInputContainer}>
-                      <Input
-                        label="Blood Glucose"
-                        placeholder="Enter value"
-                        keyboardType="numeric"
-                        value={value}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        error={errors.value?.message}
-                        touched={value !== ""}
-                        containerStyle={styles.glucoseInput}
-                        inputAccessoryViewID={
-                          Platform.OS === "ios"
-                            ? inputAccessoryViewID
-                            : undefined
-                        }
-                      />
-                      <View style={styles.unitContainer}>
+                    <View className="flex-row items-end mb-4">
+                      <View className="flex-1">
+                        <Input
+                          label="Blood Glucose"
+                          placeholder="Enter value"
+                          keyboardType="numeric"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          error={errors.value?.message}
+                          touched={value !== ""}
+                          containerStyle={{ marginBottom: 0 }}
+                          inputAccessoryViewID={
+                            Platform.OS === "ios"
+                              ? inputAccessoryViewID
+                              : undefined
+                          }
+                          labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                        />
+                      </View>
+                      <View className="flex-shrink-0 ml-3 items-end pb-2.5 max-w-[80px]">
                         <Text
-                          style={[
-                            styles.valuePreview,
-                            { color: getStatusColor(value) },
-                          ]}
+                          className="text-2xl font-bold"
+                          style={{ color: getStatusColor(value) }}
                           numberOfLines={1}
                         >
                           {value || "---"}
                         </Text>
-                        <Text style={styles.unitText}>mg/dL</Text>
+                        <Text className="text-sm text-gray-500">mg/dL</Text>
                       </View>
                     </View>
                   )}
@@ -282,20 +309,21 @@ const AddGlucoseScreen: React.FC = () => {
                   onChange={setTimestamp}
                 />
 
-                <View style={styles.mealContextContainer}>
-                  <Text style={styles.label}>Meal Context</Text>
+                <View className="mb-4">
+                  <Text className="text-lg mb-2 text-gray-800 font-medium">
+                    Meal Context
+                  </Text>
                   <TouchableOpacity
-                    style={styles.mealContextButton}
+                    className="flex-row justify-between items-center bg-gray-100 rounded border border-gray-300 p-3"
                     onPress={() => setShowMealContextPicker(true)}
+                    accessibilityLabel={`Selected meal context: ${getMealContextLabel(getValues().mealContext)}`}
+                    accessibilityHint="Opens meal context selection"
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.mealContextButtonText}>
+                    <Text className="text-base text-gray-800">
                       {getMealContextLabel(getValues().mealContext)}
                     </Text>
-                    <Ionicons
-                      name="chevron-down"
-                      size={20}
-                      color={COLORS.text}
-                    />
+                    <Ionicons name="chevron-down" size={20} color="#111827" />
                   </TouchableOpacity>
                 </View>
 
@@ -304,46 +332,51 @@ const AddGlucoseScreen: React.FC = () => {
                   name="notes"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Notes (optional)"
+                      label="Notes (Optional)"
                       placeholder="Add any notes about this reading"
                       multiline
                       numberOfLines={3}
-                      textAlignVertical="top"
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      style={styles.notesInput}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                 />
 
-                <View style={styles.buttonGroup}>
+                <View className="flex-row justify-between mt-4">
                   <Button
                     title="Cancel"
                     variant="outline"
                     onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
+                    className="flex-1 mr-2"
                     disabled={isLoading}
                   />
                   <Button
                     title={isEditing ? "Update" : "Save"}
-                    onPress={handleSubmit(handleSave)}
+                    onPress={handleSubmit(onSubmit)}
                     loading={isLoading}
                     disabled={isLoading}
-                    style={styles.saveButton}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
             </View>
             {renderMealContextModal()}
+            
             {Platform.OS === "ios" && (
               <InputAccessoryView nativeID={inputAccessoryViewID}>
-                <View style={styles.keyboardAccessory}>
+                <View className="h-11 bg-gray-100 border-t border-gray-300 flex-row justify-end items-center px-4 w-full">
                   <TouchableOpacity
-                    style={styles.doneButton}
+                    className="p-2"
                     onPress={() => Keyboard.dismiss()}
+                    accessibilityLabel="Dismiss keyboard"
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.doneButtonText}>Done</Text>
+                    <Text className="text-primary text-base font-semibold">
+                      Done
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </InputAccessoryView>
@@ -354,187 +387,5 @@ const AddGlucoseScreen: React.FC = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  keyboardAvoidingContainer: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: SIZES.xl,
-  },
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: SIZES.md,
-    width: "100%",
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {},
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  glucoseInputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: SIZES.md,
-  },
-  glucoseInput: {
-    flex: 1,
-    minWidth: 0,
-    marginBottom: 0,
-  },
-  unitContainer: {
-    flexShrink: 0,
-    marginLeft: SIZES.sm,
-    alignItems: "flex-end",
-    paddingBottom: 10,
-    maxWidth: 80,
-  },
-  valuePreview: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.success,
-  },
-  unitText: {
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
-  insulinInputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: SIZES.md,
-  },
-  insulinInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  insulinUnitText: {
-    marginLeft: SIZES.sm,
-    paddingBottom: 10,
-    fontSize: 14,
-    color: COLORS.lightText,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: SIZES.xs,
-    color: COLORS.text,
-  },
-  mealContextContainer: {
-    marginBottom: SIZES.md,
-  },
-  mealContextButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    padding: SIZES.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  mealContextButtonText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  notesInput: {
-    height: 80,
-  },
-  buttonGroup: {
-    flexDirection: "row",
-    marginTop: SIZES.md,
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: SIZES.sm,
-  },
-  saveButton: {
-    flex: 1,
-    marginLeft: SIZES.sm,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: SIZES.md,
-    borderTopRightRadius: SIZES.md,
-    padding: SIZES.md,
-    maxHeight: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SIZES.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  mealContextList: {
-    marginBottom: SIZES.md,
-  },
-  mealContextItem: {
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.md,
-    borderRadius: SIZES.xs,
-    marginBottom: SIZES.xs,
-    backgroundColor: "white",
-  },
-  selectedMealContext: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  mealContextText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  selectedMealContextText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
-  },
-  keyboardAccessory: {
-    height: 44,
-    backgroundColor: "#f8f8f8",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#d8d8d8",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  doneButton: {
-    padding: 8,
-  },
-  doneButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
 
 export default AddGlucoseScreen;

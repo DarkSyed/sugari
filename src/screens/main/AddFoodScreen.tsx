@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Alert,
   TouchableOpacity,
   Platform,
@@ -17,14 +16,13 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useForm, Controller } from "react-hook-form";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, SIZES, VALIDATION } from "../../constants";
-import { useAuth } from "../../contexts/AuthContext";
+import { VALIDATION, MEAL_OPTIONS } from "../../constants";
 import { addFoodEntry, updateFoodEntry } from "../../services/database";
 import Container from "../../components/Container";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
-import { MainStackParamList } from "../../types";
+import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
 
 const inputAccessoryViewID = "inputAccessoryViewFoodScreen";
@@ -36,18 +34,11 @@ type FormData = {
   notes: string;
 };
 
-const MEAL_OPTIONS = [
-  { label: "Breakfast", value: "breakfast" },
-  { label: "Lunch", value: "lunch" },
-  { label: "Dinner", value: "dinner" },
-  { label: "Snack", value: "snack" },
-];
-
-type RouteParams = RouteProp<MainStackParamList, "AddFood">;
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_FOOD>;
 
 const AddFoodScreen: React.FC = () => {
-  const { authState } = useAuth();
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
@@ -92,24 +83,31 @@ const AddFoodScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (route.params?.initialData) {
-      setValue("name", route.params.initialData.name);
-      setValue("carbs", route.params.initialData.carbs?.toString() || "");
+    const initialData = route.params?.initialData;
+    if (initialData) {
+      setValue("name", initialData.name);
+      setValue("carbs", initialData.carbs?.toString() || "");
       setValue(
         "meal_type",
-        (route.params.initialData.meal_type ||
-          "breakfast") as FormData["meal_type"]
+        (initialData.meal_type || "breakfast") as FormData["meal_type"]
       );
-      setTimestamp(new Date(route.params.initialData.timestamp));
+      setTimestamp(new Date(initialData.timestamp));
     }
   }, [route.params, setValue]);
 
   const onSubmit = async (data: FormData) => {
     try {
       setIsLoading(true);
+
+      const carbsNumber = parseFloat(data.carbs);
+      if (isNaN(carbsNumber) || !isFinite(carbsNumber)) {
+        Alert.alert("Error", "Please enter a valid number for carbs");
+        return;
+      }
+
       const readingData = {
         name: data.name,
-        carbs: parseFloat(data.carbs),
+        carbs: carbsNumber,
         timestamp: timestamp.getTime(),
         meal_type: data.meal_type,
         notes: data.notes.trim(),
@@ -127,7 +125,12 @@ const AddFoodScreen: React.FC = () => {
       navigation.goBack();
     } catch (error) {
       console.error("Error saving food entry:", error);
-      Alert.alert("Error", "Failed to save food entry. Please try again.");
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save food entry. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -139,6 +142,8 @@ const AddFoodScreen: React.FC = () => {
   };
 
   const renderMealContextModal = () => {
+    const currentMealType = getValues().meal_type;
+
     return (
       <Modal
         visible={showMealPicker}
@@ -147,40 +152,54 @@ const AddFoodScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setShowMealPicker(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Meal</Text>
-              <TouchableOpacity onPress={() => setShowMealPicker(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-xl p-4 max-h-[70%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-grey-800">
+                Select Meal
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowMealPicker(false)}
+                accessibilityLabel="Close meal picker"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={24} color="#111827" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.mealContextList}>
-              {MEAL_OPTIONS.map((meal) => (
-                <TouchableOpacity
-                  key={meal.value}
-                  style={[
-                    styles.mealContextItem,
-                    getValues().meal_type === meal.value &&
-                      styles.selectedMealContext,
-                  ]}
-                  onPress={() => {
-                    setValue("meal_type", meal.value as any);
-                    setShowMealPicker(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.mealContextText,
-                      getValues().meal_type === meal.value &&
-                        styles.selectedMealContextText,
-                    ]}
+            <View className="mb-4">
+              {MEAL_OPTIONS.map((meal) => {
+                const isSelected = currentMealType === meal.value;
+                return (
+                  <TouchableOpacity
+                    key={meal.value}
+                    className={`py-2 px-4 rounded mb-1 ${
+                      isSelected ? "bg-primary/10" : "bg-white"
+                    }`}
+                    onPress={() => {
+                      setValue(
+                        "meal_type",
+                        meal.value as FormData["meal_type"]
+                      );
+                      setShowMealPicker(false);
+                    }}
+                    accessibilityLabel={meal.label}
+                    accessibilityHint={
+                      isSelected ? "Currently selected" : "Tap to select"
+                    }
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {meal.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      className={`text-base ${
+                        isSelected ? "text-primary font-bold" : "text-grey-800"
+                      }`}
+                    >
+                      {meal.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -191,40 +210,41 @@ const AddFoodScreen: React.FC = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      className="flex-1"
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           bounces={false}
           alwaysBounceVertical={false}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Container keyboardAvoiding={false}>
-            <View style={styles.container}>
-              <View style={styles.header}>
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Returns to the previous screen"
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name="arrow-back-outline"
                     size={24}
-                    color={COLORS.primary}
+                    color="#2563eb"
                   />
                 </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>
-                    {isEditing ? "Edit Food" : "Add Food"}
-                  </Text>
-                </View>
-                <View style={styles.headerSpacer} />
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing ? "Edit Food" : "Add Food"}
+                </Text>
+                <View className="w-10" />
               </View>
 
-              <Card variant="elevated" style={styles.inputCard}>
+              <Card variant="elevated" className="p-4">
                 <Controller
                   control={control}
                   rules={{
@@ -239,6 +259,7 @@ const AddFoodScreen: React.FC = () => {
                       onBlur={onBlur}
                       error={errors.name?.message}
                       touched={value !== ""}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                   name="name"
@@ -272,6 +293,7 @@ const AddFoodScreen: React.FC = () => {
                       inputAccessoryViewID={
                         Platform.OS === "ios" ? inputAccessoryViewID : undefined
                       }
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                   name="carbs"
@@ -283,47 +305,48 @@ const AddFoodScreen: React.FC = () => {
                   onChange={setTimestamp}
                 />
 
-                <View style={styles.mealContextContainer}>
-                  <Text style={styles.label}>Meal</Text>
+                <View className="mb-4">
+                  <Text className="text-lg mb-2 text-grey-800 font-medium">
+                    Meal Type
+                  </Text>
                   <TouchableOpacity
-                    style={styles.mealContextButton}
+                    className="flex-row justify-between items-center bg-gray-100 rounded border border-gray-300 p-3"
                     onPress={() => setShowMealPicker(true)}
+                    accessibilityLabel={`Selected meal: ${getMealLabel(getValues().meal_type)}`}
+                    accessibilityHint="Opens meal type selection"
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.mealContextButtonText}>
+                    <Text className="text-base text-gray-800">
                       {getMealLabel(getValues().meal_type)}
                     </Text>
-                    <Ionicons
-                      name="chevron-down"
-                      size={20}
-                      color={COLORS.text}
-                    />
+                    <Ionicons name="chevron-down" size={20} color="#111827" />
                   </TouchableOpacity>
                 </View>
 
                 <Controller
                   control={control}
+                  name="notes"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <Input
-                      label="Notes (optional)"
-                      placeholder="Add any additional notes"
+                      label="Notes (Optional)"
+                      placeholder="Add any notes about this reading"
                       multiline
                       numberOfLines={3}
-                      textAlignVertical="top"
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      style={styles.notesInput}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
-                  name="notes"
                 />
 
-                <View style={styles.buttonGroup}>
+                <View className="flex-row justify-between mt-4">
                   <Button
                     title="Cancel"
                     variant="outline"
                     onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
+                    className="flex-1 mr-2"
                     disabled={isLoading}
                   />
                   <Button
@@ -331,7 +354,7 @@ const AddFoodScreen: React.FC = () => {
                     onPress={handleSubmit(onSubmit)}
                     loading={isLoading}
                     disabled={isLoading}
-                    style={styles.saveButton}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
@@ -340,12 +363,16 @@ const AddFoodScreen: React.FC = () => {
 
             {Platform.OS === "ios" && (
               <InputAccessoryView nativeID={inputAccessoryViewID}>
-                <View style={styles.keyboardAccessory}>
+                <View className="h-11 bg-gray-100 border-t border-gray-300 flex-row justify-end items-center px-4 w-full">
                   <TouchableOpacity
-                    style={styles.doneButton}
+                    className="p-2"
                     onPress={() => Keyboard.dismiss()}
+                    accessibilityLabel="Dismiss keyboard"
+                    accessibilityRole="button"
                   >
-                    <Text style={styles.doneButtonText}>Done</Text>
+                    <Text className="text-primary text-base font-semibold">
+                      Done
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </InputAccessoryView>
@@ -356,143 +383,5 @@ const AddFoodScreen: React.FC = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: SIZES.xl,
-  },
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: SIZES.md,
-    width: "100%",
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {},
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: SIZES.xs,
-    color: COLORS.text,
-  },
-  mealContextContainer: {
-    marginBottom: SIZES.md,
-  },
-  mealContextButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    padding: SIZES.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  mealContextButtonText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  notesInput: {
-    height: 80,
-  },
-  buttonGroup: {
-    flexDirection: "row",
-    marginTop: SIZES.md,
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: SIZES.sm,
-  },
-  saveButton: {
-    flex: 1,
-    marginLeft: SIZES.sm,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: SIZES.md,
-    borderTopRightRadius: SIZES.md,
-    padding: SIZES.md,
-    maxHeight: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SIZES.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  mealContextList: {
-    marginBottom: SIZES.md,
-  },
-  mealContextItem: {
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.md,
-    borderRadius: SIZES.xs,
-    marginBottom: SIZES.xs,
-    backgroundColor: "white",
-  },
-  selectedMealContext: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  mealContextText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  selectedMealContextText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
-  },
-  keyboardAccessory: {
-    height: 44,
-    backgroundColor: "#f8f8f8",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#d8d8d8",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  doneButton: {
-    padding: 8,
-  },
-  doneButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
 
 export default AddFoodScreen;

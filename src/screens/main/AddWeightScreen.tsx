@@ -1,300 +1,221 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, KeyboardAvoidingView, TouchableWithoutFeedback, ScrollView, Keyboard } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS, SIZES } from '../../constants';
-import { addWeightMeasurement } from '../../services/database';
-import Container from '../../components/Container';
-import Input from '../../components/Input';
-import Button from '../../components/Button';
-import { Ionicons } from '@expo/vector-icons';
-import Card from '../../components/Card';
-import { useApp } from '../../contexts/AppContext';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  ScrollView,
+  Keyboard,
+} from "react-native";
+import {
+  RouteProp,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { VALIDATION } from "../../constants";
+import {
+  addWeightMeasurement,
+  updateWeightMeasurement,
+} from "../../services/database";
+import Container from "../../components/Container";
+import Input from "../../components/Input";
+import Button from "../../components/Button";
+import { Ionicons } from "@expo/vector-icons";
+import Card from "../../components/Card";
+import { useApp } from "../../contexts/AppContext";
+import { MainStackParamList, ROUTES } from "../../types";
+import { Controller, useForm } from "react-hook-form";
+import DateTimeField from "../../components/DateTimeField";
+
+type FormData = {
+  weight: string;
+  notes: string;
+};
+
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_WEIGHT>;
 
 const AddWeightScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteParams>();
   const { userSettings } = useApp();
-  const [weightValue, setWeightValue] = useState('');
-  const [notes, setNotes] = useState('');
   const [timestamp, setTimestamp] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tempDate, setTempDate] = useState<Date | null>(null);
-  const [tempTime, setTempTime] = useState<Date | null>(null);
+  const isEditing = route.params?.isEditing;
 
-  const weightUnit = userSettings?.weightUnit || 'kg';
+  const weightUnit = userSettings?.weightUnit || "(kg)";
 
-  const handleSubmit = async () => {
-    if (!weightValue) {
-      Alert.alert('Error', 'Please enter a weight value');
-      return;
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+  } = useForm<FormData>({
+    defaultValues: {
+      weight: "",
+      notes: "",
+    },
+  });
+
+  useEffect(() => {
+    const initialData = route.params?.initailData;
+    if (initialData) {
+      setValue("weight", initialData.value.toString());
+      setValue("notes", initialData.notes || "");
+      setTimestamp(new Date(initialData.timestamp));
     }
+  }, [route.params, setValue]);
 
-    const numericValue = parseFloat(weightValue);
-    if (isNaN(numericValue) || numericValue <= 0 || numericValue > 1000) {
-      Alert.alert('Error', 'Please enter a valid weight value');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+  const onSubmit = async (data: FormData) => {
     try {
-      await addWeightMeasurement({
-        value: numericValue,
-        unit: weightUnit,
-        timestamp: timestamp.getTime(),
-        notes: notes.trim() || null
-      });
+      setIsSubmitting(true);
 
-      // Reset form and navigate directly to log screen without showing success popup
-      setWeightValue('');
-      setNotes('');
-      setTimestamp(new Date());
-      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
+      const weightNumber = parseFloat(data.weight);
+      if (isNaN(weightNumber) || !isFinite(weightNumber)) {
+        Alert.alert("Error", "Please enter a valid number for weight.");
+        return;
+      }
+
+      const readingData = {
+        value: weightNumber,
+        timestamp: timestamp.getTime(),
+        notes: data.notes.trim(),
+      };
+
+      if (route.params?.initailData) {
+        await updateWeightMeasurement(route.params.initailData.id, readingData);
+        Alert.alert("Success", "Weight measurement updated successfully");
+      } else {
+        await addWeightMeasurement(readingData);
+        Alert.alert("Success", "Weight measurement added successfully");
+        reset();
+      }
+
+      navigation.goBack();
     } catch (error) {
-      console.error('Error saving weight measurement:', error);
-      Alert.alert('Error', 'Failed to save weight measurement. Please try again.');
+      console.error("Error saving weight measurement:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save weight measurement"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const showDatepicker = () => {
-    if (showDatePicker) {
-      setShowDatePicker(false);
-    } else {
-      setShowTimePicker(false);
-      setShowDatePicker(true);
-    }
-    Keyboard.dismiss();
-  };
-
-  const showTimepicker = () => {
-    if (showTimePicker) {
-      setShowTimePicker(false);
-    } else {
-      setShowDatePicker(false);
-      setShowTimePicker(true);
-    }
-    Keyboard.dismiss();
-  };
-
-  const confirmIosDate = () => {
-    if (tempDate) {
-      const newDate = new Date(timestamp);
-      newDate.setFullYear(tempDate.getFullYear());
-      newDate.setMonth(tempDate.getMonth());
-      newDate.setDate(tempDate.getDate());
-      setTimestamp(newDate);
-    }
-    setShowDatePicker(false);
-    setTempDate(null);
-  };
-
-  const confirmIosTime = () => {
-    if (tempTime) {
-      const newDate = new Date(timestamp);
-      newDate.setHours(tempTime.getHours());
-      newDate.setMinutes(tempTime.getMinutes());
-      setTimestamp(newDate);
-    }
-    setShowTimePicker(false);
-    setTempTime(null);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true
-    });
-  };
-
-  const dateTimePickerStyle = Platform.OS === 'ios' ? {
-    alignSelf: 'center' as const,
-    marginBottom: SIZES.md,
-    width: '100%' as unknown as number
-  } : {};
-
   return (
     <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
-        // ... KAV props ...
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.select({
+          ios: 90,
+          android: 0,
+          default: 0,
+        })}
+        className="flex-1"
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            // ... ScrollView props ...
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.container}>
-              {/* --- Header --- */}
-              <View style={styles.header}>
-                {/* Back Button with Icon */}
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Return to previous screen"
+                  accessibilityRole="button"
                 >
-                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
+                  <Ionicons
+                    name="arrow-back-outline"
+                    size={24}
+                    color="#2563eb"
+                  />
                 </TouchableOpacity>
-
-                {/* Title Container */}
-                <View style={styles.headerTitleContainer}>
-                   {/* Adjust title text as needed */}
-                  <Text style={styles.title}>Add Weight</Text>
-                </View>
-
-                {/* Spacer */}
-                <View style={styles.headerSpacer} />
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing
+                    ? "Edit Weight Measurement"
+                    : "Add Weight Measurement"}
+                </Text>
+                <View className="w-10" />
               </View>
-              {/* --- End Header --- */}
 
-              <Card variant="elevated" style={styles.inputCard}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Weight (lbs)</Text>
-                  <Input
-                    value={weightValue}
-                    onChangeText={setWeightValue}
-                    placeholder="e.g., 160"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-
-                <View style={styles.dateTimeContainer}>
-                  <Text style={styles.label}>Date & Time</Text>
-                  <View style={styles.dateTimeButtonsContainer}>
-                    <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
-                      <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
-                      <Ionicons 
-                        name="calendar-outline" 
-                        size={18} 
-                        color={COLORS.primary} 
-                        style={styles.dateTimeIcon} 
-                      />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
-                      <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
-                      <Ionicons 
-                        name="time-outline" 
-                        size={18} 
-                        color={COLORS.primary} 
-                        style={styles.dateTimeIcon} 
-                      />
-                    </TouchableOpacity>
-                  </View>
-
-                  {showDatePicker && (
-                    <View style={dateTimePickerStyle}>
-                      <DateTimePicker
-                        value={tempDate || timestamp}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, selectedDate) => {
-                          if (Platform.OS === 'android') {
-                            setShowDatePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const newDate = new Date(timestamp);
-                              newDate.setFullYear(selectedDate.getFullYear());
-                              newDate.setMonth(selectedDate.getMonth());
-                              newDate.setDate(selectedDate.getDate());
-                              setTimestamp(newDate);
-                            }
-                          } else if (selectedDate) {
-                            setTempDate(selectedDate);
-                          }
-                        }}
-                        style={Platform.OS === 'ios' ? { alignSelf: 'center', width: '100%' } : {}}
-                      />
-                      <View style={styles.pickerButtonsContainer}>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => {
-                            setShowDatePicker(false);
-                            setTempDate(null);
-                          }}
-                        >
-                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={confirmIosDate}
-                        >
-                          <Text style={styles.okPickerButtonText}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+              <Card variant="elevated" className="p-4">
+                <Controller
+                  control={control}
+                  rules={{
+                    required: VALIDATION.REQUIRED,
+                    pattern: {
+                      value: /^[0-9]*\.?[0-9]+$/,
+                      message: "Please enter a valid number",
+                    },
+                  }}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label={`Weight ${weightUnit}`}
+                      placeholder={`e.g., ${weightUnit === "(kg)" ? "120" : "160"}`} //erm, this will probably need to be adjusted later :)
+                      keyboardType="decimal-pad"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.weight?.message}
+                      touched={value !== ""}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                    />
                   )}
+                  name="weight"
+                />
 
-                  {showTimePicker && (
-                    <View style={dateTimePickerStyle}>
-                      <DateTimePicker
-                        value={tempTime || timestamp}
-                        mode="time"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, selectedTime) => {
-                          if (Platform.OS === 'android') {
-                            setShowTimePicker(false);
-                            if (event.type === 'set' && selectedTime) {
-                              const newDate = new Date(timestamp);
-                              newDate.setHours(selectedTime.getHours());
-                              newDate.setMinutes(selectedTime.getMinutes());
-                              setTimestamp(newDate);
-                            }
-                          } else if (selectedTime) {
-                            setTempTime(selectedTime);
-                          }
-                        }}
-                        style={Platform.OS === 'ios' ? { alignSelf: 'center', width: '100%' } : {}}
-                      />
-                      <View style={styles.pickerButtonsContainer}>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => {
-                            setShowTimePicker(false);
-                            setTempTime(null);
-                          }}
-                        >
-                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={confirmIosTime}
-                        >
-                          <Text style={styles.okPickerButtonText}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                <DateTimeField
+                  label={"Date & Time"}
+                  timestamp={timestamp}
+                  onChange={setTimestamp}
+                />
+
+                <Controller
+                  control={control}
+                  name="notes"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Notes (Optional)"
+                      placeholder="Add any notes about this reading"
+                      multiline
+                      numberOfLines={3}
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                    />
                   )}
-                </View>
+                />
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Notes (Optional)</Text>
-                  <Input
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Add any additional notes here"
-                    multiline
-                    numberOfLines={4}
-                    inputStyle={styles.notesInput}
-                  />
-                </View>
-
-                <View style={styles.footer}>
+                <View className="flex-row justify-between mt-4">
                   <Button
-                    title="Save Weight Measurement"
-                    onPress={handleSubmit}
-                    disabled={!weightValue || isSubmitting}
+                    title="Cancel"
+                    variant="outline"
+                    onPress={() => navigation.goBack()}
+                    className="flex-1 mr-2"
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    title={isEditing ? "Update" : "Save"}
+                    onPress={handleSubmit(onSubmit)}
                     loading={isSubmitting}
-                    style={styles.saveButton}
+                    disabled={isSubmitting}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
@@ -302,109 +223,8 @@ const AddWeightScreen: React.FC = () => {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-      {/* ... Modals and InputAccessoryView ... */}
     </Container>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SIZES.md,
-    width: '100%',
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  inputContainer: {
-    marginBottom: SIZES.md,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: SIZES.xs,
-  },
-  notesInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  dateTimeContainer: {
-    marginBottom: SIZES.md,
-  },
-  dateTimeButtonsContainer: {
-    flexDirection: 'row',
-    marginTop: SIZES.xs,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.inputBackground,
-    paddingHorizontal: SIZES.sm,
-    paddingVertical: SIZES.sm,
-    borderRadius: SIZES.xs,
-    marginRight: SIZES.sm,
-  },
-  dateTimeText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  dateTimeIcon: {
-    marginLeft: SIZES.xs,
-  },
-  footer: {
-    marginTop: 'auto',
-    marginBottom: SIZES.lg,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-  },
-  pickerButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  pickerButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginHorizontal: 8,
-  },
-  okPickerButton: {
-    backgroundColor: COLORS.primary,
-  },
-  cancelPickerButton: {
-    backgroundColor: '#E0E0E0',
-  },
-  okPickerButtonText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  cancelPickerButtonText: {
-    color: COLORS.text,
-  },
-});
 
 export default AddWeightScreen;

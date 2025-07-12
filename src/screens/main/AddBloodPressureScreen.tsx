@@ -1,354 +1,255 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform, KeyboardAvoidingView, Keyboard, ScrollView, TouchableWithoutFeedback } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useForm, Controller } from 'react-hook-form';
-import { COLORS, SIZES, ROUTES } from '../../constants';
-import { addBloodPressureReading, updateBloodPressureReading } from '../../services/database';
-import Container from '../../components/Container';
-import Input from '../../components/Input';
-import Button from '../../components/Button';
-import { Ionicons } from '@expo/vector-icons';
-import { BloodPressureReading, MainStackParamList } from '../../types';
-import Card from '../../components/Card';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+  Keyboard,
+  ScrollView,
+  TouchableWithoutFeedback,
+} from "react-native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useForm, Controller } from "react-hook-form";
+import { COLORS, SIZES, VALIDATION } from "../../constants";
+import {
+  addBloodPressureReading,
+  updateBloodPressureReading,
+} from "../../services/database";
+import Container from "../../components/Container";
+import Input from "../../components/Input";
+import Button from "../../components/Button";
+import { Ionicons } from "@expo/vector-icons";
+import { BloodPressureReading, MainStackParamList, ROUTES } from "../../types";
+import Card from "../../components/Card";
+import DateTimeField from "../../components/DateTimeField";
 
-type RouteParams = RouteProp<MainStackParamList, 'AddPressure'>;
+type FormData = {
+  systolic: string;
+  diastolic: string;
+  notes: string;
+};
+
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_BP>;
 
 const AddBloodPressureScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const initialData = route?.params?.initialData;
-  const isEditing = !!initialData;
-  
-  const [systolic, setSystolic] = useState(initialData ? initialData.systolic.toString() : '');
-  const [diastolic, setDiastolic] = useState(initialData ? initialData.diastolic.toString() : '');
-  const [notes, setNotes] = useState(initialData?.notes || '');
-  const [timestamp, setTimestamp] = useState(initialData ? new Date(initialData.timestamp) : new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timestamp, setTimestamp] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = route.params?.isEditing;
 
-  // Add temporary date/time state for iOS picker
-  const [tempDate, setTempDate] = useState<Date | null>(null);
-  const [tempTime, setTempTime] = useState<Date | null>(null);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+  } = useForm<FormData>({
+    defaultValues: {
+      systolic: "",
+      diastolic: "",
+      notes: "",
+    },
+  });
 
-  const handleSubmit = async () => {
-    if (!systolic || !diastolic) {
-      Alert.alert('Error', 'Please enter both systolic and diastolic values');
-      return;
+  useEffect(() => {
+    const initialData = route.params?.initialData;
+    if (initialData) {
+      setValue("systolic", initialData.systolic.toString());
+      setValue("diastolic", initialData.diastolic.toString());
+      setTimestamp(new Date(initialData.timestamp));
+      setValue("notes", initialData.notes || "");
     }
+  }, [route.params, setValue]);
 
-    const systolicValue = parseInt(systolic, 10);
-    const diastolicValue = parseInt(diastolic, 10);
-
-    if (isNaN(systolicValue) || systolicValue < 60 || systolicValue > 250) {
-      Alert.alert('Error', 'Please enter a valid systolic value between 60 and 250');
-      return;
-    }
-
-    if (isNaN(diastolicValue) || diastolicValue < 40 || diastolicValue > 150) {
-      Alert.alert('Error', 'Please enter a valid diastolic value between 40 and 150');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+  const onSubmit = async (data: FormData) => {
     try {
-      const readingData = {
-        systolic: systolicValue,
-        diastolic: diastolicValue,
-        timestamp: timestamp.getTime(),
-        notes: notes.trim() || null
-      };
-      
-      if (isEditing && initialData) {
-        // Update existing reading
-        await updateBloodPressureReading(initialData.id, readingData);
-      } else {
-        // Add new reading
-        await addBloodPressureReading(readingData);
+      setIsSubmitting(true);
+
+      const systolicNumber = parseFloat(data.systolic);
+      const diastolicNumber = parseFloat(data.diastolic);
+      if (
+        isNaN(systolicNumber || diastolicNumber) ||
+        !isFinite(systolicNumber || diastolicNumber)
+      ) {
+        Alert.alert("Error", "Please enter valid blood pressure values.");
+        return;
       }
 
-      // Reset form and navigate directly to log screen
-      setSystolic('');
-      setDiastolic('');
-      setNotes('');
-      setTimestamp(new Date());
-      navigation.navigate('SugarLog'); // Navigate to the log screen to see the entry
+      const readingData = {
+        systolic: systolicNumber,
+        diastolic: diastolicNumber,
+        timestamp: timestamp.getTime(),
+        notes: data.notes.trim(),
+      };
+
+      if (route.params?.initialData) {
+        await updateBloodPressureReading(
+          route.params.initialData.id,
+          readingData
+        );
+        Alert.alert("Success", "Blood pressure reading updated successfully");
+      } else {
+        await addBloodPressureReading(readingData);
+        Alert.alert("Success", "Blood pressure reading added successfully");
+        reset();
+      }
+
+      navigation.navigate(ROUTES.BP_LOG);
     } catch (error) {
-      console.error('Error saving blood pressure reading:', error);
-      Alert.alert('Error', 'Failed to save blood pressure reading. Please try again.');
+      console.error("Error saving blood pressure reading:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save blood pressure reading."
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || timestamp;
-    
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    // Preserve the time from the existing timestamp
-    const newDate = new Date(currentDate);
-    newDate.setHours(timestamp.getHours(), timestamp.getMinutes());
-    
-    setTimestamp(newDate);
-  };
-
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || timestamp;
-    
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    
-    // Preserve the date but update the time
-    const newDate = new Date(timestamp);
-    newDate.setHours(currentTime.getHours(), currentTime.getMinutes());
-    
-    setTimestamp(newDate);
-  };
-
-  const showDatepicker = () => {
-    if (showDatePicker) {
-      setShowDatePicker(false);
-    } else {
-      setShowTimePicker(false); // Close time picker if open
-      setShowDatePicker(true);
-    }
-    Keyboard.dismiss();
-  };
-
-  const showTimepicker = () => {
-    if (showTimePicker) {
-      setShowTimePicker(false);
-    } else {
-      setShowDatePicker(false); // Close date picker if open
-      setShowTimePicker(true);
-    }
-    Keyboard.dismiss();
-  };
-
-  const confirmIosDate = () => {
-    if (tempDate) {
-      const newDate = new Date(timestamp);
-      newDate.setFullYear(tempDate.getFullYear());
-      newDate.setMonth(tempDate.getMonth());
-      newDate.setDate(tempDate.getDate());
-      setTimestamp(newDate);
-    }
-    setShowDatePicker(false);
-    setTempDate(null);
-  };
-
-  const confirmIosTime = () => {
-    if (tempTime) {
-      const newDate = new Date(timestamp);
-      newDate.setHours(tempTime.getHours());
-      newDate.setMinutes(tempTime.getMinutes());
-      setTimestamp(newDate);
-    }
-    setShowTimePicker(false);
-    setTempTime(null);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  const dateTimePickerStyle = Platform.OS === 'ios' ? {
-    alignSelf: 'center' as const,
-    marginBottom: SIZES.md,
-    width: '100%' as unknown as number
-  } : {};
-
   return (
     <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.select({
+          ios: 90,
+          android: 0,
+          default: 0,
+        })}
+        className="flex-1"
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1 }}
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.container}>
-              {/* --- Header --- */}
-              <View style={styles.header}>
-                {/* Back Button with Icon */}
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Return to previous screen"
+                  accessibilityRole="button"
                 >
-                  <Ionicons name="arrow-back-outline" size={24} color={COLORS.primary} />
-                </TouchableOpacity>
-
-                {/* Title Container */}
-                <View style={styles.headerTitleContainer}>
-                   {/* Adjust title text as needed */}
-                  <Text style={styles.title}>
-                    {isEditing ? "Edit Blood Pressure" : "Add Blood Pressure"}
-                  </Text>
-                </View>
-
-                {/* Spacer */}
-                <View style={styles.headerSpacer} />
-              </View>
-              {/* --- End Header --- */}
-
-              <Card variant="elevated" style={styles.inputCard}>
-                <View style={styles.bpContainer}>
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Systolic (mmHg)</Text>
-                    <Input
-                      value={systolic}
-                      onChangeText={setSystolic}
-                      placeholder="e.g., 120"
-                      keyboardType="number-pad"
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Diastolic (mmHg)</Text>
-                    <Input
-                      value={diastolic}
-                      onChangeText={setDiastolic}
-                      placeholder="e.g., 80"
-                      keyboardType="number-pad"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.dateTimeContainer}>
-                  <Text style={styles.label}>Date & Time</Text>
-                  <View style={styles.dateTimeButtonsContainer}>
-                    <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
-                      <Text style={styles.dateTimeText}>{formatDate(timestamp)}</Text>
-                      <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
-                      <Text style={styles.dateTimeText}>{formatTime(timestamp)}</Text>
-                      <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.dateTimeIcon} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {showDatePicker && (
-                    <View style={dateTimePickerStyle}>
-                      <DateTimePicker
-                        value={tempDate || timestamp}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, selectedDate) => {
-                          if (Platform.OS === 'android') {
-                            setShowDatePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const newDate = new Date(timestamp);
-                              newDate.setFullYear(selectedDate.getFullYear());
-                              newDate.setMonth(selectedDate.getMonth());
-                              newDate.setDate(selectedDate.getDate());
-                              setTimestamp(newDate);
-                            }
-                          } else if (selectedDate) {
-                            setTempDate(selectedDate);
-                          }
-                        }}
-                      />
-                      <View style={styles.pickerButtonsContainer}>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => {
-                            setShowDatePicker(false);
-                            setTempDate(null);
-                          }}
-                        >
-                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={confirmIosDate}
-                        >
-                          <Text style={styles.okPickerButtonText}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {showTimePicker && (
-                    <View style={dateTimePickerStyle}>
-                      <DateTimePicker
-                        value={tempTime || timestamp}
-                        mode="time"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, selectedTime) => {
-                          if (Platform.OS === 'android') {
-                            setShowTimePicker(false);
-                            if (event.type === 'set' && selectedTime) {
-                              const newDate = new Date(timestamp);
-                              newDate.setHours(selectedTime.getHours());
-                              newDate.setMinutes(selectedTime.getMinutes());
-                              setTimestamp(newDate);
-                            }
-                          } else if (selectedTime) {
-                            setTempTime(selectedTime);
-                          }
-                        }}
-                      />
-                      <View style={styles.pickerButtonsContainer}>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.cancelPickerButton]} 
-                          onPress={() => {
-                            setShowTimePicker(false);
-                            setTempTime(null);
-                          }}
-                        >
-                          <Text style={styles.cancelPickerButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.pickerButton, styles.okPickerButton]} 
-                          onPress={confirmIosTime}
-                        >
-                          <Text style={styles.okPickerButtonText}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Notes (Optional)</Text>
-                  <Input
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Add any additional notes here"
-                    multiline
-                    numberOfLines={4}
-                    inputStyle={styles.notesInput}
+                  <Ionicons
+                    name="arrow-back-outline"
+                    size={24}
+                    color="#2563eb"
                   />
-                </View>
+                </TouchableOpacity>
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing ? "Edit Blood Pressure" : "Add Blood Pressure"}
+                </Text>
+                <View className="w-10" />
+              </View>
 
-                <View style={styles.footer}>
+              <Card variant="elevated" className="p-4">
+                <View className="flex-row space-x-4">
+                  <View className="flex-1 mr-4">
+                    <Controller
+                      control={control}
+                      rules={{
+                        required: VALIDATION.REQUIRED,
+                        pattern: {
+                          value: /^[0-9]*\.?[0-9]+$/,
+                          message: "Please enter a valid number",
+                        },
+                      }}
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <Input
+                          label="Systolic (mmHg)"
+                          placeholder="e.g., 120"
+                          keyboardType="number-pad"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          error={errors.systolic?.message}
+                          touched={value !== ""}
+                          labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                        />
+                      )}
+                      name="systolic"
+                    />
+                  </View>
+
+                  <View className="flex-1">
+                    <Controller
+                      control={control}
+                      rules={{
+                        required: VALIDATION.REQUIRED,
+                        pattern: {
+                          value: /^[0-9]*\.?[0-9]+$/,
+                          message: "Please enter a valid number",
+                        },
+                      }}
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <Input
+                          label="Diastolic (mmHg)"
+                          placeholder="e.g., 80"
+                          keyboardType="number-pad"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          error={errors.diastolic?.message}
+                          touched={value !== ""}
+                          labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                        />
+                      )}
+                      name="diastolic"
+                    />
+                  </View>
+                </View>
+                
+                <DateTimeField
+                  label={"Date & Time"}
+                  timestamp={timestamp}
+                  onChange={setTimestamp}
+                />
+
+                <Controller
+                  control={control}
+                  name="notes"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Notes (Optional)"
+                      placeholder="Add any notes about this reading"
+                      multiline
+                      numberOfLines={3}
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                    />
+                  )}
+                />
+
+                <View className="flex-row justify-between mt-4">
                   <Button
-                    title={isEditing ? "Update Blood Pressure" : "Save Blood Pressure"}
-                    onPress={handleSubmit}
-                    disabled={!systolic || !diastolic || isSubmitting}
+                    title="Cancel"
+                    variant="outline"
+                    onPress={() => navigation.goBack()}
+                    className="flex-1 mr-2"
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    title={isEditing ? "Update" : "Save"}
+                    onPress={handleSubmit(onSubmit)}
                     loading={isSubmitting}
-                    style={styles.saveButton}
+                    disabled={isSubmitting}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
@@ -359,112 +260,5 @@ const AddBloodPressureScreen: React.FC = () => {
     </Container>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SIZES.md,
-    width: '100%',
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  bpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SIZES.md,
-  },
-  inputContainer: {
-    marginBottom: SIZES.md,
-    flex: 1,
-    marginHorizontal: SIZES.xs,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: SIZES.xs,
-  },
-  notesInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  dateTimeContainer: {
-    marginBottom: SIZES.md,
-  },
-  dateTimeButtonsContainer: {
-    flexDirection: 'row',
-    marginTop: SIZES.xs,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.inputBackground,
-    paddingHorizontal: SIZES.sm,
-    paddingVertical: SIZES.sm,
-    borderRadius: SIZES.xs,
-    marginRight: SIZES.sm,
-  },
-  dateTimeText: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginLeft: SIZES.xs,
-  },
-  dateTimeIcon: {
-    marginLeft: SIZES.xs,
-  },
-  footer: {
-    marginTop: 'auto',
-    marginBottom: SIZES.lg,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-  },
-  pickerButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  pickerButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginHorizontal: 8,
-  },
-  okPickerButton: {
-    backgroundColor: COLORS.primary,
-  },
-  cancelPickerButton: {
-    backgroundColor: '#E0E0E0',
-  },
-  okPickerButtonText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  cancelPickerButtonText: {
-    color: COLORS.text,
-  },
-});
 
 export default AddBloodPressureScreen;

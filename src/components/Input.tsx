@@ -1,70 +1,99 @@
-import React from 'react';
-import { 
-  View, 
-  TextInput, 
-  Text, 
-  StyleSheet, 
-  ViewStyle, 
-  TextStyle, 
-  TextInputProps,
+import React from "react";
+import {
+  View,
+  TextInput,
+  Text,
   Platform,
   InputAccessoryView,
   Button,
-  Keyboard
-} from 'react-native';
-import { COLORS, SIZES } from '../constants';
+  Keyboard,
+  TextInputProps,
+  TextStyle,
+  ViewStyle,
+} from "react-native";
+
+import { COLORS, SIZES } from "../constants";
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   touched?: boolean;
+  inputStyle?: TextStyle;
   containerStyle?: ViewStyle;
   labelStyle?: TextStyle;
-  inputStyle?: ViewStyle;
   errorStyle?: TextStyle;
+  className?: string;
+  inputClassName?: string;
+  labelClassName?: string;
+  errorClassName?: string;
 }
 
 const Input: React.FC<InputProps> = ({
   label,
   error,
   touched,
+  inputStyle,
   containerStyle,
   labelStyle,
-  inputStyle,
   errorStyle,
+  className = "",
+  inputClassName = "",
+  labelClassName = "",
+  errorClassName = "",
   inputAccessoryViewID,
   ...props
 }) => {
-  const showError = error && touched;
-  
-  // Generate a unique inputAccessoryViewID if not provided
-  const accessoryViewID = inputAccessoryViewID || `input-${Math.random().toString(36).substring(2, 10)}`;
+  const showError = !!(error && touched);
+  const accessoryViewID =
+    inputAccessoryViewID || `input-${Math.random().toString(36).slice(2, 10)}`;
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      {label && <Text style={[styles.label, labelStyle]}>{label}</Text>}
-      
+    <View className={`mb-4 w-full ${className}`} style={containerStyle}>
+      {label && (
+        <Text
+          className={`text-base text-text font-medium mb-1 ${labelClassName}`}
+          style={labelStyle}
+        >
+          {label}
+        </Text>
+      )}
+
       <TextInput
         style={[
-          styles.input,
-          showError && styles.inputError,
+          {
+            backgroundColor: COLORS.inputBackground,
+            borderColor: showError ? COLORS.error : COLORS.border,
+            borderWidth: 1,
+            borderRadius: SIZES.xs,
+            padding: SIZES.sm,
+            fontSize: 16,
+            color: COLORS.text,
+          },
           inputStyle,
         ]}
+        className={`${inputClassName}`}
         placeholderTextColor={COLORS.lightText}
-        inputAccessoryViewID={Platform.OS === 'ios' ? accessoryViewID : undefined}
+        inputAccessoryViewID={
+          Platform.OS === "ios" ? accessoryViewID : undefined
+        }
         returnKeyType="done"
         {...props}
       />
-      
+
       {showError && (
-        <Text style={[styles.errorText, errorStyle]}>{error}</Text>
+        <Text
+          className={`text-xs text-error mt-1 ${errorClassName}`}
+          style={errorStyle}
+        >
+          {error}
+        </Text>
       )}
 
-      {Platform.OS === 'ios' && (
+      {Platform.OS === "ios" && (
         <InputAccessoryView nativeID={accessoryViewID}>
-          <View style={styles.accessoryContainer}>
+          <View className="bg-gray-100 border-t border-gray-300 p-2 flex-row justify-end">
             <Button
-              onPress={() => Keyboard.dismiss()}
+              onPress={Keyboard.dismiss}
               title="Done"
               color={COLORS.primary}
             />
@@ -74,43 +103,5 @@ const Input: React.FC<InputProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: SIZES.md,
-    width: '100%',
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: SIZES.xs,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  input: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    padding: SIZES.sm,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
-  },
-  inputError: {
-    borderColor: COLORS.error,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  accessoryContainer: {
-    backgroundColor: '#f8f8f8',
-    borderTopWidth: 1,
-    borderTopColor: '#dedede',
-    padding: 8,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-});
 
 export default Input;

@@ -1,68 +1,47 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SIZES } from '../constants';
+import React from "react";
+import { View, TouchableOpacity, ViewProps } from "react-native";
 
-interface CardProps {
+interface CardProps extends ViewProps {
   children: React.ReactNode;
-  variant?: 'default' | 'elevated' | 'outline' | 'flat';
-  style?: any;
+  variant?: "default" | "elevated" | "outline" | "flat";
   onPress?: () => void;
+  className?: string;
 }
 
-const Card: React.FC<CardProps> = ({ 
-  children, 
-  variant = 'default', 
-  style, 
-  onPress 
+const Card: React.FC<CardProps> = ({
+  children,
+  variant = "default",
+  onPress,
+  className = "",
+  ...rest
 }) => {
-  const cardStyle = [
-    styles.card,
-    variant === 'elevated' && styles.elevated,
-    variant === 'outline' && styles.outline,
-    variant === 'flat' && styles.flat,
-    style
-  ];
+  const variantClass = {
+    default: "bg-white",
+    elevated: "bg-white shadow-md",
+    outline: "bg-white border border-gray-300",
+    flat: "bg-white border border-gray-300 shadow-none",
+  }[variant];
+
+  const baseClass = `rounded-md p-4 mb-2 ${variantClass} ${className}`;
 
   if (onPress) {
     return (
       <TouchableOpacity
-        style={cardStyle}
+        className={baseClass}
         onPress={onPress}
         activeOpacity={0.8}
+        {...rest}
       >
         {children}
       </TouchableOpacity>
     );
   }
 
-  return <View style={cardStyle}>{children}</View>;
+  return (
+    <View className={baseClass} {...rest}>
+      {children}
+    </View>
+  );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: SIZES.sm,
-    padding: SIZES.md,
-    marginBottom: SIZES.sm,
-  },
-  elevated: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  outline: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  flat: {
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-});
-
-export default Card; 
+export default Card;

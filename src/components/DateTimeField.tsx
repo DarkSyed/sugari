@@ -60,7 +60,6 @@ const DateTimeField: React.FC<Props> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Date Picker */}
       {Platform.OS === "ios" && showDatePicker && (
         <>
           <DateTimePicker
@@ -89,7 +88,6 @@ const DateTimeField: React.FC<Props> = ({
         />
       )}
 
-      {/* Time Picker */}
       {Platform.OS === "ios" && showTimePicker && (
         <>
           <DateTimePicker

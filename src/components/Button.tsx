@@ -1,14 +1,22 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { COLORS, SIZES } from '../constants';
+import React from "react";
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+} from "react-native";
+import { COLORS } from "../constants";
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
-  size?: 'small' | 'medium' | 'large';
+  variant?: "primary" | "secondary" | "outline" | "danger";
+  size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
+  className?: string;
+  textClassName?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -16,168 +24,75 @@ interface ButtonProps {
 const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
-  variant = 'primary',
-  size = 'medium',
+  variant = "primary",
+  size = "medium",
   disabled = false,
   loading = false,
+  className = "",
+  textClassName = "",
   style,
   textStyle,
 }) => {
-  const getButtonStyle = (): ViewStyle => {
-    let baseStyle: ViewStyle = {
-      borderRadius: SIZES.md,
-      justifyContent: 'center',
-      alignItems: 'center',
-      flexDirection: 'row',
-    };
+  const padding = {
+    small: "py-2 px-4",
+    medium: "py-3 px-5",
+    large: "py-4 px-6",
+  }[size];
 
-    // Size styles
-    switch (size) {
-      case 'small':
-        baseStyle = {
-          ...baseStyle,
-          paddingVertical: SIZES.xs,
-          paddingHorizontal: SIZES.md,
-        };
-        break;
-      case 'large':
-        baseStyle = {
-          ...baseStyle,
-          paddingVertical: SIZES.md,
-          paddingHorizontal: SIZES.lg,
-        };
-        break;
-      case 'medium':
-      default:
-        baseStyle = {
-          ...baseStyle,
-          paddingVertical: SIZES.sm,
-          paddingHorizontal: SIZES.md,
-        };
-        break;
-    }
+  const buttonVariantClass = {
+    primary: "bg-primary",
+    secondary: "bg-secondary", 
+    outline: "border border-primary bg-transparent",
+    danger: "bg-red-600",
+  }[variant];
 
-    // Variant styles
+  const textSize = {
+    small: "text-sm",
+    medium: "text-base",
+    large: "text-lg",
+  }[size];
+
+  const getTextColor = () => {
     switch (variant) {
-      case 'secondary':
-        baseStyle = {
-          ...baseStyle,
-          backgroundColor: COLORS.secondary,
-        };
-        break;
-      case 'outline':
-        baseStyle = {
-          ...baseStyle,
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: COLORS.primary,
-        };
-        break;
-      case 'danger':
-        baseStyle = {
-          ...baseStyle,
-          backgroundColor: COLORS.error,
-        };
-        break;
-      case 'primary':
+      case "outline":
+        return COLORS.primary;
+      case "primary":
+      case "secondary":
+      case "danger":
       default:
-        baseStyle = {
-          ...baseStyle,
-          backgroundColor: COLORS.primary,
-        };
-        break;
+        return "#fff";
     }
-
-    // Disabled style
-    if (disabled) {
-      baseStyle = {
-        ...baseStyle,
-        opacity: 0.5,
-      };
-    }
-
-    return baseStyle;
   };
 
-  const getTextStyle = (): TextStyle => {
-    let baseStyle: TextStyle = {
-      fontWeight: 'bold',
-    };
+  const baseButtonClasses = `rounded-2xl justify-center items-center flex-row min-w-[100px] ${padding} ${buttonVariantClass} ${
+    disabled ? "opacity-50" : ""
+  } ${className}`;
 
-    // Size styles
-    switch (size) {
-      case 'small':
-        baseStyle = {
-          ...baseStyle,
-          fontSize: 14,
-        };
-        break;
-      case 'large':
-        baseStyle = {
-          ...baseStyle,
-          fontSize: 18,
-        };
-        break;
-      case 'medium':
-      default:
-        baseStyle = {
-          ...baseStyle,
-          fontSize: 16,
-        };
-        break;
-    }
-
-    // Variant styles
-    switch (variant) {
-      case 'outline':
-        baseStyle = {
-          ...baseStyle,
-          color: COLORS.primary,
-        };
-        break;
-      case 'primary':
-      case 'secondary':
-      case 'danger':
-      default:
-        baseStyle = {
-          ...baseStyle,
-          color: 'white',
-        };
-        break;
-    }
-
-    return baseStyle;
-  };
+  const baseTextClasses = `font-bold text-center ${textSize} ${textClassName}`;
 
   return (
     <TouchableOpacity
-      style={[styles.button, getButtonStyle(), style]}
+      className={baseButtonClasses}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
+      style={style}
     >
-      {loading ? (
+      {loading && (
         <ActivityIndicator
           size="small"
-          color={variant === 'outline' ? COLORS.primary : 'white'}
-          style={styles.loader}
+          color={variant === "outline" ? COLORS.primary : "#fff"}
+          className="mr-2"
         />
-      ) : null}
-      <Text style={[styles.text, getTextStyle(), textStyle]}>{title}</Text>
+      )}
+      <Text 
+        className={baseTextClasses} 
+        style={[{ color: getTextColor() }, textStyle]}
+      >
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    minWidth: 100,
-  },
-  text: {
-    textAlign: 'center',
-  },
-  loader: {
-    marginRight: 8,
-  },
-});
-
-export default Button; 
+export default Button;

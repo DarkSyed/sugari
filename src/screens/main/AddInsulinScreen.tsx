@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Alert,
   TouchableOpacity,
   Platform,
@@ -17,14 +16,13 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useForm, Controller } from "react-hook-form";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, SIZES, VALIDATION, INSULIN_TYPES } from "../../constants";
-import { useAuth } from "../../contexts/AuthContext";
+import { VALIDATION, INSULIN_TYPES } from "../../constants";
 import { addInsulinDose, updateInsulinDose } from "../../services/database";
 import Container from "../../components/Container";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
-import { MainStackParamList } from "../../types";
+import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
 
 const inputAccessoryViewID = "inputAccessoryViewInsulinScreen";
@@ -35,18 +33,11 @@ type FormData = {
   notes: string;
 };
 
-const INSULIN_TYPE_OPTIONS = [
-  { label: "Rapid Acting", value: "rapid" },
-  { label: "Long Acting", value: "long" },
-  { label: "Mixed", value: "mixed" },
-  { label: "Other", value: "other" },
-];
-
-type RouteParams = RouteProp<MainStackParamList, "AddInsulin">;
+type NavigationProp = StackNavigationProp<MainStackParamList>;
+type RouteParams = RouteProp<MainStackParamList, typeof ROUTES.ADD_INSULIN>;
 
 const AddInsulinScreen: React.FC = () => {
-  const { authState } = useAuth();
-  const navigation = useNavigation<StackNavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
   const [isLoading, setIsLoading] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
@@ -69,22 +60,30 @@ const AddInsulinScreen: React.FC = () => {
   });
 
   useEffect(() => {
-    if (route.params?.initialData) {
-      setValue("units", route.params.initialData.units.toString());
+    const initialData = route.params?.initialData;
+    if (initialData) {
+      setValue("units", initialData.units.toString());
       setValue(
         "insulinType",
-        (route.params.initialData.type || "rapid") as FormData["insulinType"]
+        (initialData.type || "rapid") as FormData["insulinType"]
       );
-      setValue("notes", route.params.initialData.notes || "");
-      setTimestamp(new Date(route.params.initialData.timestamp));
+      setValue("notes", initialData.notes || "");
+      setTimestamp(new Date(initialData.timestamp));
     }
   }, [route.params, setValue]);
 
   const onSubmit = async (data: FormData) => {
     try {
       setIsLoading(true);
+
+      const unitsValue = parseFloat(data.units);
+      if (isNaN(unitsValue) || !isFinite(unitsValue)) {
+        Alert.alert("Error", "Please enter a valid number for units.");
+        return;
+      }
+
       const readingData = {
-        units: parseFloat(data.units),
+        units: unitsValue,
         type: data.insulinType,
         timestamp: timestamp.getTime(),
         notes: data.notes.trim(),
@@ -99,21 +98,28 @@ const AddInsulinScreen: React.FC = () => {
         reset();
       }
 
-      navigation.navigate("SugarLog");
+      navigation.navigate(ROUTES.SUGAR_LOG, {});
     } catch (error) {
       console.error("Error saving insulin dose:", error);
-      Alert.alert("Error", "Failed to save insulin dose. Please try again.");
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to save insulin dose. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const getInsulinTypeLabel = (value: string) => {
-    const insulinType = INSULIN_TYPE_OPTIONS.find((t) => t.value === value);
+    const insulinType = INSULIN_TYPES.find((t) => t.value === value);
     return insulinType ? insulinType.label : "Rapid Acting";
   };
 
   const renderInsulinTypeModal = () => {
+    const currentInsulinType = getValues().insulinType;
+
     return (
       <Modal
         visible={showInsulinTypePicker}
@@ -122,40 +128,54 @@ const AddInsulinScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setShowInsulinTypePicker(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Insulin Type</Text>
-              <TouchableOpacity onPress={() => setShowInsulinTypePicker(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-xl p-4 max-h-[70%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-gray-800">
+                Select Insulin Type
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowInsulinTypePicker(false)}
+                accessibilityLabel="Close insulin type picker"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={24} color="#111827" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.insulinTypeList}>
-              {INSULIN_TYPE_OPTIONS.map((insulinType) => (
-                <TouchableOpacity
-                  key={insulinType.value}
-                  style={[
-                    styles.insulinTypeItem,
-                    getValues().insulinType === insulinType.value &&
-                      styles.selectedInsulinType,
-                  ]}
-                  onPress={() => {
-                    setValue("insulinType", insulinType.value as any);
-                    setShowInsulinTypePicker(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.insulinTypeText,
-                      getValues().insulinType === insulinType.value &&
-                        styles.selectedInsulinTypeText,
-                    ]}
+            <View className="mb-4">
+              {INSULIN_TYPES.map((insulinType) => {
+                const isSelected = currentInsulinType === insulinType.value;
+                return (
+                  <TouchableOpacity
+                    key={insulinType.value}
+                    className={`py-2 px-4 rounded mb-1 ${
+                      isSelected ? "bg-primary/10" : "bg-white"
+                    }`}
+                    onPress={() => {
+                      setValue(
+                        "insulinType",
+                        insulinType.value as FormData["insulinType"]
+                      );
+                      setShowInsulinTypePicker(false);
+                    }}
+                    accessibilityLabel={insulinType.label}
+                    accessibilityHint={
+                      isSelected ? "Currently selected" : "Tap to select"
+                    }
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {insulinType.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      className={`text-base ${
+                        isSelected ? "text-primary font-bold" : "text-gray-800"
+                      }`}
+                    >
+                      {insulinType.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -167,7 +187,7 @@ const AddInsulinScreen: React.FC = () => {
     <Container keyboardAvoiding={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        className="flex-1"
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -176,29 +196,30 @@ const AddInsulinScreen: React.FC = () => {
             bounces={false}
             alwaysBounceVertical={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.scrollViewContent}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           >
-            <View style={styles.container}>
-              <View style={styles.header}>
+            <View className="flex-1 p-4">
+              <View className="flex-row items-center justify-between mb-4 w-full">
                 <TouchableOpacity
-                  style={styles.backButton}
+                  className="p-2"
                   onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Returns to the previous screen"
+                  accessibilityRole="button"
                 >
                   <Ionicons
                     name="arrow-back-outline"
                     size={24}
-                    color={COLORS.primary}
+                    color="#2563eb"
                   />
                 </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.title}>
-                    {isEditing ? "Edit Insulin Dose" : "Add Insulin Dose"}
-                  </Text>
-                </View>
-                <View style={styles.headerSpacer} />
+                <Text className="text-lg font-bold text-gray-800 text-center">
+                  {isEditing ? "Edit Insulin Dose" : "Add Insulin Dose"}
+                </Text>
+                <View className="w-10" />
               </View>
 
-              <Card variant="elevated" style={styles.inputCard}>
+              <Card variant="elevated" className="p-4">
                 <Controller
                   control={control}
                   rules={{
@@ -227,6 +248,7 @@ const AddInsulinScreen: React.FC = () => {
                       inputAccessoryViewID={
                         Platform.OS === "ios" ? inputAccessoryViewID : undefined
                       }
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                   name="units"
@@ -238,22 +260,23 @@ const AddInsulinScreen: React.FC = () => {
                   onChange={setTimestamp}
                 />
 
-                <Text style={styles.label}>Insulin Type</Text>
+                <Text className="text-lg mb-2 text-gray-800 font-medium">
+                  Insulin Type
+                </Text>
                 <Controller
                   control={control}
                   render={({ field: { value } }) => (
                     <TouchableOpacity
-                      style={styles.insulinTypeButton}
+                      className="flex-row justify-between items-center bg-gray-100 rounded border border-gray-300 p-3 mb-4"
                       onPress={() => setShowInsulinTypePicker(true)}
+                      accessibilityLabel={`Selected insulin type: ${getInsulinTypeLabel(value)}`}
+                      accessibilityHint="Opens insulin type selection"
+                      accessibilityRole="button"
                     >
-                      <Text style={styles.insulinTypeButtonText}>
+                      <Text className="text- text-gray-800">
                         {getInsulinTypeLabel(value)}
                       </Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={16}
-                        color={COLORS.text}
-                      />
+                      <Ionicons name="chevron-down" size={16} color="#111827" />
                     </TouchableOpacity>
                   )}
                   name="insulinType"
@@ -270,25 +293,26 @@ const AddInsulinScreen: React.FC = () => {
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      inputStyle={styles.notesInput}
+                      inputStyle={{ height: 80, textAlignVertical: "top" }}
+                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
                     />
                   )}
                   name="notes"
                 />
 
-                <View style={styles.buttonContainer}>
+                <View className="flex-row justify-between mt-4">
                   <Button
                     title="Cancel"
                     variant="outline"
                     onPress={() => navigation.goBack()}
-                    style={styles.cancelButton}
+                    className="flex-1 mr-2"
                   />
                   <Button
                     title={isEditing ? "Update" : "Save"}
                     onPress={handleSubmit(onSubmit)}
                     loading={isLoading}
                     disabled={isLoading}
-                    style={styles.saveButton}
+                    className="flex-1 ml-2"
                   />
                 </View>
               </Card>
@@ -299,12 +323,12 @@ const AddInsulinScreen: React.FC = () => {
       {renderInsulinTypeModal()}
       {Platform.OS === "ios" && (
         <InputAccessoryView nativeID={inputAccessoryViewID}>
-          <View style={styles.keyboardAccessory}>
+          <View className="h-11 bg-gray-100 border-t border-gray-300 flex-row justify-end items-center px-4 w-full">
             <TouchableOpacity
-              style={styles.doneButton}
+              className="p-2"
               onPress={() => Keyboard.dismiss()}
             >
-              <Text style={styles.doneButtonText}>Done</Text>
+              <Text className="text-primary text-base font-semibold">Done</Text>
             </TouchableOpacity>
           </View>
         </InputAccessoryView>
@@ -312,142 +336,5 @@ const AddInsulinScreen: React.FC = () => {
     </Container>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: SIZES.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: SIZES.md,
-    width: "100%",
-  },
-  backButton: {
-    padding: SIZES.xs,
-  },
-  headerTitleContainer: {
-    // No flex needed with space-between and spacer
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  inputCard: {
-    padding: SIZES.md,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: SIZES.xs,
-    color: COLORS.text,
-    fontWeight: "500",
-  },
-  notesInput: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: SIZES.md,
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: SIZES.sm,
-  },
-  saveButton: {
-    flex: 1,
-    marginLeft: SIZES.sm,
-  },
-  insulinTypeButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.xs,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SIZES.sm,
-    marginBottom: SIZES.md,
-  },
-  insulinTypeButtonText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: SIZES.md,
-    borderTopRightRadius: SIZES.md,
-    padding: SIZES.md,
-    maxHeight: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SIZES.md,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  insulinTypeList: {
-    marginBottom: SIZES.md,
-  },
-  insulinTypeItem: {
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.md,
-    borderRadius: SIZES.xs,
-    marginBottom: SIZES.xs,
-    backgroundColor: "white",
-  },
-  selectedInsulinType: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  insulinTypeText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  selectedInsulinTypeText: {
-    color: COLORS.primary,
-    fontWeight: "bold",
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  keyboardAccessory: {
-    height: 44,
-    backgroundColor: "#f8f8f8",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#d8d8d8",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  doneButton: {
-    padding: 8,
-  },
-  doneButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
 
 export default AddInsulinScreen;

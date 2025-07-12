@@ -1,38 +1,38 @@
-import { NavigatorScreenParams } from '@react-navigation/native';
-import { ROUTES } from '../constants';
+import { NavigatorScreenParams } from "@react-navigation/native";
+import { ROUTES } from ".";
+import { CGMBrand } from ".";
 
-// Auth Navigator Param List
 export type AuthParamList = {
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
+  [ROUTES.LOGIN]: undefined;
+  [ROUTES.REGISTER]: undefined;
+  [ROUTES.FORGOT_PASSWORD]: undefined;
 };
 
-// Dashboard Stack Param List
 export type DashboardStackParamList = {
-  Dashboard: undefined;
-  AddGlucose: undefined;
-  Profile: undefined;
-  AddFood: undefined;
-  AddInsulin: undefined;
+  [ROUTES.DASHBOARD]: undefined;
+  [ROUTES.PROFILE]: undefined;
+  [ROUTES.ADD_GLUCOSE]: undefined;
+  [ROUTES.ADD_FOOD]: undefined;
+  [ROUTES.ADD_INSULIN]: undefined;
 };
 
-// Tab Navigator Param List
+export type CGMStackParamList = {
+  [ROUTES.PAIR_CGM]: { brand: CGMBrand };
+};
+
 export type TabParamList = {
-  Home: NavigatorScreenParams<DashboardStackParamList>;
-  Analytics: undefined;
-  Settings: undefined;
+  [ROUTES.HOME]: NavigatorScreenParams<DashboardStackParamList>;
+  [ROUTES.ANALYTICS]: undefined;
+  [ROUTES.SETTINGS]: undefined;
 };
 
-// Root Navigator Param List
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthParamList>;
   Main: NavigatorScreenParams<TabParamList>;
 };
 
-// Declare the navigation types
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}
   }
-} 
+}
