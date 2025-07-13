@@ -1,19 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  TouchableOpacity,
-  Platform,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  ScrollView,
-  Keyboard,
-} from "react-native";
+import { View, Text, Alert, TouchableOpacity } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { COLORS, SIZES, VALIDATION } from "../../constants";
+import { VALIDATION } from "../../constants";
 import { addA1CReading, updateA1CReading } from "../../services/database";
 import Container from "../../components/Container";
 import Input from "../../components/Input";
@@ -23,6 +12,7 @@ import Card from "../../components/Card";
 import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
 import { useForm, Controller } from "react-hook-form";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 type FormData = {
   a1c: string;
@@ -101,123 +91,109 @@ const AddA1CScreen: React.FC = () => {
   };
 
   return (
-    <Container keyboardAvoiding={false}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.select({
-          ios: 90,
-          android: 0,
-          default: 0,
-        })}
-        className="flex-1"
+    <View className="flex-1">
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        keyboardOpeningTime={0}
+        extraScrollHeight={20}
+        showsVerticalScrollIndicator={false}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View className="flex-1 p-4">
-              <View className="flex-row items-center justify-between mb-4 w-full">
-                <TouchableOpacity
-                  className="p-2"
-                  onPress={() => navigation.goBack()}
-                  accessibilityLabel="Go back"
-                  accessibilityHint="Return to previous screen"
-                  accessibilityRole="button"
-                >
-                  <Ionicons
-                    name="arrow-back-outline"
-                    size={24}
-                    color="#2563eb"
-                  />
-                </TouchableOpacity>
-                <Text className="text-lg font-bold text-gray-800 text-center">
-                  {isEditing ? "Edit A1C Reading" : "Add A1C Reading"}
-                </Text>
-                <View className="w-10" />
-              </View>
-
-              <Card variant="elevated" className="p-4">
-                <Controller
-                  control={control}
-                  rules={{
-                    required: VALIDATION.REQUIRED,
-                    pattern: {
-                      value: /^[0-9]*\.?[0-9]+$/,
-                      message: "Please enter a valid number",
-                    },
-                    validate: {
-                      min: (value) =>
-                        parseFloat(value) > 3 || VALIDATION.A1C_MIN,
-                      max: (value) =>
-                        parseFloat(value) <= 20 || VALIDATION.A1C_MAX,
-                    },
-                  }}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="A1C Value (%)"
-                      placeholder="e.g., 7.2"
-                      keyboardType="decimal-pad"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      error={errors.a1c?.message}
-                      touched={value !== ""}
-                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
-                    />
-                  )}
-                  name="a1c"
-                />
-
-                <DateTimeField
-                  label={"Date & Time"}
-                  timestamp={timestamp}
-                  onChange={setTimestamp}
-                />
-
-                <Controller
-                  control={control}
-                  name="notes"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Notes (Optional)"
-                      placeholder="Add any notes about this reading"
-                      multiline
-                      numberOfLines={3}
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      inputStyle={{ height: 80, textAlignVertical: "top" }}
-                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
-                    />
-                  )}
-                />
-
-                <View className="flex-row justify-between mt-4">
-                  <Button
-                    title="Cancel"
-                    variant="outline"
-                    onPress={() => navigation.goBack()}
-                    className="flex-1 mr-2"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    title={isEditing ? "Update" : "Save"}
-                    onPress={handleSubmit(onSubmit)}
-                    loading={isLoading}
-                    disabled={isLoading}
-                    className="flex-1 ml-2"
-                  />
-                </View>
-              </Card>
+        <Container keyboardAvoiding={false}>
+          <View className="flex-1 p-4">
+            <View className="flex-row items-center justify-between mb-4 w-full">
+              <TouchableOpacity
+                className="p-2"
+                onPress={() => navigation.goBack()}
+                accessibilityLabel="Go back"
+                accessibilityHint="Return to previous screen"
+                accessibilityRole="button"
+              >
+                <Ionicons name="arrow-back-outline" size={24} color="#2563eb" />
+              </TouchableOpacity>
+              <Text className="text-lg font-bold text-gray-800 text-center">
+                {isEditing ? "Edit A1C Reading" : "Add A1C Reading"}
+              </Text>
+              <View className="w-10" />
             </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </Container>
+
+            <Card variant="elevated" className="p-4">
+              <Controller
+                control={control}
+                rules={{
+                  required: VALIDATION.REQUIRED,
+                  pattern: {
+                    value: /^[0-9]*\.?[0-9]+$/,
+                    message: "Please enter a valid number",
+                  },
+                  validate: {
+                    min: (value) => parseFloat(value) > 3 || VALIDATION.A1C_MIN,
+                    max: (value) =>
+                      parseFloat(value) <= 20 || VALIDATION.A1C_MAX,
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="A1C Value (%)"
+                    placeholder="e.g., 7.2"
+                    keyboardType="decimal-pad"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.a1c?.message}
+                    touched={value !== ""}
+                    labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                  />
+                )}
+                name="a1c"
+              />
+
+              <DateTimeField
+                label={"Date & Time"}
+                timestamp={timestamp}
+                onChange={setTimestamp}
+              />
+
+              <Controller
+                control={control}
+                name="notes"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Notes (Optional)"
+                    placeholder="Add any notes about this reading"
+                    multiline
+                    numberOfLines={3}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    inputStyle={{ height: 80, textAlignVertical: "top" }}
+                    labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                  />
+                )}
+              />
+
+              <View className="flex-row justify-between mt-4">
+                <Button
+                  title="Cancel"
+                  variant="outline"
+                  onPress={() => navigation.goBack()}
+                  className="flex-1 mr-2"
+                  disabled={isLoading}
+                />
+                <Button
+                  title={isEditing ? "Update" : "Save"}
+                  onPress={handleSubmit(onSubmit)}
+                  loading={isLoading}
+                  disabled={isLoading}
+                  className="flex-1 ml-2"
+                />
+              </View>
+            </Card>
+          </View>
+        </Container>
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 

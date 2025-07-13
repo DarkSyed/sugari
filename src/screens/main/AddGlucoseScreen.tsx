@@ -1,20 +1,9 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  Alert,
-  TouchableOpacity,
-  Platform,
-  Modal,
-  Keyboard,
-  KeyboardAvoidingView,
-  ScrollView,
-  InputAccessoryView,
-  TouchableWithoutFeedback,
-} from "react-native";
+import { View, Text, Alert, TouchableOpacity, Platform } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useForm, Controller } from "react-hook-form";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import {
   COLORS,
   VALIDATION,
@@ -33,6 +22,7 @@ import Card from "../../components/Card";
 import { Ionicons } from "@expo/vector-icons";
 import { MainStackParamList, ROUTES } from "../../types";
 import DateTimeField from "../../components/DateTimeField";
+import SelectionModal from "../../components/SelectionModal";
 
 const inputAccessoryViewID = "inputAccessoryViewGlucoseScreen";
 
@@ -50,7 +40,6 @@ const AddGlucoseScreen: React.FC = () => {
   const route = useRoute<RouteParams>();
   const [isLoading, setIsLoading] = useState(false);
   const [showMealContextPicker, setShowMealContextPicker] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [timestamp, setTimestamp] = useState(new Date());
   const isEditing = route.params?.isEditing;
 
@@ -68,21 +57,6 @@ const AddGlucoseScreen: React.FC = () => {
       notes: "",
     },
   });
-
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => setKeyboardVisible(true)
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => setKeyboardVisible(false)
-    );
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
 
   useEffect(() => {
     const initialData = route.params?.initialData;
@@ -150,241 +124,162 @@ const AddGlucoseScreen: React.FC = () => {
     return context ? context.label : "Before Meal";
   };
 
-  const renderMealContextModal = () => {
-    const currentMealContext = getValues().mealContext;
-
-    return (
-      <Modal
-        visible={showMealContextPicker}
-        transparent
-        statusBarTranslucent
-        animationType="slide"
-        onRequestClose={() => setShowMealContextPicker(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-xl p-4 max-h-[70%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-grey-800">
-                Select Meal Context
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowMealContextPicker(false)}
-                accessibilityLabel="Close meal context picker"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-            <View className="mb-4">
-              {MEAL_CONTEXTS.map((context) => {
-                const isSelected = currentMealContext === context.value;
-                return (
-                  <TouchableOpacity
-                    key={context.value}
-                    className={`py-2 px-4 rounded mb-1 ${
-                      isSelected ? "bg-primary/10" : "bg-white"
-                    }`}
-                    onPress={() => {
-                      setValue(
-                        "mealContext",
-                        context.value as FormData["mealContext"]
-                      );
-                      setShowMealContextPicker(false);
-                    }}
-                    accessibilityLabel={context.label}
-                    accessibilityHint={
-                      isSelected ? "Currently selected" : "Tap to select"
-                    }
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                  >
-                    <Text
-                      className={`text-base ${
-                        isSelected ? "text-primary font-bold" : "text-gray-800"
-                      }`}
-                    >
-                      {context.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
+  const handleMealSelect = (value: string) => {
+    setValue("mealContext", value as FormData["mealContext"]);
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1"
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Container keyboardAvoiding={false}>
-            <View className="flex-1 p-4">
-              <View className="flex-row items-center justify-between mb-4 w-full">
+    <View className="flex-1">
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        keyboardOpeningTime={0}
+        extraScrollHeight={20}
+        showsVerticalScrollIndicator={false}
+      >
+        <Container keyboardAvoiding={false}>
+          <View className="flex-1 p-4">
+            <View className="flex-row items-center justify-between mb-4 w-full">
+              <TouchableOpacity
+                className="p-2"
+                onPress={() => navigation.goBack()}
+                accessibilityLabel="Go back"
+                accessibilityHint="Returns to previous screen"
+                accessibilityRole="button"
+              >
+                <Ionicons name="arrow-back-outline" size={24} color="#2563eb" />
+              </TouchableOpacity>
+              <Text className="text-lg font-bold text-gray-800 text-center">
+                {isEditing ? "Edit Blood Sugar" : "Add Blood Sugar"}
+              </Text>
+              <View className="w-10" />
+            </View>
+
+            <Card variant="elevated" className="p-4">
+              <Controller
+                control={control}
+                rules={{
+                  required: VALIDATION.REQUIRED,
+                  pattern: {
+                    value: /^[0-9]+$/,
+                    message: "Please enter a valid number",
+                  },
+                  validate: {
+                    min: (value) =>
+                      parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
+                    max: (value) =>
+                      parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
+                  },
+                }}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <View className="flex-row items-end mb-4">
+                    <View className="flex-1">
+                      <Input
+                        label="Blood Glucose"
+                        placeholder="Enter value"
+                        keyboardType="numeric"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors.value?.message}
+                        touched={value !== ""}
+                        containerStyle={{ marginBottom: 0 }}
+                        inputAccessoryViewID={
+                          Platform.OS === "ios"
+                            ? inputAccessoryViewID
+                            : undefined
+                        }
+                        labelStyle={{ fontWeight: 500, fontSize: 16 }}
+                      />
+                    </View>
+                    <View className="flex-shrink-0 ml-3 items-end pb-2.5 max-w-[80px]">
+                      <Text
+                        className="text-2xl font-bold"
+                        style={{ color: getStatusColor(value) }}
+                        numberOfLines={1}
+                      >
+                        {value || "---"}
+                      </Text>
+                      <Text className="text-sm text-gray-500">mg/dL</Text>
+                    </View>
+                  </View>
+                )}
+                name="value"
+              />
+
+              <DateTimeField
+                label={"Date & Time"}
+                timestamp={timestamp}
+                onChange={setTimestamp}
+              />
+
+              <View className="mb-4">
+                <Text className="text-lg mb-2 text-gray-800 font-medium">
+                  Meal Context
+                </Text>
                 <TouchableOpacity
-                  className="p-2"
-                  onPress={() => navigation.goBack()}
-                  accessibilityLabel="Go back"
-                  accessibilityHint="Returns to previous screen"
+                  className="flex-row justify-between items-center bg-gray-100 rounded border border-gray-300 p-3"
+                  onPress={() => setShowMealContextPicker(true)}
+                  accessibilityLabel={`Selected meal context: ${getMealContextLabel(getValues().mealContext)}`}
+                  accessibilityHint="Opens meal context selection"
                   accessibilityRole="button"
                 >
-                  <Ionicons
-                    name="arrow-back-outline"
-                    size={24}
-                    color="#2563eb"
-                  />
+                  <Text className="text-base text-gray-800">
+                    {getMealContextLabel(getValues().mealContext)}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#111827" />
                 </TouchableOpacity>
-                <Text className="text-lg font-bold text-gray-800 text-center">
-                  {isEditing ? "Edit Blood Sugar" : "Add Blood Sugar"}
-                </Text>
-                <View className="w-10" />
               </View>
 
-              <Card variant="elevated" className="p-4">
-                <Controller
-                  control={control}
-                  rules={{
-                    required: VALIDATION.REQUIRED,
-                    pattern: {
-                      value: /^[0-9]+$/,
-                      message: "Please enter a valid number",
-                    },
-                    validate: {
-                      min: (value) =>
-                        parseFloat(value) >= 40 || VALIDATION.SUGAR_MIN,
-                      max: (value) =>
-                        parseFloat(value) <= 400 || VALIDATION.SUGAR_MAX,
-                    },
-                  }}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <View className="flex-row items-end mb-4">
-                      <View className="flex-1">
-                        <Input
-                          label="Blood Glucose"
-                          placeholder="Enter value"
-                          keyboardType="numeric"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          error={errors.value?.message}
-                          touched={value !== ""}
-                          containerStyle={{ marginBottom: 0 }}
-                          inputAccessoryViewID={
-                            Platform.OS === "ios"
-                              ? inputAccessoryViewID
-                              : undefined
-                          }
-                          labelStyle={{ fontWeight: 500, fontSize: 16 }}
-                        />
-                      </View>
-                      <View className="flex-shrink-0 ml-3 items-end pb-2.5 max-w-[80px]">
-                        <Text
-                          className="text-2xl font-bold"
-                          style={{ color: getStatusColor(value) }}
-                          numberOfLines={1}
-                        >
-                          {value || "---"}
-                        </Text>
-                        <Text className="text-sm text-gray-500">mg/dL</Text>
-                      </View>
-                    </View>
-                  )}
-                  name="value"
-                />
-
-                <DateTimeField
-                  label={"Date & Time"}
-                  timestamp={timestamp}
-                  onChange={setTimestamp}
-                />
-
-                <View className="mb-4">
-                  <Text className="text-lg mb-2 text-gray-800 font-medium">
-                    Meal Context
-                  </Text>
-                  <TouchableOpacity
-                    className="flex-row justify-between items-center bg-gray-100 rounded border border-gray-300 p-3"
-                    onPress={() => setShowMealContextPicker(true)}
-                    accessibilityLabel={`Selected meal context: ${getMealContextLabel(getValues().mealContext)}`}
-                    accessibilityHint="Opens meal context selection"
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-base text-gray-800">
-                      {getMealContextLabel(getValues().mealContext)}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color="#111827" />
-                  </TouchableOpacity>
-                </View>
-
-                <Controller
-                  control={control}
-                  name="notes"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Notes (Optional)"
-                      placeholder="Add any notes about this reading"
-                      multiline
-                      numberOfLines={3}
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      inputStyle={{ height: 80, textAlignVertical: "top" }}
-                      labelStyle={{ fontWeight: 500, fontSize: 16 }}
-                    />
-                  )}
-                />
-
-                <View className="flex-row justify-between mt-4">
-                  <Button
-                    title="Cancel"
-                    variant="outline"
-                    onPress={() => navigation.goBack()}
-                    className="flex-1 mr-2"
-                    disabled={isLoading}
+              <Controller
+                control={control}
+                name="notes"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Notes (Optional)"
+                    placeholder="Add any notes about this reading"
+                    multiline
+                    numberOfLines={3}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    inputStyle={{ height: 80, textAlignVertical: "top" }}
+                    labelStyle={{ fontWeight: 500, fontSize: 16 }}
                   />
-                  <Button
-                    title={isEditing ? "Update" : "Save"}
-                    onPress={handleSubmit(onSubmit)}
-                    loading={isLoading}
-                    disabled={isLoading}
-                    className="flex-1 ml-2"
-                  />
-                </View>
-              </Card>
-            </View>
-            {renderMealContextModal()}
-            
-            {Platform.OS === "ios" && (
-              <InputAccessoryView nativeID={inputAccessoryViewID}>
-                <View className="h-11 bg-gray-100 border-t border-gray-300 flex-row justify-end items-center px-4 w-full">
-                  <TouchableOpacity
-                    className="p-2"
-                    onPress={() => Keyboard.dismiss()}
-                    accessibilityLabel="Dismiss keyboard"
-                    accessibilityRole="button"
-                  >
-                    <Text className="text-primary text-base font-semibold">
-                      Done
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </InputAccessoryView>
-            )}
-          </Container>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+                )}
+              />
+
+              <View className="flex-row justify-between mt-4">
+                <Button
+                  title="Cancel"
+                  variant="outline"
+                  onPress={() => navigation.goBack()}
+                  className="flex-1 mr-2"
+                  disabled={isLoading}
+                />
+                <Button
+                  title={isEditing ? "Update" : "Save"}
+                  onPress={handleSubmit(onSubmit)}
+                  loading={isLoading}
+                  disabled={isLoading}
+                  className="flex-1 ml-2"
+                />
+              </View>
+            </Card>
+          </View>
+
+          <SelectionModal
+            visible={showMealContextPicker}
+            onClose={() => setShowMealContextPicker(false)}
+            title="Select Meal Context"
+            options={MEAL_CONTEXTS}
+            selectedValue={getValues().mealContext}
+            onSelect={handleMealSelect}
+          />
+        </Container>
+      </KeyboardAwareScrollView>
+    </View>
   );
 };
 
