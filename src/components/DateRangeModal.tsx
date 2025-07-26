@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Modal, 
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
   TouchableOpacity,
-  Platform
-} from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../constants';
-import Button from './Button';
+  Platform,
+} from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES } from "../constants";
+import Button from "./Button";
 
 interface DateRangeModalProps {
   visible: boolean;
@@ -18,33 +18,35 @@ interface DateRangeModalProps {
   onApply: (startDate: Date, endDate: Date) => void;
 }
 
-const DateRangeModal: React.FC<DateRangeModalProps> = ({ 
-  visible, 
-  onClose, 
-  onApply 
+const DateRangeModal: React.FC<DateRangeModalProps> = ({
+  visible,
+  onClose,
+  onApply,
 }) => {
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)); // Default to 30 days ago
+  const [startDate, setStartDate] = useState(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+  ); // Default to 30 days ago
   const [endDate, setEndDate] = useState(new Date());
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || startDate;
-    setShowStartPicker(Platform.OS === 'ios');
+    setShowStartPicker(Platform.OS === "ios");
     setStartDate(currentDate);
   };
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || endDate;
-    setShowEndPicker(Platform.OS === 'ios');
+    setShowEndPicker(Platform.OS === "ios");
     setEndDate(currentDate);
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -86,20 +88,20 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
           <View style={styles.quickSelectContainer}>
             <Text style={styles.sectionTitle}>Quick Select</Text>
             <View style={styles.quickSelectButtons}>
-              <TouchableOpacity 
-                style={styles.quickSelectButton} 
+              <TouchableOpacity
+                style={styles.quickSelectButton}
                 onPress={() => handleQuickSelect(7)}
               >
                 <Text style={styles.quickSelectText}>Last 7 days</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickSelectButton} 
+              <TouchableOpacity
+                style={styles.quickSelectButton}
                 onPress={() => handleQuickSelect(30)}
               >
                 <Text style={styles.quickSelectText}>Last 30 days</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.quickSelectButton} 
+              <TouchableOpacity
+                style={styles.quickSelectButton}
                 onPress={() => handleQuickSelect(90)}
               >
                 <Text style={styles.quickSelectText}>Last 90 days</Text>
@@ -109,15 +111,19 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 
           <View style={styles.dateSelectionContainer}>
             <Text style={styles.sectionTitle}>Custom Range</Text>
-            
+
             <View style={styles.datePickerRow}>
               <Text style={styles.dateLabel}>Start Date:</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.datePickerButton}
                 onPress={() => setShowStartPicker(true)}
               >
                 <Text style={styles.dateText}>{formatDate(startDate)}</Text>
-                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -125,7 +131,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
               <DateTimePicker
                 value={startDate}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={handleStartDateChange}
                 maximumDate={new Date()}
               />
@@ -133,12 +139,16 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 
             <View style={styles.datePickerRow}>
               <Text style={styles.dateLabel}>End Date:</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.datePickerButton}
                 onPress={() => setShowEndPicker(true)}
               >
                 <Text style={styles.dateText}>{formatDate(endDate)}</Text>
-                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -146,7 +156,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
               <DateTimePicker
                 value={endDate}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={handleEndDateChange}
                 maximumDate={new Date()}
                 minimumDate={startDate}
@@ -155,17 +165,13 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
           </View>
 
           <View style={styles.buttonContainer}>
-            <Button 
-              title="Cancel" 
+            <Button
+              title="Cancel"
               variant="outline"
-              onPress={onClose} 
+              onPress={onClose}
               style={styles.button}
             />
-            <Button 
-              title="Apply" 
-              onPress={handleApply} 
-              style={styles.button}
-            />
+            <Button title="Apply" onPress={handleApply} style={styles.button} />
           </View>
         </View>
       </View>
@@ -176,25 +182,25 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: SIZES.lg,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   closeButton: {
@@ -205,13 +211,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: SIZES.sm,
   },
   quickSelectButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   quickSelectButton: {
     backgroundColor: COLORS.cardBackground,
@@ -223,25 +229,25 @@ const styles = StyleSheet.create({
   },
   quickSelectText: {
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   dateSelectionContainer: {
     marginBottom: SIZES.lg,
   },
   datePickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: SIZES.md,
   },
   dateLabel: {
     fontSize: 16,
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   datePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.cardBackground,
     paddingVertical: SIZES.sm,
     paddingHorizontal: SIZES.md,
@@ -254,8 +260,8 @@ const styles = StyleSheet.create({
     marginRight: SIZES.sm,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   button: {
     flex: 1,

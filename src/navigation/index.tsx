@@ -1,46 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants';
-import { ROUTES } from '../types';
-import { useApp } from '../contexts/AppContext';
+import React, { useEffect, useState } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
+import { ROUTES } from "@/types";
+import { useApp } from "@/contexts/AppContext";
 
-// Splash Screen
-import SplashScreen from '../screens/SplashScreen';
+import SplashScreen from "@/screens/main/SplashScreen";
+import DashboardScreen from "@/screens/main/DashboardScreen";
+import AddGlucoseScreen from "@/screens/main/AddGlucoseScreen";
+import AddFoodScreen from "@/screens/main/AddFoodScreen";
+import AddInsulinScreen from "@/screens/main/AddInsulinScreen";
+import ProfileScreen from "@/screens/main/ProfileScreen";
+import SugarLogScreen from "@/screens/main/SugarLogScreen";
+import MedicationScreen from "@/screens/main/MedicationScreen";
+import AnalyticsScreen from "@/screens/main/AnalyticsScreen";
+import SettingsScreen from "@/screens/main/SettingsScreen";
+import AddA1CScreen from "@/screens/main/AddA1CScreen";
+import AddWeightScreen from "@/screens/main/AddWeightScreen";
+import AddBloodPressureScreen from "@/screens/main/AddBloodPressureScreen";
+import BloodPressureLogScreen from "@/screens/main/BloodPressureLogScreen";
+import ReportScreen from "@/screens/main/ReportScreen";
+import RemindersScreen from "@/screens/main/RemindersScreen";
+import AddReminderScreen from "@/screens/main/AddReminderScreen";
+import FeatureRequestScreen from "@/screens/main/FeatureRequestScreen";
 
-// Main Screens
-import DashboardScreen from '../screens/main/DashboardScreen';
-import AddGlucoseScreen from '../screens/main/AddGlucoseScreen';
-import AddFoodScreen from '../screens/main/AddFoodScreen';
-import AddInsulinScreen from '../screens/main/AddInsulinScreen';
-import ProfileScreen from '../screens/main/ProfileScreen';
-import SugarLogScreen from '../screens/main/SugarLogScreen';
-import MedicationScreen from '../screens/main/MedicationScreen';
-import AnalyticsScreen from '../screens/main/AnalyticsScreen';
-import SettingsScreen from '../screens/main/SettingsScreen';
-import AddA1CScreen from '../screens/main/AddA1CScreen';
-import AddWeightScreen from '../screens/main/AddWeightScreen';
-import AddBloodPressureScreen from '../screens/main/AddBloodPressureScreen';
-import BloodPressureLogScreen from '../screens/main/BloodPressureLogScreen';
-import ReportScreen from '../screens/main/ReportScreen';
-import RemindersScreen from '../screens/main/RemindersScreen';
-import AddReminderScreen from '../screens/main/AddReminderScreen';
-import FeatureRequestScreen from '../screens/main/FeatureRequestScreen';
+import QuickActionMenu from "@/components/QuickActionMenu";
 
-// Create navigators
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Dashboard navigator
 const DashboardStack = () => {
   return (
     <Stack.Navigator
       initialRouteName={ROUTES.DASHBOARD}
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'white' },
+        contentStyle: { backgroundColor: "white" },
       }}
     >
       <Stack.Screen name={ROUTES.DASHBOARD} component={DashboardScreen} />
@@ -53,7 +50,10 @@ const DashboardStack = () => {
       <Stack.Screen name={ROUTES.ADD_WEIGHT} component={AddWeightScreen} />
       <Stack.Screen name={ROUTES.ADD_BP} component={AddBloodPressureScreen} />
       <Stack.Screen name={ROUTES.BP_LOG} component={BloodPressureLogScreen} />
-      <Stack.Screen name={ROUTES.FEATURE_REQUESTS} component={FeatureRequestScreen} />
+      <Stack.Screen
+        name={ROUTES.FEATURE_REQUESTS}
+        component={FeatureRequestScreen}
+      />
       <Stack.Screen name={ROUTES.REMINDERS} component={RemindersScreen} />
       <Stack.Screen name={ROUTES.REPORT} component={ReportScreen} />
       <Stack.Screen name={ROUTES.ADD_REMINDER} component={AddReminderScreen} />
@@ -61,14 +61,13 @@ const DashboardStack = () => {
   );
 };
 
-// SugarLog navigator
 const SugarLogStack = () => {
   return (
     <Stack.Navigator
       initialRouteName={ROUTES.SUGAR_LOG}
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'white' },
+        contentStyle: { backgroundColor: "white" },
       }}
     >
       <Stack.Screen name={ROUTES.SUGAR_LOG} component={SugarLogScreen} />
@@ -83,14 +82,13 @@ const SugarLogStack = () => {
   );
 };
 
-// Medication navigator
 const MedicationStack = () => {
   return (
     <Stack.Navigator
       initialRouteName={ROUTES.MEDICATION}
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: 'white' },
+        contentStyle: { backgroundColor: "white" },
       }}
     >
       <Stack.Screen name={ROUTES.MEDICATION} component={MedicationScreen} />
@@ -99,42 +97,44 @@ const MedicationStack = () => {
   );
 };
 
-// Main Tab Navigator
 const TabNavigator = () => {
   return (
     <Tab.Navigator
       initialRouteName={ROUTES.HOME}
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+        tabBarIcon: ({ color }) => {
+          const icons = {
+            [ROUTES.HOME]: "home-outline",
+            [ROUTES.SUGAR_LOG]: "bar-chart-outline",
+            [ROUTES.ANALYTICS]: "analytics-outline",
+            [ROUTES.SETTINGS]: "ellipsis-horizontal",
+          };
 
-          if (route.name === ROUTES.HOME) {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === ROUTES.SUGAR_LOG) {
-            iconName = focused ? 'analytics' : 'analytics-outline';
-          } else if (route.name === ROUTES.MEDICATION) {
-            iconName = focused ? 'medkit' : 'medkit-outline';
-          } else if (route.name === ROUTES.ANALYTICS) {
-            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-          } else if (route.name === ROUTES.SETTINGS) {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
+          const iconName =
+            icons[route.name as keyof typeof icons] || "help-circle-outline";
 
-          return <Ionicons name={iconName as any} size={size} color={color} />;
+          return (
+            <Ionicons
+              name={iconName as keyof typeof Ionicons.glyphMap}
+              size={24}
+              color={color}
+            />
+          );
         },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.lightText,
+        tabBarActiveTintColor: "#90D5FF",
+        tabBarInactiveTintColor: "#cacaca",
         tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: COLORS.border,
+          borderTopWidth: 0.3,
+          backgroundColor: "#111827",
+          borderColor: "#35383b",
           paddingBottom: 5,
           paddingTop: 5,
-          height: 60,
+          height: 70,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          paddingBottom: 4,
+          fontSize: 11,
+          paddingBottom: 5,
         },
       })}
     >
@@ -142,51 +142,56 @@ const TabNavigator = () => {
         name={ROUTES.HOME}
         component={DashboardStack}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: "Home",
         }}
       />
       <Tab.Screen
         name={ROUTES.SUGAR_LOG}
         component={SugarLogStack}
         options={{
-          tabBarLabel: 'Sugar',
+          tabBarLabel: "My Data",
         }}
       />
       <Tab.Screen
-        name={ROUTES.MEDICATION}
-        component={MedicationStack}
+        name="QuickAction"
         options={{
-          tabBarLabel: 'Medication',
+          tabBarLabel: "",
+          tabBarIcon: () => null,
+          tabBarButton: (props) => (
+            <View className="flex-1 justify-center items-center -mt-3">
+              <QuickActionMenu />
+            </View>
+          ),
         }}
-      />
+      >
+        {() => null}
+      </Tab.Screen>
       <Tab.Screen
         name={ROUTES.ANALYTICS}
         component={AnalyticsScreen}
         options={{
-          tabBarLabel: 'Analytics',
+          tabBarLabel: "Insights",
         }}
       />
       <Tab.Screen
         name={ROUTES.SETTINGS}
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Settings',
+          tabBarLabel: "More",
         }}
       />
     </Tab.Navigator>
   );
 };
 
-// Root Navigator
 const AppNavigator = () => {
   const { isLoading } = useApp();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Show splash screen only for the minimum time needed
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 500); // Reduced from 2000ms to 500ms
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -202,4 +207,4 @@ const AppNavigator = () => {
   );
 };
 
-export default AppNavigator; 
+export default AppNavigator;

@@ -4,11 +4,11 @@
  * @returns Formatted date string
  */
 export const formatDate = (date: Date | number): string => {
-  const d = typeof date === 'number' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
+  const d = typeof date === "number" ? new Date(date) : date;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 };
 
@@ -18,11 +18,11 @@ export const formatDate = (date: Date | number): string => {
  * @returns Formatted time string
  */
 export const formatTime = (date: Date | number): string => {
-  const d = typeof date === 'number' ? new Date(date) : date;
-  return d.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
+  const d = typeof date === "number" ? new Date(date) : date;
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 };
 
@@ -32,7 +32,7 @@ export const formatTime = (date: Date | number): string => {
  * @returns Formatted date and time string
  */
 export const formatDateTime = (date: Date | number): string => {
-  const d = typeof date === 'number' ? new Date(date) : date;
+  const d = typeof date === "number" ? new Date(date) : date;
   return `${formatDate(d)} at ${formatTime(d)}`;
 };
 
@@ -43,7 +43,7 @@ export const formatDateTime = (date: Date | number): string => {
  */
 export const getRelativeTimeString = (date: Date | number): string => {
   const now = new Date();
-  const d = typeof date === 'number' ? new Date(date) : date;
+  const d = typeof date === "number" ? new Date(date) : date;
   const diffMs = now.getTime() - d.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
@@ -51,13 +51,13 @@ export const getRelativeTimeString = (date: Date | number): string => {
   const diffDay = Math.floor(diffHour / 24);
 
   if (diffSec < 60) {
-    return 'Just now';
+    return "Just now";
   } else if (diffMin < 60) {
-    return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+    return `${diffMin} minute${diffMin !== 1 ? "s" : ""} ago`;
   } else if (diffHour < 24) {
-    return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
+    return `${diffHour} hour${diffHour !== 1 ? "s" : ""} ago`;
   } else if (diffDay < 2) {
-    return 'Yesterday';
+    return "Yesterday";
   } else if (diffDay < 7) {
     return `${diffDay} days ago`;
   } else {
@@ -140,4 +140,4 @@ export const dateToTimestamp = (date: Date): number => {
  */
 export const timestampToDate = (timestamp: number): Date => {
   return new Date(timestamp);
-}; 
+};

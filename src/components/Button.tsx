@@ -41,7 +41,7 @@ const Button: React.FC<ButtonProps> = ({
 
   const buttonVariantClass = {
     primary: "bg-primary",
-    secondary: "bg-secondary", 
+    secondary: "bg-secondary",
     outline: "border border-primary bg-transparent",
     danger: "bg-red-600",
   }[variant];
@@ -85,8 +85,8 @@ const Button: React.FC<ButtonProps> = ({
           className="mr-2"
         />
       )}
-      <Text 
-        className={baseTextClasses} 
+      <Text
+        className={baseTextClasses}
         style={[{ color: getTextColor() }, textStyle]}
       >
         {title}

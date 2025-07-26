@@ -1,21 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { COLORS, SIZES, APP_NAME } from '../constants';
+import React from "react";
+import { View, Text, StyleSheet, Image, ActivityIndicator } from "react-native";
+import { COLORS, SIZES, APP_NAME } from "../constants";
 
 const SplashScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/icon.png')}
+        source={require("../../assets/icon.png")}
         style={styles.logo}
         resizeMode="contain"
       />
       <Text style={styles.title}>{APP_NAME}</Text>
       <Text style={styles.subtitle}>Your Personal Diabetes Assistant</Text>
-      <ActivityIndicator 
-        size="large" 
-        color={COLORS.primary} 
-        style={styles.loader} 
+      <ActivityIndicator
+        size="large"
+        color={COLORS.primary}
+        style={styles.loader}
       />
     </View>
   );
@@ -24,9 +24,9 @@ const SplashScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "white",
     padding: SIZES.lg,
   },
   logo: {
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.primary,
     marginBottom: SIZES.xs,
   },
@@ -50,4 +50,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SplashScreen; 
+export default SplashScreen;

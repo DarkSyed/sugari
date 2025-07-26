@@ -58,7 +58,7 @@ const AddFoodScreen: React.FC = () => {
       setValue("carbs", initialData.carbs?.toString() || "");
       setValue(
         "meal_type",
-        (initialData.meal_type || "breakfast") as FormData["meal_type"]
+        (initialData.meal_type || "breakfast") as FormData["meal_type"],
       );
       setTimestamp(new Date(initialData.timestamp));
     }
@@ -98,7 +98,7 @@ const AddFoodScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save food entry. Please try again."
+          : "Failed to save food entry. Please try again.",
       );
     } finally {
       setIsLoading(false);

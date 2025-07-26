@@ -81,7 +81,7 @@ const AddBloodPressureScreen: React.FC = () => {
       if (route.params?.initialData) {
         await updateBloodPressureReading(
           route.params.initialData.id,
-          readingData
+          readingData,
         );
         Alert.alert("Success", "Blood pressure reading updated successfully");
       } else {
@@ -97,7 +97,7 @@ const AddBloodPressureScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save blood pressure reading."
+          : "Failed to save blood pressure reading.",
       );
     } finally {
       setIsSubmitting(false);

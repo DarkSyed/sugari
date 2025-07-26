@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Alert,
   ScrollView,
-  Modal
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES } from '../../constants';
-import FeatureRequestModal from '../../components/FeatureRequestModal';
-import FeatureRequestList, { FeatureRequest } from '../../components/FeatureRequestList';
-import Container from '../../components/Container';
+  Modal,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { COLORS, SIZES } from "../../constants";
+import FeatureRequestModal from "../../components/FeatureRequestModal";
+import FeatureRequestList, {
+  FeatureRequest,
+} from "../../components/FeatureRequestList";
+import Container from "../../components/Container";
 
 // Generate a unique ID for feature requests
 const generateId = () => {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
 };
 
 const FeatureRequestDetailModal: React.FC<{
@@ -30,48 +34,48 @@ const FeatureRequestDetailModal: React.FC<{
 }> = ({ visible, request, onClose }) => {
   if (!request) return null;
 
-  const getStatusColor = (status: FeatureRequest['status']) => {
+  const getStatusColor = (status: FeatureRequest["status"]) => {
     switch (status) {
-      case 'pending':
-        return '#FFA500'; // Orange
-      case 'under_review':
-        return '#3498DB'; // Blue
-      case 'planned':
-        return '#9B59B6'; // Purple
-      case 'completed':
-        return '#2ECC71'; // Green
-      case 'rejected':
-        return '#E74C3C'; // Red
+      case "pending":
+        return "#FFA500"; // Orange
+      case "under_review":
+        return "#3498DB"; // Blue
+      case "planned":
+        return "#9B59B6"; // Purple
+      case "completed":
+        return "#2ECC71"; // Green
+      case "rejected":
+        return "#E74C3C"; // Red
       default:
         return COLORS.lightText;
     }
   };
 
-  const getStatusText = (status: FeatureRequest['status']) => {
+  const getStatusText = (status: FeatureRequest["status"]) => {
     switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'under_review':
-        return 'Under Review';
-      case 'planned':
-        return 'Planned';
-      case 'completed':
-        return 'Completed';
-      case 'rejected':
-        return 'Not Planned';
+      case "pending":
+        return "Pending";
+      case "under_review":
+        return "Under Review";
+      case "planned":
+        return "Planned";
+      case "completed":
+        return "Completed";
+      case "rejected":
+        return "Not Planned";
       default:
-        return 'Unknown';
+        return "Unknown";
     }
   };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -94,34 +98,49 @@ const FeatureRequestDetailModal: React.FC<{
           <ScrollView style={styles.modalBody}>
             <View style={styles.detailHeader}>
               <Text style={styles.detailTitle}>{request.title}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(request.status) }]}>
-                <Text style={styles.statusText}>{getStatusText(request.status)}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusColor(request.status) },
+                ]}
+              >
+                <Text style={styles.statusText}>
+                  {getStatusText(request.status)}
+                </Text>
               </View>
             </View>
 
-            <Text style={styles.dateText}>Submitted on {formatDate(request.createdAt)}</Text>
-            
+            <Text style={styles.dateText}>
+              Submitted on {formatDate(request.createdAt)}
+            </Text>
+
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionLabel}>Description:</Text>
               <Text style={styles.descriptionText}>{request.description}</Text>
             </View>
 
             <View style={styles.statusInfoContainer}>
-              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={COLORS.primary}
+              />
               <Text style={styles.statusInfoText}>
-                {request.status === 'pending' && 'Your request is being reviewed by our team.'}
-                {request.status === 'under_review' && 'Our team is currently evaluating this feature.'}
-                {request.status === 'planned' && 'This feature has been approved and will be implemented in a future update.'}
-                {request.status === 'completed' && 'This feature has been implemented and is now available.'}
-                {request.status === 'rejected' && 'After careful consideration, we have decided not to implement this feature at this time.'}
+                {request.status === "pending" &&
+                  "Your request is being reviewed by our team."}
+                {request.status === "under_review" &&
+                  "Our team is currently evaluating this feature."}
+                {request.status === "planned" &&
+                  "This feature has been approved and will be implemented in a future update."}
+                {request.status === "completed" &&
+                  "This feature has been implemented and is now available."}
+                {request.status === "rejected" &&
+                  "After careful consideration, we have decided not to implement this feature at this time."}
               </Text>
             </View>
           </ScrollView>
 
-          <TouchableOpacity 
-            style={styles.closeModalButton}
-            onPress={onClose}
-          >
+          <TouchableOpacity style={styles.closeModalButton} onPress={onClose}>
             <Text style={styles.closeModalButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
@@ -135,7 +154,9 @@ const FeatureRequestScreen: React.FC = () => {
   const [featureRequests, setFeatureRequests] = useState<FeatureRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<FeatureRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<FeatureRequest | null>(
+    null,
+  );
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Load feature requests from AsyncStorage
@@ -146,8 +167,8 @@ const FeatureRequestScreen: React.FC = () => {
   const loadFeatureRequests = async () => {
     try {
       setIsLoading(true);
-      const storedRequests = await AsyncStorage.getItem('featureRequests');
-      
+      const storedRequests = await AsyncStorage.getItem("featureRequests");
+
       if (storedRequests) {
         setFeatureRequests(JSON.parse(storedRequests));
       } else {
@@ -155,8 +176,8 @@ const FeatureRequestScreen: React.FC = () => {
         setFeatureRequests([]);
       }
     } catch (error) {
-      console.error('Error loading feature requests:', error);
-      Alert.alert('Error', 'Failed to load feature requests');
+      console.error("Error loading feature requests:", error);
+      Alert.alert("Error", "Failed to load feature requests");
     } finally {
       setIsLoading(false);
     }
@@ -164,10 +185,10 @@ const FeatureRequestScreen: React.FC = () => {
 
   const saveFeatureRequests = async (requests: FeatureRequest[]) => {
     try {
-      await AsyncStorage.setItem('featureRequests', JSON.stringify(requests));
+      await AsyncStorage.setItem("featureRequests", JSON.stringify(requests));
     } catch (error) {
-      console.error('Error saving feature requests:', error);
-      Alert.alert('Error', 'Failed to save feature request');
+      console.error("Error saving feature requests:", error);
+      Alert.alert("Error", "Failed to save feature request");
     }
   };
 
@@ -176,17 +197,17 @@ const FeatureRequestScreen: React.FC = () => {
       id: generateId(),
       title,
       description,
-      status: 'pending',
-      createdAt: Date.now()
+      status: "pending",
+      createdAt: Date.now(),
     };
 
     const updatedRequests = [newRequest, ...featureRequests];
     setFeatureRequests(updatedRequests);
     saveFeatureRequests(updatedRequests);
-    
+
     Alert.alert(
-      'Feature Request Submitted',
-      'Thank you for your feedback! Your feature request has been submitted successfully.'
+      "Feature Request Submitted",
+      "Thank you for your feedback! Your feature request has been submitted successfully.",
     );
   };
 
@@ -210,7 +231,8 @@ const FeatureRequestScreen: React.FC = () => {
 
       <ScrollView style={styles.content}>
         <Text style={styles.description}>
-          Have an idea to improve Sugari? Submit your feature requests and help us make the app better for everyone.
+          Have an idea to improve Sugari? Submit your feature requests and help
+          us make the app better for everyone.
         </Text>
 
         <FeatureRequestList
@@ -241,9 +263,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.md,
     borderBottomWidth: 1,
@@ -254,7 +276,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   headerSpacer: {
@@ -272,25 +294,25 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: SIZES.lg,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   closeButton: {
@@ -300,14 +322,14 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.lg,
   },
   detailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: SIZES.sm,
   },
   detailTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     flex: 1,
     marginRight: SIZES.sm,
@@ -319,7 +341,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.white,
   },
   dateText: {
@@ -332,7 +354,7 @@ const styles = StyleSheet.create({
   },
   descriptionLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: SIZES.xs,
   },
@@ -342,12 +364,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   statusInfoContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 102, 204, 0.1)",
     padding: SIZES.md,
     borderRadius: 8,
     marginTop: SIZES.sm,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   statusInfoText: {
     fontSize: 14,
@@ -360,12 +382,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: SIZES.sm,
-    alignItems: 'center',
+    alignItems: "center",
   },
   closeModalButtonText: {
     color: COLORS.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

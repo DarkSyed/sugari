@@ -13,7 +13,10 @@ type Props = {
 
 const CGM_BRANDS: CGMBrand[] = ["Dexcom", "Freestyle Libre", "Medtronic"];
 
-type NavigationProp = StackNavigationProp<CGMStackParamList, typeof ROUTES.PAIR_CGM>;
+type NavigationProp = StackNavigationProp<
+  CGMStackParamList,
+  typeof ROUTES.PAIR_CGM
+>;
 
 const CGMSelection: React.FC<Props> = ({ visible, onClose }) => {
   const navigation = useNavigation<NavigationProp>();

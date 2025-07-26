@@ -1,32 +1,43 @@
-import { BloodSugarReading, FoodEntry, InsulinDose, UserSettings } from '../types';
-import { OPENAI_API_KEY, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX } from '../constants';
+import {
+  BloodSugarReading,
+  FoodEntry,
+  InsulinDose,
+  UserSettings,
+} from "../types";
+import {
+  OPENAI_API_KEY,
+  NORMAL_SUGAR_MIN,
+  NORMAL_SUGAR_MAX,
+} from "../constants";
 
 // Rule-based analysis for initial MVP
 export const analyzeGlucoseReadings = (
   readings: BloodSugarReading[],
   foodEntries: FoodEntry[] = [],
   insulinDoses: InsulinDose[] = [],
-  userSettings?: UserSettings
+  userSettings?: UserSettings,
 ): string[] => {
   // Sort by timestamp
   const sortedReadings = [...readings].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 
   if (sortedReadings.length === 0) {
-    return ['Start logging your blood sugar readings to get personalized insights.'];
+    return [
+      "Start logging your blood sugar readings to get personalized insights.",
+    ];
   }
 
   const insights: string[] = [];
   const recentReadings = sortedReadings.slice(0, 20); // Consider last 20 readings
 
   // Calculate statistics
-  const values = recentReadings.map(r => r.value);
+  const values = recentReadings.map((r) => r.value);
   const average = values.reduce((sum, val) => sum + val, 0) / values.length;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const inRangeCount = values.filter(
-    v => v >= NORMAL_SUGAR_MIN && v <= NORMAL_SUGAR_MAX
+    (v) => v >= NORMAL_SUGAR_MIN && v <= NORMAL_SUGAR_MAX,
   ).length;
   const inRangePercentage = (inRangeCount / values.length) * 100;
 
@@ -34,15 +45,15 @@ export const analyzeGlucoseReadings = (
   const latestReading = sortedReadings[0];
   if (latestReading.value < NORMAL_SUGAR_MIN) {
     insights.push(
-      `Your latest reading of ${latestReading.value} mg/dL is below the target range. Consider having a small snack with fast-acting carbs.`
+      `Your latest reading of ${latestReading.value} mg/dL is below the target range. Consider having a small snack with fast-acting carbs.`,
     );
   } else if (latestReading.value > NORMAL_SUGAR_MAX) {
     insights.push(
-      `Your latest reading of ${latestReading.value} mg/dL is above the target range. Stay hydrated and monitor closely over the next few hours.`
+      `Your latest reading of ${latestReading.value} mg/dL is above the target range. Stay hydrated and monitor closely over the next few hours.`,
     );
   } else {
     insights.push(
-      `Your latest reading of ${latestReading.value} mg/dL is within the target range. Great job!`
+      `Your latest reading of ${latestReading.value} mg/dL is within the target range. Great job!`,
     );
   }
 
@@ -50,15 +61,15 @@ export const analyzeGlucoseReadings = (
   if (recentReadings.length >= 5) {
     if (inRangePercentage >= 80) {
       insights.push(
-        `${Math.round(inRangePercentage)}% of your recent readings are in range. Excellent blood sugar management!`
+        `${Math.round(inRangePercentage)}% of your recent readings are in range. Excellent blood sugar management!`,
       );
     } else if (inRangePercentage >= 60) {
       insights.push(
-        `${Math.round(inRangePercentage)}% of your recent readings are in range. You're on the right track!`
+        `${Math.round(inRangePercentage)}% of your recent readings are in range. You're on the right track!`,
       );
     } else {
       insights.push(
-        `${Math.round(inRangePercentage)}% of your recent readings are in range. Let's work on improving this with consistent monitoring and management.`
+        `${Math.round(inRangePercentage)}% of your recent readings are in range. Let's work on improving this with consistent monitoring and management.`,
       );
     }
   }
@@ -70,11 +81,11 @@ export const analyzeGlucoseReadings = (
 
     if (isIncreasing && values[0] > NORMAL_SUGAR_MAX) {
       insights.push(
-        'Your blood sugar levels show an upward trend. Consider checking for factors that might be causing this rise.'
+        "Your blood sugar levels show an upward trend. Consider checking for factors that might be causing this rise.",
       );
     } else if (isDecreasing && values[0] < NORMAL_SUGAR_MIN) {
       insights.push(
-        'Your blood sugar levels show a downward trend. Be cautious about potential low blood sugar.'
+        "Your blood sugar levels show a downward trend. Be cautious about potential low blood sugar.",
       );
     }
   }
@@ -84,7 +95,7 @@ export const analyzeGlucoseReadings = (
     const range = max - min;
     if (range > 100) {
       insights.push(
-        `Your blood sugar has varied by ${range} mg/dL recently. High variability can be reduced with consistent meal timing and medication.`
+        `Your blood sugar has varied by ${range} mg/dL recently. High variability can be reduced with consistent meal timing and medication.`,
       );
     }
   }
@@ -93,47 +104,49 @@ export const analyzeGlucoseReadings = (
   if (foodEntries.length > 0 && recentReadings.length > 1) {
     const recentFoods = foodEntries
       .filter(
-        f =>
+        (f) =>
           new Date(f.timestamp).getTime() >
-          new Date(recentReadings[1].timestamp).getTime()
+          new Date(recentReadings[1].timestamp).getTime(),
       )
-      .map(f => f.name)
-      .join(', ');
+      .map((f) => f.name)
+      .join(", ");
 
     if (recentFoods && latestReading.value > NORMAL_SUGAR_MAX) {
       insights.push(
-        `You recently consumed ${recentFoods}, which might be contributing to your elevated sugar level.`
+        `You recently consumed ${recentFoods}, which might be contributing to your elevated sugar level.`,
       );
     }
   }
 
   // Pattern identification (basic)
-  const morningReadings = recentReadings.filter(r => {
+  const morningReadings = recentReadings.filter((r) => {
     const hour = new Date(r.timestamp).getHours();
     return hour >= 6 && hour <= 9;
   });
 
-  const eveningReadings = recentReadings.filter(r => {
+  const eveningReadings = recentReadings.filter((r) => {
     const hour = new Date(r.timestamp).getHours();
     return hour >= 18 && hour <= 22;
   });
 
   if (morningReadings.length >= 3) {
     const morningAvg =
-      morningReadings.reduce((sum, r) => sum + r.value, 0) / morningReadings.length;
+      morningReadings.reduce((sum, r) => sum + r.value, 0) /
+      morningReadings.length;
     if (morningAvg > NORMAL_SUGAR_MAX) {
       insights.push(
-        'Your morning sugar readings tend to be higher. This could be due to the dawn phenomenon, where hormones released in the early morning increase blood sugar.'
+        "Your morning sugar readings tend to be higher. This could be due to the dawn phenomenon, where hormones released in the early morning increase blood sugar.",
       );
     }
   }
 
   if (eveningReadings.length >= 3) {
     const eveningAvg =
-      eveningReadings.reduce((sum, r) => sum + r.value, 0) / eveningReadings.length;
+      eveningReadings.reduce((sum, r) => sum + r.value, 0) /
+      eveningReadings.length;
     if (eveningAvg > NORMAL_SUGAR_MAX) {
       insights.push(
-        'Your evening sugar readings tend to be higher. Consider reviewing your dinner choices or the timing of your evening medication.'
+        "Your evening sugar readings tend to be higher. Consider reviewing your dinner choices or the timing of your evening medication.",
       );
     }
   }
@@ -147,18 +160,24 @@ export const getAIPoweredInsights = async (
   sugarReadings: BloodSugarReading[] = [],
   foodEntries: FoodEntry[] = [],
   insulinDoses: InsulinDose[] = [],
-  userSettings?: UserSettings
+  userSettings?: UserSettings,
 ): Promise<string[]> => {
   try {
     // Combine readings (for simplicity in the MVP, we'll treat glucose and sugar readings the same)
     const combinedReadings = [...glucoseReadings, ...sugarReadings].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-    
+
     // NOTE: This is a placeholder for a real AI API integration
     // In production, this would call an external API that would analyze each user's unique data
     // The rule-based analysis below is just a temporary solution until the AI API is integrated
-    return analyzeGlucoseReadings(combinedReadings, foodEntries, insulinDoses, userSettings);
+    return analyzeGlucoseReadings(
+      combinedReadings,
+      foodEntries,
+      insulinDoses,
+      userSettings,
+    );
 
     /* 
     // Example of how the OpenAI API integration would work
@@ -197,8 +216,13 @@ export const getAIPoweredInsights = async (
     return JSON.parse(aiInsights);
     */
   } catch (error) {
-    console.error('Error getting AI insights:', error);
+    console.error("Error getting AI insights:", error);
     // Fallback to rule-based analysis
-    return analyzeGlucoseReadings(sugarReadings.length > 0 ? sugarReadings : glucoseReadings, foodEntries, insulinDoses, userSettings);
+    return analyzeGlucoseReadings(
+      sugarReadings.length > 0 ? sugarReadings : glucoseReadings,
+      foodEntries,
+      insulinDoses,
+      userSettings,
+    );
   }
-}; 
+};

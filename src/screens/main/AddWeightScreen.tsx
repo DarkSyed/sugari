@@ -90,7 +90,7 @@ const AddWeightScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save weight measurement"
+          : "Failed to save weight measurement",
       );
     } finally {
       setIsSubmitting(false);

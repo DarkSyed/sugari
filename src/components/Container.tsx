@@ -1,17 +1,17 @@
-import React from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  SafeAreaView, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform, 
-  StatusBar, 
+import React from "react";
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
   ViewStyle,
   Keyboard,
-  TouchableWithoutFeedback 
-} from 'react-native';
-import { COLORS, SIZES } from '../constants';
+  TouchableWithoutFeedback,
+} from "react-native";
+import { COLORS, SIZES } from "../constants";
 
 interface ContainerProps {
   children: React.ReactNode;
@@ -37,7 +37,10 @@ const Container: React.FC<ContainerProps> = ({
       return (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollViewContent, contentContainerStyle]}
+          contentContainerStyle={[
+            styles.scrollViewContent,
+            contentContainerStyle,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -59,8 +62,8 @@ const Container: React.FC<ContainerProps> = ({
   const content = keyboardAvoiding ? (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       {dismissKeyboardOnTap ? (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -77,7 +80,7 @@ const Container: React.FC<ContainerProps> = ({
   if (safeArea) {
     return (
       <SafeAreaView style={[styles.safeArea, style]}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <StatusBar barStyle="light-content" backgroundColor={"#111827"} />
         {content}
       </SafeAreaView>
     );
@@ -111,4 +114,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Container; 
+export default Container;

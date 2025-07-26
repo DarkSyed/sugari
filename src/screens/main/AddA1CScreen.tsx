@@ -83,7 +83,7 @@ const AddA1CScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save A1C reading. Please try again."
+          : "Failed to save A1C reading. Please try again.",
       );
     } finally {
       setIsLoading(false);

@@ -16,18 +16,18 @@ export const MG_DL_TO_MMOL_L = 0.0555; // Conversion factor
 
 // Theme and UI Constants
 export const COLORS = {
-  primary: '#4B89DC',
-  secondary: '#5D9CEC',
-  background: '#F7F9FC',
-  text: '#333333',
-  lightText: '#7F8C8D',
-  error: '#FF5A5F',
-  warning: '#FFAB40',
-  success: '#50C878',
-  danger: '#FF5A5F',
-  border: '#E1E8ED',
-  cardBackground: '#FFFFFF',
-  inputBackground: '#F8F9FA',
+  primary: "#4B89DC",
+  secondary: "#5D9CEC",
+  background: "#F7F9FC",
+  text: "#333333",
+  lightText: "#7F8C8D",
+  error: "#FF5A5F",
+  warning: "#FFAB40",
+  success: "#50C878",
+  danger: "#FF5A5F",
+  border: "#E1E8ED",
+  cardBackground: "#FFFFFF",
+  inputBackground: "#F8F9FA",
 };
 
 export const FONTS = {
@@ -63,7 +63,7 @@ export const VALIDATION = {
 };
 
 export const BLOOD_SUGAR_LEVELS = {
-  LOW: 70,  // mg/dL
+  LOW: 70, // mg/dL
   HIGH: 180, // mg/dL
   VERY_LOW: 54, // mg/dL
   VERY_HIGH: 250, // mg/dL
@@ -74,28 +74,28 @@ export const BLOOD_SUGAR_LEVELS = {
 };
 
 export const MEAL_CONTEXTS = [
-  { label: 'Before Meal', value: 'before_meal' },
-  { label: 'After Meal', value: 'after_meal' },
-  { label: 'Fasting', value: 'fasting' },
-  { label: 'Before Exercise', value: 'before_exercise' },
-  { label: 'After Exercise', value: 'after_exercise' },
-  { label: 'Bedtime', value: 'bedtime' },
-  { label: 'Overnight', value: 'overnight' },
-  { label: 'Other', value: 'other' },
+  { label: "Before Meal", value: "before_meal" },
+  { label: "After Meal", value: "after_meal" },
+  { label: "Fasting", value: "fasting" },
+  { label: "Before Exercise", value: "before_exercise" },
+  { label: "After Exercise", value: "after_exercise" },
+  { label: "Bedtime", value: "bedtime" },
+  { label: "Overnight", value: "overnight" },
+  { label: "Other", value: "other" },
 ];
 
 export const INSULIN_TYPES = [
-  { label: 'Rapid-Acting', value: 'rapid' },
-  { label: 'Short-Acting', value: 'short' },
-  { label: 'Intermediate-Acting', value: 'intermediate' },
-  { label: 'Long-Acting', value: 'long' },
-  { label: 'Mixed', value: 'mixed' },
+  { label: "Rapid-Acting", value: "rapid" },
+  { label: "Short-Acting", value: "short" },
+  { label: "Intermediate-Acting", value: "intermediate" },
+  { label: "Long-Acting", value: "long" },
+  { label: "Mixed", value: "mixed" },
 ];
 
 export const UNITS = [
-  { label: 'mg/dL', value: 'mg/dL' },
-  { label: 'mmol/L', value: 'mmol/L' },
-]; 
+  { label: "mg/dL", value: "mg/dL" },
+  { label: "mmol/L", value: "mmol/L" },
+];
 
 export const MEAL_OPTIONS = [
   { label: "Breakfast", value: "breakfast" },

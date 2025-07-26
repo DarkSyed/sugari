@@ -55,7 +55,7 @@ const AddInsulinScreen: React.FC = () => {
       setValue("units", initialData.units.toString());
       setValue(
         "insulinType",
-        (initialData.type || "rapid") as FormData["insulinType"]
+        (initialData.type || "rapid") as FormData["insulinType"],
       );
       setValue("notes", initialData.notes || "");
       setTimestamp(new Date(initialData.timestamp));
@@ -95,7 +95,7 @@ const AddInsulinScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save insulin dose. Please try again."
+          : "Failed to save insulin dose. Please try again.",
       );
     } finally {
       setIsLoading(false);

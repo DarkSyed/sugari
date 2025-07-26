@@ -78,20 +78,20 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
       animationType="none"
       onRequestClose={handleClose}
     >
-      <Animated.View 
+      <Animated.View
         className="flex-1 justify-end"
         style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
           opacity: fadeAnim,
         }}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           className="flex-1"
           onPress={handleClose}
           activeOpacity={1}
         />
-        
-        <Animated.View 
+
+        <Animated.View
           className="bg-white rounded-t-xl p-4 max-h-[70%]"
           style={{
             transform: [{ translateY: slideAnim }],

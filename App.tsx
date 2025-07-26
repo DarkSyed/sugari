@@ -1,33 +1,34 @@
-import React, { useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
+import React from "react";
+import { StatusBar } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider } from "./src/contexts/AppContext";
+import { SQLiteProvider, openDatabaseSync } from "expo-sqlite";
+import { drizzle } from "drizzle-orm/expo-sqlite";
+import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import migrations from "@/drizzle/migrations";
 import AppNavigator from "./src/navigation";
-import { initDatabase } from "./src/services/database";
 import "./global.css";
 
-export default function App() {
-  useEffect(() => {
-    const setup = async () => {
-      try {
-        await initDatabase();
-        console.log("Database initialized successfully");
-      } catch (error) {
-        console.error("Error initializing database:", error);
-      }
-    };
+export const DATABASE_NAME = "sugari";
 
-    setup();
-  }, []);
+export default function App() {
+  const expoDb = openDatabaseSync(DATABASE_NAME);
+  const db = drizzle(expoDb);
+  useMigrations(db, migrations);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <AppProvider>
-          <AppNavigator />
-        </AppProvider>
+        <StatusBar barStyle="light-content" backgroundColor={"#111827"} />
+        <SQLiteProvider
+          databaseName={DATABASE_NAME}
+          options={{ enableChangeListener: true }}
+        >
+          <AppProvider>
+            <AppNavigator />
+          </AppProvider>
+        </SQLiteProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

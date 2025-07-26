@@ -1,20 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES } from '../../constants';
-import { getBloodPressureReadings } from '../../services/database';
-import { BloodPressureReading, ROUTES } from '../../types';
-import Container from '../../components/Container';
-import Card from '../../components/Card';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { COLORS, SIZES } from "../../constants";
+import { getBloodPressureReadings } from "../../services/database";
+import { BloodPressureReading, ROUTES } from "../../types";
+import Container from "../../components/Container";
+import Card from "../../components/Card";
+import { Ionicons } from "@expo/vector-icons";
 
 const BloodPressureLogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
   const [readings, setReadings] = useState<BloodPressureReading[]>([]);
-  const [filteredReadings, setFilteredReadings] = useState<BloodPressureReading[]>([]);
+  const [filteredReadings, setFilteredReadings] = useState<
+    BloodPressureReading[]
+  >([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [timeFilter, setTimeFilter] = useState<"all" | "week" | "month">("all");
   const [stats, setStats] = useState({
     avgSystolic: 0,
     avgDiastolic: 0,
@@ -37,41 +46,41 @@ const BloodPressureLogScreen: React.FC = () => {
       setReadings(data);
       setFilteredReadings(data);
     } catch (error) {
-      console.error('Error loading blood pressure readings:', error);
+      console.error("Error loading blood pressure readings:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterReadings = (filter: 'all' | 'week' | 'month') => {
+  const filterReadings = (filter: "all" | "week" | "month") => {
     const now = new Date().getTime();
     let filtered = readings;
 
-    if (filter === 'week') {
+    if (filter === "week") {
       // Filter for last 7 days
       const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-      filtered = readings.filter(reading => reading.timestamp >= oneWeekAgo);
-    } else if (filter === 'month') {
+      filtered = readings.filter((reading) => reading.timestamp >= oneWeekAgo);
+    } else if (filter === "month") {
       // Filter for last 30 days
       const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
-      filtered = readings.filter(reading => reading.timestamp >= oneMonthAgo);
+      filtered = readings.filter((reading) => reading.timestamp >= oneMonthAgo);
     }
 
     setFilteredReadings(filtered);
   };
 
-  const calculateStats = (filter: 'all' | 'week' | 'month') => {
+  const calculateStats = (filter: "all" | "week" | "month") => {
     const now = new Date().getTime();
     let filtered = readings;
 
-    if (filter === 'week') {
+    if (filter === "week") {
       // Filter for last 7 days
       const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-      filtered = readings.filter(reading => reading.timestamp >= oneWeekAgo);
-    } else if (filter === 'month') {
+      filtered = readings.filter((reading) => reading.timestamp >= oneWeekAgo);
+    } else if (filter === "month") {
       // Filter for last 30 days
       const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
-      filtered = readings.filter(reading => reading.timestamp >= oneMonthAgo);
+      filtered = readings.filter((reading) => reading.timestamp >= oneMonthAgo);
     }
 
     if (filtered.length === 0) {
@@ -83,8 +92,14 @@ const BloodPressureLogScreen: React.FC = () => {
       return;
     }
 
-    const totalSystolic = filtered.reduce((sum, reading) => sum + reading.systolic, 0);
-    const totalDiastolic = filtered.reduce((sum, reading) => sum + reading.diastolic, 0);
+    const totalSystolic = filtered.reduce(
+      (sum, reading) => sum + reading.systolic,
+      0,
+    );
+    const totalDiastolic = filtered.reduce(
+      (sum, reading) => sum + reading.diastolic,
+      0,
+    );
 
     setStats({
       avgSystolic: Math.round(totalSystolic / filtered.length),
@@ -95,46 +110,53 @@ const BloodPressureLogScreen: React.FC = () => {
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
   };
 
   const getBloodPressureCategory = (systolic: number, diastolic: number) => {
     if (systolic < 120 && diastolic < 80) {
-      return { text: 'Normal', color: COLORS.success };
-    } else if ((systolic >= 120 && systolic <= 129) && diastolic < 80) {
-      return { text: 'Elevated', color: '#FFD700' }; // Gold
-    } else if ((systolic >= 130 && systolic <= 139) || (diastolic >= 80 && diastolic <= 89)) {
-      return { text: 'Stage 1 HTN', color: '#FFA500' }; // Orange
+      return { text: "Normal", color: COLORS.success };
+    } else if (systolic >= 120 && systolic <= 129 && diastolic < 80) {
+      return { text: "Elevated", color: "#FFD700" }; // Gold
+    } else if (
+      (systolic >= 130 && systolic <= 139) ||
+      (diastolic >= 80 && diastolic <= 89)
+    ) {
+      return { text: "Stage 1 HTN", color: "#FFA500" }; // Orange
     } else if (systolic >= 140 || diastolic >= 90) {
-      return { text: 'Stage 2 HTN', color: COLORS.error };
+      return { text: "Stage 2 HTN", color: COLORS.error };
     } else if (systolic > 180 || diastolic > 120) {
-      return { text: 'Crisis', color: '#8B0000' }; // Dark red
+      return { text: "Crisis", color: "#8B0000" }; // Dark red
     }
-    return { text: 'Unknown', color: COLORS.lightText };
+    return { text: "Unknown", color: COLORS.lightText };
   };
 
   const renderItem = ({ item }: { item: BloodPressureReading }) => {
     const category = getBloodPressureCategory(item.systolic, item.diastolic);
-    
+
     return (
       <Card style={styles.readingCard}>
         <View style={styles.readingCardHeader}>
           <View>
-            <Text style={styles.bpValueText}>{item.systolic}/{item.diastolic} mmHg</Text>
-            <Text style={[styles.categoryText, { color: category.color }]}>{category.text}</Text>
+            <Text style={styles.bpValueText}>
+              {item.systolic}/{item.diastolic} mmHg
+            </Text>
+            <Text style={[styles.categoryText, { color: category.color }]}>
+              {category.text}
+            </Text>
           </View>
           <View style={styles.dateTimeContainer}>
             <Text style={styles.dateText}>{formatDate(item.timestamp)}</Text>
@@ -154,15 +176,15 @@ const BloodPressureLogScreen: React.FC = () => {
   return (
     <Container>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Blood Pressure</Text>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('Home', { screen: ROUTES.ADD_BP })}
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Home", { screen: ROUTES.ADD_BP })}
           style={styles.addButton}
         >
           <Ionicons name="add-circle" size={30} color={COLORS.primary} />
@@ -171,22 +193,52 @@ const BloodPressureLogScreen: React.FC = () => {
 
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={[styles.filterButton, timeFilter === 'all' && styles.activeFilterButton]}
-          onPress={() => setTimeFilter('all')}
+          style={[
+            styles.filterButton,
+            timeFilter === "all" && styles.activeFilterButton,
+          ]}
+          onPress={() => setTimeFilter("all")}
         >
-          <Text style={[styles.filterText, timeFilter === 'all' && styles.activeFilterText]}>All Time</Text>
+          <Text
+            style={[
+              styles.filterText,
+              timeFilter === "all" && styles.activeFilterText,
+            ]}
+          >
+            All Time
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, timeFilter === 'week' && styles.activeFilterButton]}
-          onPress={() => setTimeFilter('week')}
+          style={[
+            styles.filterButton,
+            timeFilter === "week" && styles.activeFilterButton,
+          ]}
+          onPress={() => setTimeFilter("week")}
         >
-          <Text style={[styles.filterText, timeFilter === 'week' && styles.activeFilterText]}>This Week</Text>
+          <Text
+            style={[
+              styles.filterText,
+              timeFilter === "week" && styles.activeFilterText,
+            ]}
+          >
+            This Week
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, timeFilter === 'month' && styles.activeFilterButton]}
-          onPress={() => setTimeFilter('month')}
+          style={[
+            styles.filterButton,
+            timeFilter === "month" && styles.activeFilterButton,
+          ]}
+          onPress={() => setTimeFilter("month")}
         >
-          <Text style={[styles.filterText, timeFilter === 'month' && styles.activeFilterText]}>This Month</Text>
+          <Text
+            style={[
+              styles.filterText,
+              timeFilter === "month" && styles.activeFilterText,
+            ]}
+          >
+            This Month
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -226,12 +278,16 @@ const BloodPressureLogScreen: React.FC = () => {
             </View>
           ) : (
             <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>No blood pressure readings found</Text>
+              <Text style={styles.emptyStateText}>
+                No blood pressure readings found
+              </Text>
               <TouchableOpacity
                 style={styles.addReadingButton}
                 onPress={() => navigation.navigate(ROUTES.ADD_BP)}
               >
-                <Text style={styles.addReadingButtonText}>Add a Blood Pressure Reading</Text>
+                <Text style={styles.addReadingButtonText}>
+                  Add a Blood Pressure Reading
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -243,16 +299,16 @@ const BloodPressureLogScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: SIZES.md,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   backButton: {
     paddingVertical: SIZES.xs,
@@ -261,13 +317,13 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: COLORS.primary,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   addButton: {
     padding: SIZES.xs,
   },
   filterContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: SIZES.md,
   },
   filterButton: {
@@ -277,17 +333,17 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.xs,
     marginHorizontal: 2,
     backgroundColor: COLORS.inputBackground,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activeFilterButton: {
     backgroundColor: COLORS.primary,
   },
   filterText: {
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeFilterText: {
-    color: 'white',
+    color: "white",
   },
   statsCard: {
     marginBottom: SIZES.md,
@@ -295,21 +351,21 @@ const styles = StyleSheet.create({
   },
   statsTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: SIZES.sm,
   },
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.primary,
   },
   statLabel: {
@@ -322,26 +378,26 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: SIZES.sm,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyStateContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: SIZES.xl,
   },
   emptyStateText: {
     fontSize: 16,
     color: COLORS.lightText,
     marginBottom: SIZES.md,
-    textAlign: 'center',
+    textAlign: "center",
   },
   addReadingButton: {
     backgroundColor: COLORS.primary,
@@ -350,21 +406,21 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.xs,
   },
   addReadingButtonText: {
-    color: 'white',
-    fontWeight: '500',
+    color: "white",
+    fontWeight: "500",
   },
   readingCard: {
     marginBottom: SIZES.sm,
     padding: SIZES.md,
   },
   readingCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   bpValueText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   categoryText: {
@@ -372,7 +428,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   dateTimeContainer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   dateText: {
     fontSize: 14,
@@ -391,7 +447,7 @@ const styles = StyleSheet.create({
   },
   notesLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.text,
     marginBottom: 2,
   },
@@ -401,4 +457,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BloodPressureLogScreen; 
+export default BloodPressureLogScreen;

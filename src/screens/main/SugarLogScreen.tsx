@@ -202,7 +202,7 @@ const SugarLogScreen: React.FC = () => {
       const filtered = filterEntriesByTimeAndType(
         combined,
         selectedTimeRange,
-        selectedFilter
+        selectedFilter,
       );
       setFilteredEntries(filtered);
     } catch (error) {
@@ -216,7 +216,7 @@ const SugarLogScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       fetchHealthData();
-    }, [fetchHealthData])
+    }, [fetchHealthData]),
   );
 
   useEffect(() => {
@@ -247,7 +247,7 @@ const SugarLogScreen: React.FC = () => {
   const calculateStats = () => {
     // Only calculate stats for blood sugar entries
     const bloodSugarEntries = filteredEntries.filter(
-      (entry) => entry.type === "blood_sugar"
+      (entry) => entry.type === "blood_sugar",
     );
 
     if (bloodSugarEntries.length === 0) {
@@ -282,7 +282,7 @@ const SugarLogScreen: React.FC = () => {
   const filterEntriesByTimeAndType = (
     entries: HealthLogEntry[],
     timeRange: TimeRange,
-    type: LogEntryType
+    type: LogEntryType,
   ) => {
     // First filter by time range
     const now = new Date().getTime();
@@ -350,7 +350,7 @@ const SugarLogScreen: React.FC = () => {
     const filtered = filterEntriesByTimeAndType(
       allEntries,
       timeRange,
-      selectedFilter
+      selectedFilter,
     );
     setFilteredEntries(filtered);
   };
@@ -521,8 +521,8 @@ const SugarLogScreen: React.FC = () => {
                 typeof item.secondaryValue === "number"
                   ? item.secondaryValue
                   : item.secondaryValue
-                  ? parseFloat(item.secondaryValue.toString())
-                  : null,
+                    ? parseFloat(item.secondaryValue.toString())
+                    : null,
               timestamp: item.timestamp,
               meal_type: item.tertiaryValue,
               notes: item.notes,
@@ -574,8 +574,8 @@ const SugarLogScreen: React.FC = () => {
                 typeof item.secondaryValue === "number"
                   ? item.secondaryValue
                   : item.secondaryValue
-                  ? parseFloat(item.secondaryValue.toString())
-                  : 0,
+                    ? parseFloat(item.secondaryValue.toString())
+                    : 0,
               timestamp: item.timestamp,
               notes: item.notes,
             },
@@ -663,7 +663,7 @@ const SugarLogScreen: React.FC = () => {
                 {range === "all" ? "ALL" : range.toUpperCase()}
               </Text>
             </TouchableOpacity>
-          )
+          ),
         )}
       </View>
     );
@@ -729,7 +729,7 @@ const SugarLogScreen: React.FC = () => {
     const filtered = filterEntriesByTimeAndType(
       allEntries,
       selectedTimeRange,
-      filter
+      filter,
     );
     setFilteredEntries(filtered);
   };

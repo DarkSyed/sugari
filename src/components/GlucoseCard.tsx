@@ -1,9 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { BloodSugarReading } from '../types';
-import { COLORS, SIZES, NORMAL_SUGAR_MIN, NORMAL_SUGAR_MAX, CRITICAL_SUGAR_LOW, CRITICAL_SUGAR_HIGH } from '../constants';
-import Card from './Card';
-import { useApp } from '../contexts/AppContext';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { BloodSugarReading } from "../types";
+import {
+  COLORS,
+  SIZES,
+  NORMAL_SUGAR_MIN,
+  NORMAL_SUGAR_MAX,
+  CRITICAL_SUGAR_LOW,
+  CRITICAL_SUGAR_HIGH,
+} from "../constants";
+import Card from "./Card";
+import { useApp } from "../contexts/AppContext";
 
 interface GlucoseCardProps {
   reading: BloodSugarReading;
@@ -15,31 +22,32 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getColorForValue = (glucoseValue: number) => {
     // Get thresholds from user settings with fallbacks
-    const isFasting = reading.context === 'fasting' || reading.context === 'before_meal';
-    
-    const lowThreshold = isFasting 
-      ? (userSettings?.fastingLowThreshold || 70)
-      : (userSettings?.targetLowThreshold || 70);
-      
+    const isFasting =
+      reading.context === "fasting" || reading.context === "before_meal";
+
+    const lowThreshold = isFasting
+      ? userSettings?.fastingLowThreshold || 70
+      : userSettings?.targetLowThreshold || 70;
+
     const highThreshold = isFasting
-      ? (userSettings?.fastingHighThreshold || 150)
-      : (userSettings?.targetHighThreshold || 180);
-    
+      ? userSettings?.fastingHighThreshold || 150
+      : userSettings?.targetHighThreshold || 180;
+
     // Calculate very low/high thresholds
     const veryLowThreshold = lowThreshold - 15;
     const veryHighThreshold = highThreshold + 70;
-    
+
     // Return colors based on thresholds
     if (glucoseValue < veryLowThreshold) return COLORS.danger;
     if (glucoseValue < lowThreshold) return COLORS.warning;
@@ -50,15 +58,15 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
 
   const getStatusText = (value: number) => {
     if (value <= CRITICAL_SUGAR_LOW) {
-      return 'Critical Low';
+      return "Critical Low";
     } else if (value < NORMAL_SUGAR_MIN) {
-      return 'Low';
+      return "Low";
     } else if (value > CRITICAL_SUGAR_HIGH) {
-      return 'Critical High';
+      return "Critical High";
     } else if (value > NORMAL_SUGAR_MAX) {
-      return 'High';
+      return "High";
     }
-    return 'In Range';
+    return "In Range";
   };
 
   return (
@@ -70,7 +78,12 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
       <Card variant="elevated">
         <View style={styles.container}>
           <View style={styles.valueContainer}>
-            <Text style={[styles.valueText, { color: getColorForValue(reading.value) }]}>
+            <Text
+              style={[
+                styles.valueText,
+                { color: getColorForValue(reading.value) },
+              ]}
+            >
               {reading.value}
             </Text>
             <Text style={styles.unitText}>mg/dL</Text>
@@ -84,7 +97,9 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
                   { backgroundColor: getColorForValue(reading.value) },
                 ]}
               />
-              <Text style={styles.statusText}>{getStatusText(reading.value)}</Text>
+              <Text style={styles.statusText}>
+                {getStatusText(reading.value)}
+              </Text>
             </View>
 
             <Text style={styles.timeText}>{formatDate(reading.timestamp)}</Text>
@@ -92,12 +107,14 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
             {reading.context && (
               <View style={styles.tagContainer}>
                 <Text style={styles.tagText}>
-                  {reading.context.replace('_', ' ')}
+                  {reading.context.replace("_", " ")}
                 </Text>
               </View>
             )}
 
-            {reading.notes && <Text style={styles.notesText}>{reading.notes}</Text>}
+            {reading.notes && (
+              <Text style={styles.notesText}>{reading.notes}</Text>
+            )}
           </View>
         </View>
       </Card>
@@ -107,20 +124,20 @@ const GlucoseCard: React.FC<GlucoseCardProps> = ({ reading, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   valueContainer: {
     width: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRightWidth: 1,
     borderRightColor: COLORS.border,
     paddingRight: SIZES.md,
   },
   valueText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   unitText: {
     fontSize: 14,
@@ -132,8 +149,8 @@ const styles = StyleSheet.create({
     paddingLeft: SIZES.md,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
   },
   statusIndicator: {
@@ -144,7 +161,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   timeText: {
     fontSize: 14,
@@ -152,17 +169,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tagContainer: {
-    backgroundColor: COLORS.primary + '20', // 20% opacity
+    backgroundColor: COLORS.primary + "20", // 20% opacity
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: 4,
   },
   tagText: {
     fontSize: 12,
     color: COLORS.primary,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   notesText: {
     fontSize: 14,
@@ -171,4 +188,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GlucoseCard; 
+export default GlucoseCard;

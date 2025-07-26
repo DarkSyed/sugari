@@ -112,14 +112,14 @@ export const initDatabase = async (): Promise<void> => {
       `);
 
       const result = await db.getAllAsync<{ count: number }>(
-        "SELECT COUNT(*) as count FROM user_settings"
+        "SELECT COUNT(*) as count FROM user_settings",
       );
       const count = result[0]?.count || 0;
 
       if (count === 0) {
         await db.runAsync(
           "INSERT INTO user_settings (email, notifications, dark_mode, units) VALUES (NULL, 1, 0, ?)",
-          ["mg/dL"]
+          ["mg/dL"],
         );
       }
 
@@ -136,17 +136,17 @@ export const getUserSettings = async (): Promise<UserSettings> => {
   try {
     const db = await getDatabase();
     const result = await db.getAllAsync<any>(
-      "SELECT * FROM user_settings LIMIT 1"
+      "SELECT * FROM user_settings LIMIT 1",
     );
 
     if (result.length === 0) {
       await db.runAsync(
         `INSERT INTO user_settings (email, notifications, dark_mode, units) 
-        VALUES (NULL, 1, 0, 'mg/dL')`
+        VALUES (NULL, 1, 0, 'mg/dL')`,
       );
 
       const newResult = await db.getAllAsync<any>(
-        "SELECT * FROM user_settings LIMIT 1"
+        "SELECT * FROM user_settings LIMIT 1",
       );
       const row = newResult[0];
 
@@ -180,7 +180,7 @@ export const getUserSettings = async (): Promise<UserSettings> => {
 };
 
 export const updateUserSettings = async (
-  settings: Partial<UserSettings>
+  settings: Partial<UserSettings>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -221,7 +221,7 @@ export const updateUserSettings = async (
     }
 
     const sql = `UPDATE user_settings SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = (SELECT id FROM user_settings LIMIT 1)`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -233,7 +233,7 @@ export const updateUserSettings = async (
 };
 
 export const addBloodSugarReading = async (
-  reading: Omit<BloodSugarReading, "id">
+  reading: Omit<BloodSugarReading, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
@@ -244,7 +244,7 @@ export const addBloodSugarReading = async (
         reading.timestamp,
         reading.context || null,
         reading.notes || null,
-      ]
+      ],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -255,7 +255,7 @@ export const addBloodSugarReading = async (
 
 export const updateBloodSugarReading = async (
   id: number,
-  reading: Partial<BloodSugarReading>
+  reading: Partial<BloodSugarReading>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -277,7 +277,7 @@ export const updateBloodSugarReading = async (
     values.push(id);
 
     const sql = `UPDATE blood_sugar_readings SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -302,7 +302,7 @@ export const deleteBloodSugarReading = async (id: number): Promise<void> => {
 };
 
 export const getBloodSugarReadings = async (
-  limit?: number
+  limit?: number,
 ): Promise<BloodSugarReading[]> => {
   try {
     const db = await getDatabase();
@@ -333,13 +333,13 @@ export const getBloodSugarReadings = async (
 
 export const getBloodSugarReadingsForTimeRange = async (
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Promise<BloodSugarReading[]> => {
   try {
     const db = await getDatabase();
     const result = await db.getAllAsync<any>(
       "SELECT * FROM blood_sugar_readings WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC",
-      [startTime, endTime]
+      [startTime, endTime],
     );
 
     const readings: BloodSugarReading[] = result.map((row) => ({
@@ -366,13 +366,19 @@ export const getBloodSugarReadingsForCurrentWeek = async (): Promise<
 };
 
 export const addFoodEntry = async (
-  entry: Omit<FoodEntry, "id">
+  entry: Omit<FoodEntry, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
     const result = await db.runAsync(
       "INSERT INTO food_entries (name, carbs, timestamp, meal_type, notes) VALUES (?, ?, ?, ?, ?)",
-      [entry.name, entry.carbs || null, entry.timestamp, entry.meal_type, entry.notes || null]
+      [
+        entry.name,
+        entry.carbs || null,
+        entry.timestamp,
+        entry.meal_type,
+        entry.notes || null,
+      ],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -383,7 +389,7 @@ export const addFoodEntry = async (
 
 export const updateFoodEntry = async (
   id: number,
-  entry: Partial<FoodEntry>
+  entry: Partial<FoodEntry>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -404,7 +410,7 @@ export const updateFoodEntry = async (
 
     values.push(id);
     const sql = `UPDATE food_entries SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -457,13 +463,13 @@ export const deleteFoodEntry = async (id: number): Promise<void> => {
 };
 
 export const addInsulinDose = async (
-  dose: Omit<InsulinDose, "id">
+  dose: Omit<InsulinDose, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
     const result = await db.runAsync(
       "INSERT INTO insulin_doses (units, type, timestamp, notes) VALUES (?, ?, ?, ?)",
-      [dose.units, dose.type, dose.timestamp, dose.notes || null]
+      [dose.units, dose.type, dose.timestamp, dose.notes || null],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -474,7 +480,7 @@ export const addInsulinDose = async (
 
 export const updateInsulinDose = async (
   id: number,
-  dose: Partial<InsulinDose>
+  dose: Partial<InsulinDose>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -495,7 +501,7 @@ export const updateInsulinDose = async (
 
     values.push(id);
     const sql = `UPDATE insulin_doses SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -509,7 +515,7 @@ export const updateInsulinDose = async (
 };
 
 export const getInsulinDoses = async (
-  limit?: number
+  limit?: number,
 ): Promise<InsulinDose[]> => {
   try {
     const db = await getDatabase();
@@ -549,13 +555,13 @@ export const deleteInsulinDose = async (id: number): Promise<void> => {
 };
 
 export const addA1CReading = async (
-  reading: Omit<A1CReading, "id">
+  reading: Omit<A1CReading, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
     const result = await db.runAsync(
       "INSERT INTO a1c_readings (value, timestamp, notes) VALUES (?, ?, ?)",
-      [reading.value, reading.timestamp, reading.notes || null]
+      [reading.value, reading.timestamp, reading.notes || null],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -566,7 +572,7 @@ export const addA1CReading = async (
 
 export const updateA1CReading = async (
   id: number,
-  reading: Partial<A1CReading>
+  reading: Partial<A1CReading>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -587,7 +593,7 @@ export const updateA1CReading = async (
 
     values.push(id);
     const sql = `UPDATE a1c_readings SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -637,13 +643,13 @@ export const deleteA1CReading = async (id: number): Promise<void> => {
 };
 
 export const addWeightMeasurement = async (
-  measurement: Omit<WeightMeasurement, "id">
+  measurement: Omit<WeightMeasurement, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
     const result = await db.runAsync(
       "INSERT INTO weight_measurements (value, timestamp, notes) VALUES (?, ?, ?)",
-      [measurement.value, measurement.timestamp, measurement.notes || null]
+      [measurement.value, measurement.timestamp, measurement.notes || null],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -654,7 +660,7 @@ export const addWeightMeasurement = async (
 
 export const updateWeightMeasurement = async (
   id: number,
-  measurement: Partial<WeightMeasurement>
+  measurement: Partial<WeightMeasurement>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -674,7 +680,7 @@ export const updateWeightMeasurement = async (
 
     values.push(id);
     const sql = `UPDATE weight_measurements SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing SQL:", sql, "with values:", values);
@@ -689,7 +695,7 @@ export const updateWeightMeasurement = async (
 };
 
 export const getWeightMeasurements = async (
-  limit?: number
+  limit?: number,
 ): Promise<WeightMeasurement[]> => {
   try {
     const db = await getDatabase();
@@ -728,7 +734,7 @@ export const deleteWeightMeasurement = async (id: number): Promise<void> => {
 };
 
 export const addBloodPressureReading = async (
-  reading: Omit<BloodPressureReading, "id">
+  reading: Omit<BloodPressureReading, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
@@ -739,7 +745,7 @@ export const addBloodPressureReading = async (
         reading.diastolic,
         reading.timestamp,
         reading.notes || null,
-      ]
+      ],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -750,7 +756,7 @@ export const addBloodPressureReading = async (
 
 export const updateBloodPressureReading = async (
   id: number,
-  reading: Partial<BloodPressureReading>
+  reading: Partial<BloodPressureReading>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -772,7 +778,7 @@ export const updateBloodPressureReading = async (
     values.push(id);
 
     const sql = `UPDATE blood_pressure_readings SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing BP update SQL:", sql, values);
@@ -785,7 +791,7 @@ export const updateBloodPressureReading = async (
 };
 
 export const getBloodPressureReadings = async (
-  limit?: number
+  limit?: number,
 ): Promise<BloodPressureReading[]> => {
   try {
     const db = await getDatabase();
@@ -826,13 +832,13 @@ export const deleteBloodPressureReading = async (id: number): Promise<void> => {
 
 export const getBloodPressureReadingsForTimeRange = async (
   startTime: number,
-  endTime: number
+  endTime: number,
 ): Promise<BloodPressureReading[]> => {
   try {
     const db = await getDatabase();
     const result = await db.getAllAsync<any>(
       "SELECT * FROM blood_pressure_readings WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC",
-      [startTime, endTime]
+      [startTime, endTime],
     );
 
     const readings: BloodPressureReading[] = result.map((row) => ({
@@ -847,14 +853,14 @@ export const getBloodPressureReadingsForTimeRange = async (
   } catch (error) {
     console.error(
       "Error getting blood pressure readings for time range:",
-      error
+      error,
     );
     throw error;
   }
 };
 
 export const addMedication = async (
-  medication: Omit<Medication, "id">
+  medication: Omit<Medication, "id">,
 ): Promise<number> => {
   try {
     const db = await getDatabase();
@@ -868,7 +874,7 @@ export const addMedication = async (
         medication.notes || null,
         medication.imagePath || null,
         medication.timestamp,
-      ]
+      ],
     );
     return result.lastInsertRowId;
   } catch (error) {
@@ -881,7 +887,7 @@ export const getMedications = async (): Promise<Medication[]> => {
   try {
     const db = await getDatabase();
     const result = await db.getAllAsync<any>(
-      "SELECT * FROM medications ORDER BY timestamp DESC"
+      "SELECT * FROM medications ORDER BY timestamp DESC",
     );
 
     const medications: Medication[] = result.map((row) => ({
@@ -904,7 +910,7 @@ export const getMedications = async (): Promise<Medication[]> => {
 
 export const updateMedication = async (
   id: number,
-  medication: Partial<Medication>
+  medication: Partial<Medication>,
 ): Promise<void> => {
   try {
     const db = await getDatabase();
@@ -926,7 +932,7 @@ export const updateMedication = async (
     values.push(id);
 
     const sql = `UPDATE medications SET ${updateFields.join(
-      ", "
+      ", ",
     )} WHERE id = ?`;
 
     console.log("Executing medication update SQL:", sql, values);
@@ -944,7 +950,7 @@ export const deleteMedication = async (id: number): Promise<void> => {
 
     const result = await db.getAllAsync<any>(
       "SELECT imagePath FROM medications WHERE id = ?",
-      [id]
+      [id],
     );
 
     await db.runAsync("DELETE FROM medications WHERE id = ?", [id]);

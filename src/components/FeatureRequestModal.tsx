@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   TextInput,
   Alert,
   Modal,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, ROUTES } from '../constants';
-import Button from './Button';
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES, ROUTES } from "../constants";
+import Button from "./Button";
 
 interface FeatureRequestModalProps {
   visible: boolean;
@@ -24,10 +24,10 @@ interface FeatureRequestModalProps {
 const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
   visible,
   onClose,
-  onSubmit
+  onSubmit,
 }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
@@ -35,8 +35,8 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
   useEffect(() => {
     if (visible) {
       // Reset form when modal opens
-      setTitle('');
-      setDescription('');
+      setTitle("");
+      setDescription("");
       setTitleError(null);
       setDescriptionError(null);
       setIsSubmitting(false);
@@ -47,14 +47,14 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
     let isValid = true;
 
     if (!title.trim()) {
-      setTitleError('Please enter a title for your feature request');
+      setTitleError("Please enter a title for your feature request");
       isValid = false;
     } else {
       setTitleError(null);
     }
 
     if (!description.trim()) {
-      setDescriptionError('Please describe your feature request');
+      setDescriptionError("Please describe your feature request");
       isValid = false;
     } else {
       setDescriptionError(null);
@@ -69,7 +69,7 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       onSubmit(title, description);
@@ -86,7 +86,7 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.modalContainer}
       >
         <View style={styles.modalContent}>
@@ -111,7 +111,10 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
 
             <Text style={styles.inputLabel}>Description</Text>
             <TextInput
-              style={[styles.textArea, descriptionError ? styles.inputError : null]}
+              style={[
+                styles.textArea,
+                descriptionError ? styles.inputError : null,
+              ]}
               value={description}
               onChangeText={setDescription}
               placeholder="Describe the feature you'd like to see in Sugari"
@@ -121,16 +124,23 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
               textAlignVertical="top"
               maxLength={500}
             />
-            {descriptionError && <Text style={styles.errorText}>{descriptionError}</Text>}
+            {descriptionError && (
+              <Text style={styles.errorText}>{descriptionError}</Text>
+            )}
 
             <Text style={styles.charCount}>
               {description.length}/500 characters
             </Text>
 
             <View style={styles.infoContainer}>
-              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={COLORS.primary}
+              />
               <Text style={styles.infoText}>
-                Your feature request will be reviewed by our team. We appreciate your feedback!
+                Your feature request will be reviewed by our team. We appreciate
+                your feedback!
               </Text>
             </View>
           </ScrollView>
@@ -160,25 +170,25 @@ const FeatureRequestModal: React.FC<FeatureRequestModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: SIZES.lg,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   closeButton: {
@@ -189,7 +199,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.text,
     marginBottom: SIZES.xs,
     marginTop: SIZES.sm,
@@ -224,18 +234,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   charCount: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     fontSize: 14,
     color: COLORS.lightText,
     marginTop: 4,
   },
   infoContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 102, 204, 0.1)",
     padding: SIZES.md,
     borderRadius: 8,
     marginTop: SIZES.md,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   infoText: {
     fontSize: 14,
@@ -244,8 +254,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: SIZES.md,
   },
   cancelButton: {

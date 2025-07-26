@@ -64,7 +64,7 @@ const AddGlucoseScreen: React.FC = () => {
       setValue("value", initialData.value.toString());
       setValue(
         "mealContext",
-        (initialData.context || "before_meal") as FormData["mealContext"]
+        (initialData.context || "before_meal") as FormData["mealContext"],
       );
       setValue("notes", initialData.notes || "");
       setTimestamp(new Date(initialData.timestamp));
@@ -104,7 +104,7 @@ const AddGlucoseScreen: React.FC = () => {
         "Error",
         error instanceof Error
           ? error.message
-          : "Failed to save blood sugar reading"
+          : "Failed to save blood sugar reading",
       );
     } finally {
       setIsLoading(false);

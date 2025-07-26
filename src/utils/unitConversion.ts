@@ -26,8 +26,11 @@ export const mmollToMgdl = (mmoll: number): number => {
  * @param units The desired display units ('mg/dL' or 'mmol/L')
  * @returns Formatted string with appropriate units
  */
-export const formatGlucoseValue = (value: number, units: 'mg/dL' | 'mmol/L'): string => {
-  if (units === 'mmol/L') {
+export const formatGlucoseValue = (
+  value: number,
+  units: "mg/dL" | "mmol/L",
+): string => {
+  if (units === "mmol/L") {
     return `${mgdlToMmoll(value)} ${units}`;
   }
   return `${value} ${units}`;
@@ -39,8 +42,11 @@ export const formatGlucoseValue = (value: number, units: 'mg/dL' | 'mmol/L'): st
  * @param units The desired display units ('mg/dL' or 'mmol/L')
  * @returns Number in the specified units
  */
-export const getGlucoseValue = (value: number, units: 'mg/dL' | 'mmol/L'): number => {
-  if (units === 'mmol/L') {
+export const getGlucoseValue = (
+  value: number,
+  units: "mg/dL" | "mmol/L",
+): number => {
+  if (units === "mmol/L") {
     return mgdlToMmoll(value);
   }
   return value;
@@ -52,9 +58,12 @@ export const getGlucoseValue = (value: number, units: 'mg/dL' | 'mmol/L'): numbe
  * @param units The desired units ('mg/dL' or 'mmol/L')
  * @returns The threshold value in the specified units
  */
-export const convertThreshold = (threshold: number, units: 'mg/dL' | 'mmol/L'): number => {
-  if (units === 'mmol/L') {
+export const convertThreshold = (
+  threshold: number,
+  units: "mg/dL" | "mmol/L",
+): number => {
+  if (units === "mmol/L") {
     return mgdlToMmoll(threshold);
   }
   return threshold;
-}; 
+};

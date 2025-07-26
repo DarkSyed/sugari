@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   FlatList,
   Alert,
-  ActivityIndicator
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, ROUTES } from '../constants';
-import Card from './Card';
-import Button from './Button';
-import { useNavigation } from '@react-navigation/native';
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS, SIZES, ROUTES } from "../constants";
+import Card from "./Card";
+import Button from "./Button";
+import { useNavigation } from "@react-navigation/native";
 
 export interface FeatureRequest {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'under_review' | 'planned' | 'completed' | 'rejected';
+  status: "pending" | "under_review" | "planned" | "completed" | "rejected";
   createdAt: number;
   updatedAt?: number;
 }
@@ -34,55 +34,55 @@ const FeatureRequestList: React.FC<FeatureRequestListProps> = ({
   featureRequests,
   isLoading,
   onAddRequest,
-  onViewRequest
+  onViewRequest,
 }) => {
   const navigation = useNavigation();
 
-  const getStatusColor = (status: FeatureRequest['status']) => {
+  const getStatusColor = (status: FeatureRequest["status"]) => {
     switch (status) {
-      case 'pending':
-        return '#FFA500'; // Orange
-      case 'under_review':
-        return '#3498DB'; // Blue
-      case 'planned':
-        return '#9B59B6'; // Purple
-      case 'completed':
-        return '#2ECC71'; // Green
-      case 'rejected':
-        return '#E74C3C'; // Red
+      case "pending":
+        return "#FFA500"; // Orange
+      case "under_review":
+        return "#3498DB"; // Blue
+      case "planned":
+        return "#9B59B6"; // Purple
+      case "completed":
+        return "#2ECC71"; // Green
+      case "rejected":
+        return "#E74C3C"; // Red
       default:
         return COLORS.lightText;
     }
   };
 
-  const getStatusText = (status: FeatureRequest['status']) => {
+  const getStatusText = (status: FeatureRequest["status"]) => {
     switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'under_review':
-        return 'Under Review';
-      case 'planned':
-        return 'Planned';
-      case 'completed':
-        return 'Completed';
-      case 'rejected':
-        return 'Not Planned';
+      case "pending":
+        return "Pending";
+      case "under_review":
+        return "Under Review";
+      case "planned":
+        return "Planned";
+      case "completed":
+        return "Completed";
+      case "rejected":
+        return "Not Planned";
       default:
-        return 'Unknown';
+        return "Unknown";
     }
   };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const renderFeatureRequest = ({ item }: { item: FeatureRequest }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.requestItem}
       onPress={() => onViewRequest(item)}
     >
@@ -90,7 +90,12 @@ const FeatureRequestList: React.FC<FeatureRequestListProps> = ({
         <Text style={styles.requestTitle} numberOfLines={1}>
           {item.title}
         </Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.status) },
+          ]}
+        >
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
@@ -125,14 +130,14 @@ const FeatureRequestList: React.FC<FeatureRequestListProps> = ({
     <Card variant="elevated" style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Feature Requests</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => navigation.navigate(ROUTES.FEATURE_REQUESTS)}
         >
           <Ionicons name="add" size={24} color={COLORS.white} />
         </TouchableOpacity>
       </View>
-      
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -157,16 +162,16 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.md,
     paddingHorizontal: SIZES.md,
     paddingTop: SIZES.md,
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   addButton: {
@@ -174,8 +179,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   listContent: {
     paddingHorizontal: SIZES.md,
@@ -191,14 +196,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.xs,
   },
   requestTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     flex: 1,
     marginRight: SIZES.sm,
@@ -210,7 +215,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.white,
   },
   requestDescription: {
@@ -219,22 +224,22 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.sm,
   },
   requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   requestDate: {
     fontSize: 12,
     color: COLORS.lightText,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: SIZES.lg,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginTop: SIZES.md,
     marginBottom: SIZES.xs,
@@ -242,7 +247,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: COLORS.lightText,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SIZES.lg,
   },
   emptyButton: {
@@ -250,7 +255,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     padding: SIZES.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loadingText: {
     marginTop: SIZES.sm,

@@ -19,11 +19,7 @@ type Props = {
   onChange: (date: Date) => void;
 };
 
-const DateTimeField: React.FC<Props> = ({
-  label,
-  timestamp,
-  onChange,
-}) => {
+const DateTimeField: React.FC<Props> = ({ label, timestamp, onChange }) => {
   const {
     showDatePicker,
     showTimePicker,

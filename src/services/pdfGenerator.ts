@@ -1,27 +1,27 @@
-import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import { Share } from 'react-native';
-import * as Sharing from 'expo-sharing';
-import * as Print from 'expo-print';
-import { 
-  BloodSugarReading, 
-  InsulinDose, 
-  FoodEntry, 
-  A1CReading, 
-  WeightMeasurement, 
+import { Platform, Share } from "react-native";
+import * as FileSystem from "expo-file-system";
+
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import {
+  BloodSugarReading,
+  InsulinDose,
+  FoodEntry,
+  A1CReading,
+  WeightMeasurement,
   BloodPressureReading,
-  UserSettings
-} from '../types';
-import { 
-  calculateBloodSugarStats, 
-  calculateInsulinStats, 
+  UserSettings,
+} from "../types";
+import {
+  calculateBloodSugarStats,
+  calculateInsulinStats,
   calculateFoodStats,
   formatDate,
   formatDateTime,
   groupReadingsByDay,
   calculateBMI,
-  getBMICategory
-} from './reportService';
+  getBMICategory,
+} from "./reportService";
 
 // Define the directory for storing PDF files
 const PDF_DIR = `${FileSystem.documentDirectory}reports`;
@@ -34,7 +34,7 @@ export const ensureDirectoryExists = async () => {
       await FileSystem.makeDirectoryAsync(PDF_DIR, { intermediates: true });
     }
   } catch (error) {
-    console.error('Error ensuring directory exists:', error);
+    console.error("Error ensuring directory exists:", error);
     throw error;
   }
 };
@@ -49,28 +49,28 @@ export const generateHTMLContent = (
   bloodPressureReadings: BloodPressureReading[],
   userSettings: UserSettings,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ) => {
   // Calculate statistics
   const bloodSugarStats = calculateBloodSugarStats(bloodSugarReadings);
   const insulinStats = calculateInsulinStats(insulinDoses);
   const foodStats = calculateFoodStats(foodEntries);
-  
+
   // Get the latest weight and height if available
-  const latestWeight = weightMeasurements.length > 0 
-    ? weightMeasurements.sort((a, b) => b.timestamp - a.timestamp)[0].value 
-    : null;
-  
+  const latestWeight =
+    weightMeasurements.length > 0
+      ? weightMeasurements.sort((a, b) => b.timestamp - a.timestamp)[0].value
+      : null;
+
   // Calculate BMI if weight and height are available
   const height = userSettings.height || null;
-  const bmi = (latestWeight && height) 
-    ? calculateBMI(latestWeight, height) 
-    : null;
+  const bmi =
+    latestWeight && height ? calculateBMI(latestWeight, height) : null;
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
-  
+
   // Group blood sugar readings by day
   const readingsByDay = groupReadingsByDay(bloodSugarReadings);
-  
+
   // Generate HTML content
   return `
     <!DOCTYPE html>
@@ -170,12 +170,12 @@ export const generateHTMLContent = (
       </div>
       
       <div class="user-info">
-        <p><strong>Name:</strong> ${userSettings.firstName || ''} ${userSettings.lastName || ''}</p>
-        <p><strong>Email:</strong> ${userSettings.email || 'Not provided'}</p>
-        <p><strong>Diabetes Type:</strong> ${userSettings.diabetesType || 'Not specified'}</p>
-        ${latestWeight ? `<p><strong>Weight:</strong> ${latestWeight} kg</p>` : ''}
-        ${height ? `<p><strong>Height:</strong> ${height} cm</p>` : ''}
-        ${bmi ? `<p><strong>BMI:</strong> ${bmi} (${bmiCategory})</p>` : ''}
+        <p><strong>Name:</strong> ${userSettings.firstName || ""} ${userSettings.lastName || ""}</p>
+        <p><strong>Email:</strong> ${userSettings.email || "Not provided"}</p>
+        <p><strong>Diabetes Type:</strong> ${userSettings.diabetesType || "Not specified"}</p>
+        ${latestWeight ? `<p><strong>Weight:</strong> ${latestWeight} kg</p>` : ""}
+        ${height ? `<p><strong>Height:</strong> ${height} cm</p>` : ""}
+        ${bmi ? `<p><strong>BMI:</strong> ${bmi} (${bmiCategory})</p>` : ""}
       </div>
       
       <div class="section">
@@ -183,15 +183,15 @@ export const generateHTMLContent = (
         <div class="stats-container">
           <div class="stat-box">
             <div class="stat-title">Average</div>
-            <div class="stat-value">${bloodSugarStats.average} ${userSettings.units || 'mg/dL'}</div>
+            <div class="stat-value">${bloodSugarStats.average} ${userSettings.units || "mg/dL"}</div>
           </div>
           <div class="stat-box">
             <div class="stat-title">Lowest</div>
-            <div class="stat-value">${bloodSugarStats.min} ${userSettings.units || 'mg/dL'}</div>
+            <div class="stat-value">${bloodSugarStats.min} ${userSettings.units || "mg/dL"}</div>
           </div>
           <div class="stat-box">
             <div class="stat-title">Highest</div>
-            <div class="stat-value">${bloodSugarStats.max} ${userSettings.units || 'mg/dL'}</div>
+            <div class="stat-value">${bloodSugarStats.max} ${userSettings.units || "mg/dL"}</div>
           </div>
           <div class="stat-box">
             <div class="stat-title">In Range</div>
@@ -218,14 +218,18 @@ export const generateHTMLContent = (
             </tr>
           </thead>
           <tbody>
-            ${bloodSugarReadings.map(reading => `
+            ${bloodSugarReadings
+              .map(
+                (reading) => `
               <tr>
                 <td>${formatDateTime(reading.timestamp)}</td>
-                <td>${reading.value} ${userSettings.units || 'mg/dL'}</td>
-                <td>${reading.context || '-'}</td>
-                <td>${reading.notes || '-'}</td>
+                <td>${reading.value} ${userSettings.units || "mg/dL"}</td>
+                <td>${reading.context || "-"}</td>
+                <td>${reading.notes || "-"}</td>
               </tr>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -258,14 +262,18 @@ export const generateHTMLContent = (
             </tr>
           </thead>
           <tbody>
-            ${insulinDoses.map(dose => `
+            ${insulinDoses
+              .map(
+                (dose) => `
               <tr>
                 <td>${formatDateTime(dose.timestamp)}</td>
                 <td>${dose.units}</td>
                 <td>${dose.type}</td>
-                <td>${dose.notes || '-'}</td>
+                <td>${dose.notes || "-"}</td>
               </tr>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -298,19 +306,25 @@ export const generateHTMLContent = (
             </tr>
           </thead>
           <tbody>
-            ${foodEntries.map(entry => `
+            ${foodEntries
+              .map(
+                (entry) => `
               <tr>
                 <td>${formatDateTime(entry.timestamp)}</td>
                 <td>${entry.name}</td>
-                <td>${entry.carbs || '-'}</td>
-                <td>${entry.notes || '-'}</td>
+                <td>${entry.carbs || "-"}</td>
+                <td>${entry.notes || "-"}</td>
               </tr>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
       
-      ${a1cReadings.length > 0 ? `
+      ${
+        a1cReadings.length > 0
+          ? `
         <div class="section">
           <h2 class="section-title">A1C Readings</h2>
           <table>
@@ -322,19 +336,27 @@ export const generateHTMLContent = (
               </tr>
             </thead>
             <tbody>
-              ${a1cReadings.map(reading => `
+              ${a1cReadings
+                .map(
+                  (reading) => `
                 <tr>
                   <td>${formatDate(reading.timestamp)}</td>
                   <td>${reading.value}</td>
-                  <td>${reading.notes || '-'}</td>
+                  <td>${reading.notes || "-"}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
-      ${weightMeasurements.length > 0 ? `
+      ${
+        weightMeasurements.length > 0
+          ? `
         <div class="section">
           <h2 class="section-title">Weight Measurements</h2>
           <table>
@@ -346,19 +368,27 @@ export const generateHTMLContent = (
               </tr>
             </thead>
             <tbody>
-              ${weightMeasurements.map(measurement => `
+              ${weightMeasurements
+                .map(
+                  (measurement) => `
                 <tr>
                   <td>${formatDate(measurement.timestamp)}</td>
                   <td>${measurement.value}</td>
-                  <td>${measurement.notes || '-'}</td>
+                  <td>${measurement.notes || "-"}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
-      ${bloodPressureReadings.length > 0 ? `
+      ${
+        bloodPressureReadings.length > 0
+          ? `
         <div class="section">
           <h2 class="section-title">Blood Pressure Readings</h2>
           <table>
@@ -371,18 +401,24 @@ export const generateHTMLContent = (
               </tr>
             </thead>
             <tbody>
-              ${bloodPressureReadings.map(reading => `
+              ${bloodPressureReadings
+                .map(
+                  (reading) => `
                 <tr>
                   <td>${formatDate(reading.timestamp)}</td>
                   <td>${reading.systolic}</td>
                   <td>${reading.diastolic}</td>
-                  <td>${reading.notes || '-'}</td>
+                  <td>${reading.notes || "-"}</td>
                 </tr>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       
       <div style="text-align: center; margin-top: 50px; color: #999; font-size: 12px;">
         <p>Generated by Sugari on ${new Date().toLocaleDateString()}</p>
@@ -402,12 +438,12 @@ export const generatePDF = async (
   bloodPressureReadings: BloodPressureReading[],
   userSettings: UserSettings,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<string> => {
   try {
     // Ensure the directory exists
     await ensureDirectoryExists();
-    
+
     // Generate HTML content
     const htmlContent = generateHTMLContent(
       bloodSugarReadings,
@@ -418,30 +454,30 @@ export const generatePDF = async (
       bloodPressureReadings,
       userSettings,
       startDate,
-      endDate
+      endDate,
     );
-    
+
     // Generate file name
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const startDateStr = startDate.toISOString().split("T")[0];
+    const endDateStr = endDate.toISOString().split("T")[0];
     const fileName = `sugari_report_${startDateStr}_to_${endDateStr}.pdf`;
     const filePath = `${PDF_DIR}/${fileName}`;
-    
+
     // Use Print module to generate the PDF
-    const { uri } = await Print.printToFileAsync({ 
+    const { uri } = await Print.printToFileAsync({
       html: htmlContent,
-      base64: false
+      base64: false,
     });
-    
+
     // Move the file to our reports directory
     await FileSystem.moveAsync({
       from: uri,
-      to: filePath
+      to: filePath,
     });
-    
+
     return filePath;
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error("Error generating PDF:", error);
     throw error;
   }
 };
@@ -453,60 +489,60 @@ export const generateCSVContent = (
   foodEntries: FoodEntry[],
   a1cReadings: A1CReading[],
   weightMeasurements: WeightMeasurement[],
-  bloodPressureReadings: BloodPressureReading[]
+  bloodPressureReadings: BloodPressureReading[],
 ) => {
   // Blood sugar readings CSV
-  let bloodSugarCSV = 'Date,Time,Value,Context,Notes\n';
-  bloodSugarReadings.forEach(reading => {
+  let bloodSugarCSV = "Date,Time,Value,Context,Notes\n";
+  bloodSugarReadings.forEach((reading) => {
     const date = formatDate(reading.timestamp);
-    const time = formatDateTime(reading.timestamp).split(' ')[1];
-    bloodSugarCSV += `${date},${time},${reading.value},"${reading.context || ''}","${reading.notes?.replace(/"/g, '""') || ''}"\n`;
+    const time = formatDateTime(reading.timestamp).split(" ")[1];
+    bloodSugarCSV += `${date},${time},${reading.value},"${reading.context || ""}","${reading.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   // Insulin doses CSV
-  let insulinCSV = 'Date,Time,Units,Type,Notes\n';
-  insulinDoses.forEach(dose => {
+  let insulinCSV = "Date,Time,Units,Type,Notes\n";
+  insulinDoses.forEach((dose) => {
     const date = formatDate(dose.timestamp);
-    const time = formatDateTime(dose.timestamp).split(' ')[1];
-    insulinCSV += `${date},${time},${dose.units},"${dose.type}","${dose.notes?.replace(/"/g, '""') || ''}"\n`;
+    const time = formatDateTime(dose.timestamp).split(" ")[1];
+    insulinCSV += `${date},${time},${dose.units},"${dose.type}","${dose.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   // Food entries CSV
-  let foodCSV = 'Date,Time,Name,Carbs,Notes\n';
-  foodEntries.forEach(entry => {
+  let foodCSV = "Date,Time,Name,Carbs,Notes\n";
+  foodEntries.forEach((entry) => {
     const date = formatDate(entry.timestamp);
-    const time = formatDateTime(entry.timestamp).split(' ')[1];
-    foodCSV += `${date},${time},"${entry.name}",${entry.carbs || ''},"${entry.notes?.replace(/"/g, '""') || ''}"\n`;
+    const time = formatDateTime(entry.timestamp).split(" ")[1];
+    foodCSV += `${date},${time},"${entry.name}",${entry.carbs || ""},"${entry.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   // A1C readings CSV
-  let a1cCSV = 'Date,Value,Notes\n';
-  a1cReadings.forEach(reading => {
+  let a1cCSV = "Date,Value,Notes\n";
+  a1cReadings.forEach((reading) => {
     const date = formatDate(reading.timestamp);
-    a1cCSV += `${date},${reading.value},"${reading.notes?.replace(/"/g, '""') || ''}"\n`;
+    a1cCSV += `${date},${reading.value},"${reading.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   // Weight measurements CSV
-  let weightCSV = 'Date,Value,Notes\n';
-  weightMeasurements.forEach(measurement => {
+  let weightCSV = "Date,Value,Notes\n";
+  weightMeasurements.forEach((measurement) => {
     const date = formatDate(measurement.timestamp);
-    weightCSV += `${date},${measurement.value},"${measurement.notes?.replace(/"/g, '""') || ''}"\n`;
+    weightCSV += `${date},${measurement.value},"${measurement.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   // Blood pressure readings CSV
-  let bpCSV = 'Date,Systolic,Diastolic,Notes\n';
-  bloodPressureReadings.forEach(reading => {
+  let bpCSV = "Date,Systolic,Diastolic,Notes\n";
+  bloodPressureReadings.forEach((reading) => {
     const date = formatDate(reading.timestamp);
-    bpCSV += `${date},${reading.systolic},${reading.diastolic},"${reading.notes?.replace(/"/g, '""') || ''}"\n`;
+    bpCSV += `${date},${reading.systolic},${reading.diastolic},"${reading.notes?.replace(/"/g, '""') || ""}"\n`;
   });
-  
+
   return {
     bloodSugarCSV,
     insulinCSV,
     foodCSV,
     a1cCSV,
     weightCSV,
-    bpCSV
+    bpCSV,
   };
 };
 
@@ -519,12 +555,12 @@ export const generateCSV = async (
   weightMeasurements: WeightMeasurement[],
   bloodPressureReadings: BloodPressureReading[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<string[]> => {
   try {
     // Ensure the directory exists
     await ensureDirectoryExists();
-    
+
     // Generate CSV content
     const csvContent = generateCSVContent(
       bloodSugarReadings,
@@ -532,56 +568,70 @@ export const generateCSV = async (
       foodEntries,
       a1cReadings,
       weightMeasurements,
-      bloodPressureReadings
+      bloodPressureReadings,
     );
-    
+
     // Generate file names
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const startDateStr = startDate.toISOString().split("T")[0];
+    const endDateStr = endDate.toISOString().split("T")[0];
     const baseFileName = `sugari_data_${startDateStr}_to_${endDateStr}`;
-    
+
     // Write CSV files
     const filePaths: string[] = [];
-    
+
     if (bloodSugarReadings.length > 0) {
       const bloodSugarPath = `${PDF_DIR}/${baseFileName}_blood_sugar.csv`;
-      await FileSystem.writeFileAsync(bloodSugarPath, csvContent.bloodSugarCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(
+        bloodSugarPath,
+        csvContent.bloodSugarCSV,
+        { encoding: FileSystem.EncodingType.UTF8 },
+      );
       filePaths.push(bloodSugarPath);
     }
-    
+
     if (insulinDoses.length > 0) {
       const insulinPath = `${PDF_DIR}/${baseFileName}_insulin.csv`;
-      await FileSystem.writeFileAsync(insulinPath, csvContent.insulinCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(insulinPath, csvContent.insulinCSV, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       filePaths.push(insulinPath);
     }
-    
+
     if (foodEntries.length > 0) {
       const foodPath = `${PDF_DIR}/${baseFileName}_food.csv`;
-      await FileSystem.writeFileAsync(foodPath, csvContent.foodCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(foodPath, csvContent.foodCSV, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       filePaths.push(foodPath);
     }
-    
+
     if (a1cReadings.length > 0) {
       const a1cPath = `${PDF_DIR}/${baseFileName}_a1c.csv`;
-      await FileSystem.writeFileAsync(a1cPath, csvContent.a1cCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(a1cPath, csvContent.a1cCSV, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       filePaths.push(a1cPath);
     }
-    
+
     if (weightMeasurements.length > 0) {
       const weightPath = `${PDF_DIR}/${baseFileName}_weight.csv`;
-      await FileSystem.writeFileAsync(weightPath, csvContent.weightCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(weightPath, csvContent.weightCSV, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       filePaths.push(weightPath);
     }
-    
+
     if (bloodPressureReadings.length > 0) {
       const bpPath = `${PDF_DIR}/${baseFileName}_blood_pressure.csv`;
-      await FileSystem.writeFileAsync(bpPath, csvContent.bpCSV, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeFileAsync(bpPath, csvContent.bpCSV, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       filePaths.push(bpPath);
     }
-    
+
     return filePaths;
   } catch (error) {
-    console.error('Error generating CSV files:', error);
+    console.error("Error generating CSV files:", error);
     throw error;
   }
 };

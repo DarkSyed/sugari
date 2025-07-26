@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 
 export function useDateTimePicker(
   initialDate: Date = new Date(),
-  onChange?: (date: Date) => void
+  onChange?: (date: Date) => void,
 ) {
   const [internalTimestamp, setInternalTimestamp] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -41,7 +41,7 @@ export function useDateTimePicker(
         tempDate.getMonth(),
         tempDate.getDate(),
         internalTimestamp.getHours(),
-        internalTimestamp.getMinutes()
+        internalTimestamp.getMinutes(),
       );
       updateTimestamp(updated);
     }
@@ -56,7 +56,7 @@ export function useDateTimePicker(
         internalTimestamp.getMonth(),
         internalTimestamp.getDate(),
         tempTime.getHours(),
-        tempTime.getMinutes()
+        tempTime.getMinutes(),
       );
       updateTimestamp(updated);
     }

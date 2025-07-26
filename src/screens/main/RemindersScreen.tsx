@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   FlatList,
   Alert,
   Switch,
   SafeAreaView,
-  Platform
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { COLORS, SIZES, ROUTES } from '../../constants';
-import { useApp } from '../../contexts/AppContext';
-import Card from '../../components/Card';
-import Button from '../../components/Button';
-import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Container from '../../components/Container';
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { COLORS, SIZES, ROUTES } from "../../constants";
+import { useApp } from "../../contexts/AppContext";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Container from "../../components/Container";
 
 interface Reminder {
   id: string;
@@ -35,30 +35,32 @@ interface Reminder {
 const RemindersScreen: React.FC = () => {
   const { userSettings } = useApp();
   const navigation = useNavigation<StackNavigationProp<any>>();
-  
+
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [notificationPermission, setNotificationPermission] = useState<boolean | null>(null);
-  
+  const [notificationPermission, setNotificationPermission] = useState<
+    boolean | null
+  >(null);
+
   // Predefined quick reminders
   const quickReminders = [
-    { 
-      id: 'reminder_1hour', 
-      title: 'Remind me in 1 hour...',
-      body: 'Time to check your blood sugar!',
+    {
+      id: "reminder_1hour",
+      title: "Remind me in 1 hour...",
+      body: "Time to check your blood sugar!",
       hour: 1,
       minute: 0,
       repeats: false,
-      enabled: true
+      enabled: true,
     },
-    { 
-      id: 'reminder_2hours', 
-      title: 'Remind me in 2 hours...',
-      body: 'Time to check your blood sugar!',
+    {
+      id: "reminder_2hours",
+      title: "Remind me in 2 hours...",
+      body: "Time to check your blood sugar!",
       hour: 2,
       minute: 0,
       repeats: false,
-      enabled: true
-    }
+      enabled: true,
+    },
   ];
 
   useEffect(() => {
@@ -69,9 +71,9 @@ const RemindersScreen: React.FC = () => {
   const checkNotificationPermissions = async () => {
     try {
       const { status } = await Notifications.getPermissionsAsync();
-      setNotificationPermission(status === 'granted');
+      setNotificationPermission(status === "granted");
     } catch (error) {
-      console.error('Error checking notification permissions:', error);
+      console.error("Error checking notification permissions:", error);
       setNotificationPermission(false);
     }
   };
@@ -79,22 +81,22 @@ const RemindersScreen: React.FC = () => {
   const requestNotificationPermissions = async () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      setNotificationPermission(status === 'granted');
-      return status === 'granted';
+      setNotificationPermission(status === "granted");
+      return status === "granted";
     } catch (error) {
-      console.error('Error requesting notification permissions:', error);
+      console.error("Error requesting notification permissions:", error);
       return false;
     }
   };
 
   const loadReminders = async () => {
     try {
-      const storedReminders = await AsyncStorage.getItem('reminders');
+      const storedReminders = await AsyncStorage.getItem("reminders");
       if (storedReminders) {
         setReminders(JSON.parse(storedReminders));
       }
     } catch (error) {
-      console.error('Error loading reminders:', error);
+      console.error("Error loading reminders:", error);
     }
   };
 
@@ -110,25 +112,27 @@ const RemindersScreen: React.FC = () => {
     try {
       // Cancel the existing notification if disabling
       if (!enabled && reminder.identifier) {
-        await Notifications.cancelScheduledNotificationAsync(reminder.identifier);
+        await Notifications.cancelScheduledNotificationAsync(
+          reminder.identifier,
+        );
       }
-      
+
       // Re-schedule the notification if enabling
       let identifier = reminder.identifier;
       if (enabled) {
         const now = new Date();
         const scheduledTime = new Date(now);
-        
+
         // Set the time for the notification
         scheduledTime.setHours(reminder.hour);
         scheduledTime.setMinutes(reminder.minute);
         scheduledTime.setSeconds(0);
-        
+
         // If the time is in the past, schedule for tomorrow
         if (scheduledTime < now) {
           scheduledTime.setDate(scheduledTime.getDate() + 1);
         }
-        
+
         // Schedule the notification
         identifier = await Notifications.scheduleNotificationAsync({
           content: {
@@ -136,23 +140,23 @@ const RemindersScreen: React.FC = () => {
             body: reminder.body,
             data: { id: reminder.id },
           },
-          trigger: reminder.repeats 
+          trigger: reminder.repeats
             ? { hour: reminder.hour, minute: reminder.minute, repeats: true }
             : scheduledTime,
         });
       }
-      
+
       // Update reminders state
-      const updatedReminders = reminders.map(r => 
-        r.id === reminder.id ? { ...r, enabled, identifier } : r
+      const updatedReminders = reminders.map((r) =>
+        r.id === reminder.id ? { ...r, enabled, identifier } : r,
       );
       setReminders(updatedReminders);
-      
+
       // Save to AsyncStorage
-      await AsyncStorage.setItem('reminders', JSON.stringify(updatedReminders));
+      await AsyncStorage.setItem("reminders", JSON.stringify(updatedReminders));
     } catch (error) {
-      console.error('Error toggling reminder:', error);
-      Alert.alert('Error', 'Failed to update reminder status');
+      console.error("Error toggling reminder:", error);
+      Alert.alert("Error", "Failed to update reminder status");
     }
   };
 
@@ -160,32 +164,39 @@ const RemindersScreen: React.FC = () => {
     try {
       // Confirm deletion
       Alert.alert(
-        'Delete Reminder',
-        'Are you sure you want to delete this reminder?',
+        "Delete Reminder",
+        "Are you sure you want to delete this reminder?",
         [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Delete', 
-            style: 'destructive',
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
             onPress: async () => {
               // Cancel the notification
               if (reminder.identifier) {
-                await Notifications.cancelScheduledNotificationAsync(reminder.identifier);
+                await Notifications.cancelScheduledNotificationAsync(
+                  reminder.identifier,
+                );
               }
-              
+
               // Filter out the deleted reminder
-              const updatedReminders = reminders.filter(r => r.id !== reminder.id);
+              const updatedReminders = reminders.filter(
+                (r) => r.id !== reminder.id,
+              );
               setReminders(updatedReminders);
-              
+
               // Save to AsyncStorage
-              await AsyncStorage.setItem('reminders', JSON.stringify(updatedReminders));
-            }
-          }
-        ]
+              await AsyncStorage.setItem(
+                "reminders",
+                JSON.stringify(updatedReminders),
+              );
+            },
+          },
+        ],
       );
     } catch (error) {
-      console.error('Error deleting reminder:', error);
-      Alert.alert('Error', 'Failed to delete reminder');
+      console.error("Error deleting reminder:", error);
+      Alert.alert("Error", "Failed to delete reminder");
     }
   };
 
@@ -195,34 +206,34 @@ const RemindersScreen: React.FC = () => {
         const granted = await requestNotificationPermissions();
         if (!granted) {
           Alert.alert(
-            'Permission Required',
-            'Notification permission is required to set reminders'
+            "Permission Required",
+            "Notification permission is required to set reminders",
           );
           return;
         }
       }
-      
+
       // Calculate the time for the quick reminder
       const now = new Date();
       const reminderTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
-      
+
       // Generate a unique ID
       const reminderId = `quick_${Date.now()}`;
-      
+
       // Schedule the notification
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Blood Sugar Reminder',
+          title: "Blood Sugar Reminder",
           body: `It's time to check your blood sugar!`,
           data: { id: reminderId },
         },
         trigger: reminderTime,
       });
-      
+
       // Create the reminder object
       const newReminder: Reminder = {
         id: reminderId,
-        title: 'Blood Sugar Reminder',
+        title: "Blood Sugar Reminder",
         body: `It's time to check your blood sugar!`,
         hour: reminderTime.getHours(),
         minute: reminderTime.getMinutes(),
@@ -230,20 +241,20 @@ const RemindersScreen: React.FC = () => {
         enabled: true,
         identifier,
       };
-      
+
       // Update state and save
       const updatedReminders = [...reminders, newReminder];
       setReminders(updatedReminders);
-      await AsyncStorage.setItem('reminders', JSON.stringify(updatedReminders));
-      
+      await AsyncStorage.setItem("reminders", JSON.stringify(updatedReminders));
+
       // Show confirmation
       Alert.alert(
-        'Reminder Set',
-        `You will be reminded in ${hours} hour${hours !== 1 ? 's' : ''}`
+        "Reminder Set",
+        `You will be reminded in ${hours} hour${hours !== 1 ? "s" : ""}`,
       );
     } catch (error) {
-      console.error('Error setting quick reminder:', error);
-      Alert.alert('Error', 'Failed to set reminder');
+      console.error("Error setting quick reminder:", error);
+      Alert.alert("Error", "Failed to set reminder");
     }
   };
 
@@ -251,7 +262,7 @@ const RemindersScreen: React.FC = () => {
     const date = new Date();
     date.setHours(hour);
     date.setMinutes(minute);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const renderPermissionRequest = () => (
@@ -277,23 +288,25 @@ const RemindersScreen: React.FC = () => {
     <Card style={styles.reminderItem}>
       <View style={styles.reminderContent}>
         <Text style={styles.reminderTitle}>{item.title}</Text>
-        <Text style={styles.reminderTime}>{formatTime(item.hour, item.minute)}</Text>
+        <Text style={styles.reminderTime}>
+          {formatTime(item.hour, item.minute)}
+        </Text>
         {item.repeats && <Text style={styles.repeatLabel}>Repeats daily</Text>}
       </View>
       <View style={styles.reminderActions}>
         <Switch
           value={item.enabled}
           onValueChange={(value) => handleToggleReminder(item, value)}
-          trackColor={{ false: '#767577', true: COLORS.primaryLight }}
-          thumbColor={item.enabled ? COLORS.primary : '#f4f3f4'}
+          trackColor={{ false: "#767577", true: COLORS.primaryLight }}
+          thumbColor={item.enabled ? COLORS.primary : "#f4f3f4"}
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => handleEditReminder(item)}
           style={styles.actionButton}
         >
           <Ionicons name="create-outline" size={22} color={COLORS.primary} />
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => handleDeleteReminder(item)}
           style={styles.actionButton}
         >
@@ -322,19 +335,19 @@ const RemindersScreen: React.FC = () => {
     <Card style={styles.quickRemindersCard}>
       <Text style={styles.sectionTitle}>Quick Reminders</Text>
       <View style={styles.quickButtonsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.quickButton}
           onPress={() => handleQuickReminder(1)}
         >
           <Text style={styles.quickButtonText}>In 1 hour</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.quickButton}
           onPress={() => handleQuickReminder(2)}
         >
           <Text style={styles.quickButtonText}>In 2 hours</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.quickButton}
           onPress={() => handleQuickReminder(4)}
         >
@@ -356,31 +369,28 @@ const RemindersScreen: React.FC = () => {
   return (
     <Container>
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={handleBackPress}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Reminders</Text>
-        <TouchableOpacity 
-          onPress={handleAddReminder}
-          style={styles.addButton}
-        >
+        <TouchableOpacity onPress={handleAddReminder} style={styles.addButton}>
           <Ionicons name="add" size={24} color="white" />
         </TouchableOpacity>
       </View>
-      
-      {notificationPermission === false ? renderPermissionRequest() : (
+
+      {notificationPermission === false ? (
+        renderPermissionRequest()
+      ) : (
         <View style={styles.reminderContainer}>
           {renderQuickReminders()}
           <Text style={styles.reminderText}>
-            Reminders help you remember to check your blood sugar, take medication, or perform other important health tasks.
+            Reminders help you remember to check your blood sugar, take
+            medication, or perform other important health tasks.
           </Text>
           <FlatList
             data={reminders}
             renderItem={renderReminderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={renderEmptyList}
           />
@@ -392,9 +402,9 @@ const RemindersScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: SIZES.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -404,7 +414,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
   },
   addButton: {
@@ -412,15 +422,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   permissionCard: {
     margin: SIZES.md,
   },
   permissionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: SIZES.md,
   },
   permissionTextContainer: {
@@ -429,7 +439,7 @@ const styles = StyleSheet.create({
   },
   permissionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginBottom: 4,
   },
@@ -438,7 +448,7 @@ const styles = StyleSheet.create({
     color: COLORS.lightText,
   },
   permissionButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   reminderContainer: {
     flex: 1,
@@ -447,16 +457,16 @@ const styles = StyleSheet.create({
   reminderText: {
     fontSize: 16,
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SIZES.lg,
   },
   listContent: {
     flexGrow: 1,
   },
   reminderItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: COLORS.cardBackground,
     borderRadius: 8,
     padding: SIZES.md,
@@ -470,7 +480,7 @@ const styles = StyleSheet.create({
   reminderTitle: {
     fontSize: 16,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   reminderTime: {
     fontSize: 14,
@@ -483,20 +493,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   reminderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   actionButton: {
     padding: 8,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: SIZES.xl,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.text,
     marginTop: SIZES.md,
     marginBottom: SIZES.xs,
@@ -504,11 +514,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: COLORS.lightText,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SIZES.md,
   },
   addReminderContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: SIZES.lg,
   },
   addReminderButton: {
@@ -520,15 +530,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: SIZES.sm,
     paddingHorizontal: SIZES.sm,
     paddingTop: SIZES.sm,
   },
   quickButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: SIZES.sm,
     paddingBottom: SIZES.sm,
   },
@@ -537,12 +547,12 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.sm,
     paddingHorizontal: SIZES.md,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   quickButtonText: {
-    color: 'white',
-    fontWeight: '500',
+    color: "white",
+    fontWeight: "500",
   },
 });
 
